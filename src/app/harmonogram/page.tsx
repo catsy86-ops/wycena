@@ -7,6 +7,7 @@ import { pl } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { useScheduleStore } from "@/store/schedule-store";
 import { SCHEDULE_TYPE_LABELS, SCHEDULE_STATUS_LABELS, type ScheduleEvent, type ScheduleStatus } from "@/types";
+import { scheduleEventSchema } from "@/lib/validators";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Pencil, Calendar as CalendarIcon, Phone, MapPin } from "lucide-react";
+import { Plus, Trash2, Pencil, Calendar as CalendarIcon, Phone, MapPin, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
 import { AnimatedEmptyState } from "@/components/animated-empty-state";
@@ -77,6 +78,7 @@ export default function HarmonogramPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
   const filtered = useMemo(() => {
     return events.filter((e) => {
@@ -98,10 +100,77 @@ export default function HarmonogramPage() {
     }));
   }, [filtered]);
 
+  function validateForm(): boolean {
+    const result = scheduleEventSchema.safeParse(form);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        const path = issue.path[0] as string;
+        if (path) {
+          fieldErrors[path] = issue.message;
+        }
+      });
+
+      if (form.startTime && form.endTime) {
+        const start = new Date(form.startTime);
+        const end = new Date(form.endTime);
+        if (end <= start) {
+          fieldErrors.endTime = "Czas zakończenia musi być późniejszy niż rozpoczęcia";
+        }
+      }
+
+      if (form.startTime) {
+        const start = new Date(form.startTime);
+        if (isNaN(start.getTime())) {
+          fieldErrors.startTime = "Nieprawidłowy format daty";
+        }
+      }
+
+      if (form.endTime) {
+        const end = new Date(form.endTime);
+        if (isNaN(end.getTime())) {
+          fieldErrors.endTime = "Nieprawidłowy format daty";
+        }
+      }
+
+      if (form.clientPhone) {
+        const phoneRegex = /^[\+]?[\d\s\-]{7,15}$/;
+        if (!phoneRegex.test(form.clientPhone)) {
+          fieldErrors.clientPhone = "Nieprawidłowy format numeru telefonu";
+        }
+      }
+
+      setErrors(fieldErrors);
+      setTouchedFields({
+        title: true,
+        clientName: true,
+        startTime: true,
+        endTime: true,
+        type: true,
+        status: true,
+        clientPhone: form.clientPhone ? true : false,
+      });
+      return false;
+    }
+
+    if (form.startTime && form.endTime) {
+      const start = new Date(form.startTime);
+      const end = new Date(form.endTime);
+      if (end <= start) {
+        setErrors((prev) => ({ ...prev, endTime: "Czas zakończenia musi być później niż rozpoczęcia" }));
+        return false;
+      }
+    }
+
+    setErrors({});
+    return true;
+  }
+
   function openAdd() {
     setEditingId(null);
     setForm(EMPTY_FORM);
     setErrors({});
+    setTouchedFields({});
     setDialogOpen(true);
   }
 
@@ -126,12 +195,13 @@ export default function HarmonogramPage() {
       color: e.color || "",
     });
     setErrors({});
+    setTouchedFields({});
     setDialogOpen(true);
   }
 
   function handleSave() {
-    if (!form.title || !form.clientName || !form.startTime || !form.endTime) {
-      toast.error("Wypełnij wymagane pola");
+    if (!validateForm()) {
+      toast.error("Popraw błędy w formularzu");
       return;
     }
     const data = {
@@ -165,6 +235,56 @@ export default function HarmonogramPage() {
     changeStatus(id, status);
     toast.success(`Status zmieniony na: ${SCHEDULE_STATUS_LABELS[status]}`);
   }
+
+  function handleFieldChange(field: string, value: string | null) {
+    if (value === null) return;
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (touchedFields[field]) {
+      setTouchedFields((prev) => ({ ...prev, [field]: true }));
+      const testForm = { ...form, [field]: value };
+      const result = scheduleEventSchema.safeParse(testForm);
+      setErrors((prev) => {
+        const next = { ...prev };
+        if (result.success) {
+          delete next[field];
+        } else {
+          const fieldError = result.error.issues.find((i) => i.path[0] === field);
+          if (fieldError) {
+            next[field] = fieldError.message;
+          } else {
+            delete next[field];
+          }
+        }
+        return next;
+      });
+    }
+  }
+
+  function handleBlur(field: string) {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+    const value = (form as Record<string, unknown>)[field] as string;
+    if (field === 'clientPhone' && value) {
+      const phoneRegex = /^[\+]?[\d\s\-]{7,15}$/;
+      if (!phoneRegex.test(value)) {
+        setErrors((prev) => ({ ...prev, clientPhone: "Nieprawidłowy format numeru telefonu" }));
+        return;
+      }
+    }
+    const testForm = { ...form };
+    const result = scheduleEventSchema.safeParse(testForm);
+    if (!result.success) {
+      const fieldError = result.error.issues.find((i) => i.path[0] === field);
+      if (fieldError) {
+        setErrors((prev) => ({ ...prev, [field]: fieldError.message }));
+      }
+    }
+  }
+
+  const getInputClassName = (field: string) => {
+    if (!touchedFields[field]) return "";
+    if (errors[field]) return "border-destructive focus-visible:ring-destructive";
+    return "border-green-500 focus-visible:ring-green-500";
+  };
 
   return (
     <PageTransition>
@@ -302,34 +422,108 @@ export default function HarmonogramPage() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="title">Tytuł</Label>
-              <Input id="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-              {errors.title && <p className="text-destructive text-xs">{errors.title}</p>}
+              <Label htmlFor="title">
+                Tytuł <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="title"
+                value={form.title}
+                onChange={(e) => handleFieldChange("title", e.target.value)}
+                onBlur={() => handleBlur("title")}
+                className={getInputClassName("title")}
+                placeholder="np. Wycena u klienta"
+              />
+              {errors.title && (
+                <p className="text-destructive text-xs flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.title}
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="clientName">Klient</Label>
-                <Input id="clientName" value={form.clientName} onChange={(e) => setForm({ ...form, clientName: e.target.value })} />
+                <Label htmlFor="clientName">
+                  Klient <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="clientName"
+                  value={form.clientName}
+                  onChange={(e) => handleFieldChange("clientName", e.target.value)}
+                  onBlur={() => handleBlur("clientName")}
+                  className={getInputClassName("clientName")}
+                  placeholder="Imię i nazwisko / Firma"
+                />
+                {errors.clientName && (
+                  <p className="text-destructive text-xs flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.clientName}
+                  </p>
+                )}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="clientPhone">Telefon</Label>
-                <Input id="clientPhone" value={form.clientPhone} onChange={(e) => setForm({ ...form, clientPhone: e.target.value })} />
+                <Input
+                  id="clientPhone"
+                  value={form.clientPhone}
+                  onChange={(e) => handleFieldChange("clientPhone", e.target.value)}
+                  onBlur={() => handleBlur("clientPhone")}
+                  className={getInputClassName("clientPhone")}
+                  placeholder="+48 123 456 789"
+                />
+                {errors.clientPhone && (
+                  <p className="text-destructive text-xs flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.clientPhone}
+                  </p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="startTime">Rozpoczęcie</Label>
-                <Input id="startTime" type="datetime-local" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+                <Label htmlFor="startTime">
+                  Rozpoczęcie <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="startTime"
+                  type="datetime-local"
+                  value={form.startTime}
+                  onChange={(e) => handleFieldChange("startTime", e.target.value)}
+                  onBlur={() => handleBlur("startTime")}
+                  className={getInputClassName("startTime")}
+                />
+                {errors.startTime && (
+                  <p className="text-destructive text-xs flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.startTime}
+                  </p>
+                )}
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="endTime">Zakończenie</Label>
-                <Input id="endTime" type="datetime-local" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
+                <Label htmlFor="endTime">
+                  Zakończenie <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="endTime"
+                  type="datetime-local"
+                  value={form.endTime}
+                  onChange={(e) => handleFieldChange("endTime", e.target.value)}
+                  onBlur={() => handleBlur("endTime")}
+                  className={getInputClassName("endTime")}
+                />
+                {errors.endTime && (
+                  <p className="text-destructive text-xs flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.endTime}
+                  </p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Typ</Label>
-                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as ScheduleEvent["type"] })}>
+                <Label>
+                  Typ <span className="text-destructive">*</span>
+                </Label>
+                <Select value={form.type} onValueChange={(v) => v && handleFieldChange("type", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(SCHEDULE_TYPE_LABELS).map(([k, v]) => (<SelectItem key={k} value={k}>{v}</SelectItem>))}
@@ -337,8 +531,10 @@ export default function HarmonogramPage() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>Status</Label>
-                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as ScheduleStatus })}>
+                <Label>
+                  Status <span className="text-destructive">*</span>
+                </Label>
+                <Select value={form.status} onValueChange={(v) => v && handleFieldChange("status", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(SCHEDULE_STATUS_LABELS).map(([k, v]) => (<SelectItem key={k} value={k}>{v}</SelectItem>))}
@@ -347,15 +543,46 @@ export default function HarmonogramPage() {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="address">Adres</Label>
-              <Input id="address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+              <Label htmlFor="address">
+                <MapPin className="h-3.5 w-3.5 inline mr-1" />
+                Adres
+              </Label>
+              <Input
+                id="address"
+                value={form.address}
+                onChange={(e) => handleFieldChange("address", e.target.value)}
+                placeholder="ul. Przykładowa 1, 00-000 Miasto"
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="desc">Opis</Label>
-              <Input id="desc" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              <Input
+                id="desc"
+                value={form.description}
+                onChange={(e) => handleFieldChange("description", e.target.value)}
+                placeholder="Dodatkowe informacje..."
+              />
             </div>
           </div>
           <DialogFooter>
+            {editingId && (
+              <AlertDialog>
+                <AlertDialogTrigger render={<Button variant="destructive" size="sm" data-testid="delete-event-button" />}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Usuń
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Usuń wydarzenie</AlertDialogTitle>
+                    <AlertDialogDescription>Czy na pewno chcesz usunąć to wydarzenie?</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => { handleDelete(editingId); setDialogOpen(false); }}>Usuń</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <DialogClose render={<Button variant="outline" />}>Anuluj</DialogClose>
             <Button className="btn-primary" onClick={handleSave}>{editingId ? "Zapisz zmiany" : "Dodaj wydarzenie"}</Button>
           </DialogFooter>

@@ -1,5 +1,76 @@
-import type { Service, Client, CompanySettings, QuoteItem, Material, QuoteTemplate } from "@/types";
+import type { Service, Client, CompanySettings, QuoteItem, QuoteAdditionalCost, Material, QuoteTemplate, PricingModelConfig } from "@/types";
 import { db } from "./db";
+import { DEFAULT_PRICING_MODEL } from "@/types";
+
+function generateItemId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+}
+
+const STANDARD_LAZIENKA_ITEMS: Omit<QuoteItem, "nettotal" | "vatAmount" | "bruttoTotal">[] = [
+  { id: generateItemId(), serviceId: 1, name: "Montaż umywalki", quantity: 1, unit: "szt", priceNettoPerUnit: 150, vatRate: 8, discountPercent: 0 },
+  { id: generateItemId(), serviceId: 2, name: "Montaż wanny", quantity: 1, unit: "szt", priceNettoPerUnit: 350, vatRate: 8, discountPercent: 0 },
+  { id: generateItemId(), serviceId: 4, name: "Montaż toalety", quantity: 1, unit: "szt", priceNettoPerUnit: 180, vatRate: 8, discountPercent: 0 },
+  { id: generateItemId(), serviceId: 6, name: "Montaż baterii łazienkowej", quantity: 2, unit: "szt", priceNettoPerUnit: 80, vatRate: 8, discountPercent: 0 },
+  { id: generateItemId(), serviceId: 11, name: "Montaż syfonu", quantity: 1, unit: "szt", priceNettoPerUnit: 60, vatRate: 8, discountPercent: 0 },
+];
+
+const STANDARD_LAZIENKA_COSTS: Omit<QuoteAdditionalCost, "id">[] = [
+  { name: "Dojazd", amount: 50, vatRate: 8, category: "dojazd" },
+  { name: "Materiały pomocnicze", amount: 100, vatRate: 23, category: "materialy" },
+];
+
+const KUCHNIA_BATERIA_ITEMS: Omit<QuoteItem, "nettotal" | "vatAmount" | "bruttoTotal">[] = [
+  { id: generateItemId(), serviceId: 5, name: "Montaż baterii kuchennej", quantity: 1, unit: "szt", priceNettoPerUnit: 100, vatRate: 8, discountPercent: 0 },
+  { id: generateItemId(), serviceId: 19, name: "Wymiana baterii", quantity: 1, unit: "szt", priceNettoPerUnit: 120, vatRate: 8, discountPercent: 0 },
+];
+
+const KUCHNIA_BATERIA_COSTS: Omit<QuoteAdditionalCost, "id">[] = [
+  { name: "Dojazd", amount: 40, vatRate: 8, category: "dojazd" },
+];
+
+const PRZEGLAD_ITEMS: Omit<QuoteItem, "nettotal" | "vatAmount" | "bruttoTotal">[] = [
+  { id: generateItemId(), serviceId: 25, name: "Diagnoza przecieku", quantity: 1, unit: "szt", priceNettoPerUnit: 100, vatRate: 8, discountPercent: 0 },
+  { id: generateItemId(), serviceId: 27, name: "Inspekcja kamerą", quantity: 1, unit: "szt", priceNettoPerUnit: 200, vatRate: 8, discountPercent: 0 },
+];
+
+const STANDARD_LAZIENKA_PRICING: PricingModelConfig = {
+  ...DEFAULT_PRICING_MODEL,
+  complexityFactor: 1.3,
+  riskMargin: 10,
+  overheadPercent: 15,
+  profitMarginPercent: 25,
+  laborCostMultiplier: 1.2,
+  materialWastePercent: 5,
+  warrantyPeriodMonths: 24,
+  warrantyReservePercent: 3,
+};
+
+const KUCHNIA_PRICING: PricingModelConfig = {
+  ...DEFAULT_PRICING_MODEL,
+  complexityFactor: 1.1,
+  riskMargin: 5,
+  profitMarginPercent: 20,
+};
+
+const PRZEGLAD_PRICING: PricingModelConfig = {
+  ...DEFAULT_PRICING_MODEL,
+  complexityFactor: 1.0,
+  riskMargin: 0,
+  profitMarginPercent: 15,
+  travelCostPerKm: 1.5,
+  estimatedDistanceKm: 20,
+};
+
+function calcItem(item: Omit<QuoteItem, "nettotal" | "vatAmount" | "bruttoTotal">): QuoteItem {
+  const nettotal = round(item.priceNettoPerUnit * item.quantity * (1 - item.discountPercent / 100));
+  const vatAmount = round(nettotal * (item.vatRate / 100));
+  const bruttoTotal = round(nettotal + vatAmount);
+  return { ...item, nettotal, vatAmount, bruttoTotal };
+}
+
+function round(value: number): number {
+  return Math.round(value * 100) / 100;
+}
 
 const DEFAULT_SERVICES: Omit<Service, "id" | "createdAt" | "updatedAt">[] = [
   { name: "Montaż umywalki", category: "montaz", unit: "szt", priceNetto: 150, vatRate: 8, description: "Montaż umywalki zintegrowanej lub nablatowej" },
@@ -63,24 +134,27 @@ const DEFAULT_TEMPLATES: Omit<QuoteTemplate, "id" | "createdAt" | "updatedAt" | 
     description: "Kompletna instalacja łazienki - montaż umywalki, wanny, toalety i baterii",
     category: "Łazienka",
     defaultDiscountPercent: 5,
-    items: [],
-    additionalCosts: [],
+    items: STANDARD_LAZIENKA_ITEMS.map(calcItem),
+    additionalCosts: STANDARD_LAZIENKA_COSTS.map((c) => ({ ...c, id: generateItemId() })),
+    pricingModel: STANDARD_LAZIENKA_PRICING,
   },
   {
     name: "Kuchnia - wymiana baterii",
     description: "Wymiana baterii kuchennej z podłączeniem",
     category: "Kuchnia",
     defaultDiscountPercent: 0,
-    items: [],
-    additionalCosts: [],
+    items: KUCHNIA_BATERIA_ITEMS.map(calcItem),
+    additionalCosts: KUCHNIA_BATERIA_COSTS.map((c) => ({ ...c, id: generateItemId() })),
+    pricingModel: KUCHNIA_PRICING,
   },
   {
     name: "Przegląd instalacji",
     description: "Przegląd i diagnoza instalacji hydraulicznej",
     category: "Przegląd",
     defaultDiscountPercent: 0,
-    items: [],
+    items: PRZEGLAD_ITEMS.map(calcItem),
     additionalCosts: [],
+    pricingModel: PRZEGLAD_PRICING,
   },
 ];
 

@@ -225,7 +225,48 @@ export interface QuoteTemplate {
   usageCount: number;
   createdAt: Date;
   updatedAt: Date;
+  pricingModel?: PricingModelConfig;
 }
+
+export interface PricingModelConfig {
+  complexityFactor: number; // 1.0 - 2.0
+  riskMargin: number; // 0 - 30%
+  overheadPercent: number; // 0 - 50%
+  profitMarginPercent: number; // 0 - 50%
+  inflationAdjustment: number; // 0 - 20%
+  urgencyMultiplier: number; // 1.0 - 3.0
+  volumeDiscounts: ProgressiveDiscount[];
+  minimumMarginPercent: number; // 0 - 50%
+  laborCostMultiplier: number; // 1.0 - 3.0
+  materialWastePercent: number; // 0 - 30%
+  equipmentCostPercent: number; // 0 - 20%
+  travelCostPerKm: number; // PLN/km
+  estimatedDistanceKm: number; // km
+  permitCosts: number; // fixed costs
+  insuranceCostPercent: number; // 0 - 10%
+  warrantyPeriodMonths: number; // 0 - 60
+  warrantyReservePercent: number; // 0 - 10%
+}
+
+export const DEFAULT_PRICING_MODEL: PricingModelConfig = {
+  complexityFactor: 1.0,
+  riskMargin: 0,
+  overheadPercent: 0,
+  profitMarginPercent: 20,
+  inflationAdjustment: 0,
+  urgencyMultiplier: 1.0,
+  volumeDiscounts: [],
+  minimumMarginPercent: 10,
+  laborCostMultiplier: 1.0,
+  materialWastePercent: 0,
+  equipmentCostPercent: 0,
+  travelCostPerKm: 0,
+  estimatedDistanceKm: 0,
+  permitCosts: 0,
+  insuranceCostPercent: 0,
+  warrantyPeriodMonths: 0,
+  warrantyReservePercent: 0,
+};
 
 export interface TimeEntry {
   id?: number;

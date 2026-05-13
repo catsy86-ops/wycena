@@ -80,11 +80,11 @@ export const timeEntrySchema = z.object({
 });
 
 export const scheduleEventSchema = z.object({
-  clientName: z.string().min(2, "Nazwa klienta jest wymagana"),
-  clientPhone: z.string().optional(),
-  title: z.string().min(2, "Tytuł jest wymagany"),
-  description: z.string().optional(),
-  address: z.string().optional(),
+  clientName: z.string().min(2, "Nazwa klienta musi mieć min. 2 znaki"),
+  clientPhone: z.string().optional().or(z.literal("")),
+  title: z.string().min(2, "Tytuł musi mieć min. 2 znaki"),
+  description: z.string().optional().or(z.literal("")),
+  address: z.string().optional().or(z.literal("")),
   startTime: z.string().min(1, "Czas rozpoczęcia jest wymagany"),
   endTime: z.string().min(1, "Czas zakończenia jest wymagany"),
   type: z.enum(["wycena", "realizacja", "przeglad", "awaria", "inne"]),
