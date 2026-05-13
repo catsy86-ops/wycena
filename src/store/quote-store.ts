@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { db } from "@/lib/db";
-import type { Quote, QuoteItem, QuoteStatus } from "@/types";
+import type { Quote, QuoteItem, QuoteStatus, QuoteVersion } from "@/types";
 import { calcQuoteItem, generateQuoteNumber } from "@/lib/calculations";
 
 interface QuoteState {
@@ -11,11 +11,12 @@ interface QuoteState {
   setSearch: (s: string) => void;
   setStatusFilter: (s: QuoteStatus | "all") => void;
   load: () => Promise<void>;
-  add: (quote: Omit<Quote, "id" | "createdAt" | "updatedAt" | "number">) => Promise<number>;
+  add: (quote: Omit<Quote, "id" | "createdAt" | "updatedAt" | "number" | "versions">) => Promise<number>;
   update: (id: number, quote: Partial<Quote>) => Promise<void>;
   remove: (id: number) => Promise<void>;
   changeStatus: (id: number, status: QuoteStatus) => Promise<void>;
   duplicate: (id: number) => Promise<number>;
+  addVersion: (id: number, version: Omit<QuoteVersion, "versionNumber" | "createdAt">) => Promise<void>;
   getById: (id: number) => Quote | undefined;
 }
 
@@ -46,9 +47,12 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       ...quoteData,
       number,
       items,
+      additionalCosts: quoteData.additionalCosts || [],
+      progressiveDiscounts: quoteData.progressiveDiscounts || [],
       totalNetto,
       totalVat,
       totalBrutto,
+      versions: [],
       createdAt: now,
       updatedAt: now,
     };
@@ -90,12 +94,28 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       id: undefined as unknown as number,
       number,
       status: "szkic",
+      versions: [],
       createdAt: now,
       updatedAt: now,
     };
     const newId = await db.quotes.add(newQuote);
     await get().load();
     return newId!;
+  },
+  addVersion: async (id, versionData) => {
+    const quote = await db.quotes.get(id);
+    if (!quote) return;
+    const versionNumber = (quote.versions || []).length + 1;
+    const version: QuoteVersion = {
+      ...versionData,
+      versionNumber,
+      createdAt: new Date(),
+    };
+    await db.quotes.update(id, {
+      versions: [...(quote.versions || []), version],
+      updatedAt: new Date(),
+    });
+    await get().load();
   },
   getById: (id) => get().quotes.find((q) => q.id === id),
 }));

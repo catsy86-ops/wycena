@@ -144,6 +144,8 @@ export default function NowaWycenaPage() {
       clientEmail: clientEmail || undefined,
       clientNip: clientNip || undefined,
       items: recalcItems,
+      additionalCosts: [],
+      progressiveDiscounts: [],
       globalDiscountPercent: globalDiscount,
       notes: notes || undefined,
       status,

@@ -17,7 +17,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Pencil, Trash2, Search, Package } from "lucide-react";
 import { toast } from "sonner";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
-import { motion } from "framer-motion";
+import { AnimatedEmptyState } from "@/components/animated-empty-state";
+import { TableSkeleton } from "@/components/skeleton";
+import { motion, AnimatePresence } from "framer-motion";
 
 const EMPTY_FORM = {
   name: "",
@@ -108,13 +110,21 @@ export default function UslugiPage() {
         <StaggerItem>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Katalog usług</h1>
+              <motion.h1
+                className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 400 }}
+              >
+                Katalog usług
+              </motion.h1>
               <p className="text-muted-foreground mt-0.5 text-sm">Zarządzaj usługami i cenami</p>
             </div>
-            <Button className="btn-primary w-full sm:w-auto" onClick={openAdd}>
-              <Plus className="h-4 w-4" />
-              Dodaj usługę
-            </Button>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button className="btn-primary w-full sm:w-auto" onClick={openAdd}>
+                <Plus className="h-4 w-4" />
+                Dodaj usługę
+              </Button>
+            </motion.div>
           </div>
         </StaggerItem>
 
@@ -141,15 +151,19 @@ export default function UslugiPage() {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-12">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
-                </div>
+                <TableSkeleton rows={5} />
               ) : filtered.length === 0 ? (
-                <div className="text-center py-12">
-                  <Package className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-muted-foreground">Brak usług</p>
-                  <p className="text-sm text-muted-foreground mt-1">Dodaj pierwszą usługę do katalogu</p>
-                </div>
+                <AnimatedEmptyState
+                  icon={Package}
+                  title={services.length === 0 ? "Brak usług" : "Brak wyników"}
+                  description={services.length === 0 ? "Dodaj pierwszą usługę do katalogu" : "Spróbuj zmienić kryteria wyszukiwania"}
+                  action={services.length === 0 ? (
+                    <Button className="btn-primary" onClick={openAdd}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Dodaj usługę
+                    </Button>
+                  ) : undefined}
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
@@ -165,51 +179,67 @@ export default function UslugiPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filtered.map((s) => (
-                        <TableRow key={s.id} className="group">
-                          <TableCell>
-                            <div>
-                              <div className="font-semibold">{s.name}</div>
-                              {s.description && <div className="text-xs text-muted-foreground mt-0.5">{s.description}</div>}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={CATEGORY_COLORS[s.category]}>{CATEGORY_LABELS[s.category]}</Badge>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">{UNIT_LABELS[s.unit]}</TableCell>
-                          <TableCell className="text-right font-medium">{formatCurrency(s.priceNetto)}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{VAT_RATE_LABELS[s.vatRate]}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">
-                            {formatCurrency(s.priceNetto * (1 + s.vatRate / 100))}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(s.id!)}>
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" />}>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Usuń usługę</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Czy na pewno chcesz usunąć &ldquo;{s.name}&rdquo;?
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(s.id!)}>Usuń</AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      <AnimatePresence>
+                        {filtered.map((s, index) => (
+                          <motion.tr
+                            key={s.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="group border-b border-border/50 hover:bg-accent/50 transition-colors"
+                          >
+                            <TableCell>
+                              <div>
+                                <div className="font-semibold">{s.name}</div>
+                                {s.description && <div className="text-xs text-muted-foreground mt-0.5">{s.description}</div>}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <motion.div whileHover={{ scale: 1.05 }}>
+                                <Badge className={CATEGORY_COLORS[s.category]}>{CATEGORY_LABELS[s.category]}</Badge>
+                              </motion.div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{UNIT_LABELS[s.unit]}</TableCell>
+                            <TableCell className="text-right font-medium">{formatCurrency(s.priceNetto)}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{VAT_RATE_LABELS[s.vatRate]}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">
+                              {formatCurrency(s.priceNetto * (1 + s.vatRate / 100))}
+                            </TableCell>
+                            <TableCell>
+                              <motion.div
+                                className="flex gap-1"
+                                initial={{ opacity: 0 }}
+                                whileHover={{ opacity: 1 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(s.id!)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" />}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Usuń usługę</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Czy na pewno chcesz usunąć &ldquo;{s.name}&rdquo;?
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDelete(s.id!)}>Usuń</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </motion.div>
+                            </TableCell>
+                          </motion.tr>
+                        ))}
+                      </AnimatePresence>
                     </TableBody>
                   </Table>
                 </div>

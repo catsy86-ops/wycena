@@ -1,4 +1,4 @@
-import type { Service, Client, CompanySettings, QuoteItem } from "@/types";
+import type { Service, Client, CompanySettings, QuoteItem, Material, QuoteTemplate } from "@/types";
 import { db } from "./db";
 
 const DEFAULT_SERVICES: Omit<Service, "id" | "createdAt" | "updatedAt">[] = [
@@ -29,7 +29,7 @@ const DEFAULT_SERVICES: Omit<Service, "id" | "createdAt" | "updatedAt">[] = [
   { name: "Diagnoza przecieku", category: "diagnoza", unit: "szt", priceNetto: 100, vatRate: 8 },
   { name: "Diagnoza niedrożności", category: "diagnoza", unit: "szt", priceNetto: 80, vatRate: 8 },
   { name: "Inspekcja kamerą", category: "diagnoza", unit: "szt", priceNetto: 200, vatRate: 8 },
-  { name: "Pomiery ciśnienia", category: "diagnoza", unit: "szt", priceNetto: 80, vatRate: 8 },
+  { name: "Pomiary ciśnienia", category: "diagnoza", unit: "szt", priceNetto: 80, vatRate: 8 },
   { name: "Rura PCV 50mm", category: "materialy", unit: "m", priceNetto: 12, vatRate: 23 },
   { name: "Rura PCV 110mm", category: "materialy", unit: "m", priceNetto: 25, vatRate: 23 },
   { name: "Rura miedziana 15mm", category: "materialy", unit: "m", priceNetto: 35, vatRate: 23 },
@@ -42,6 +42,46 @@ const DEFAULT_SERVICES: Omit<Service, "id" | "createdAt" | "updatedAt">[] = [
   { name: "Syfon płaski", category: "materialy", unit: "szt", priceNetto: 45, vatRate: 23 },
   { name: "Spłuczka podtynkowa", category: "materialy", unit: "szt", priceNetto: 350, vatRate: 23 },
   { name: "Bateria umywalkowa", category: "materialy", unit: "szt", priceNetto: 180, vatRate: 23 },
+];
+
+const DEFAULT_MATERIALS: Omit<Material, "id" | "createdAt" | "updatedAt">[] = [
+  { name: "Rura PCV 50mm", category: "Rury", unit: "m", purchasePrice: 8, salePrice: 12, vatRate: 23, stockQuantity: 100, minStockLevel: 20, supplier: "Hurtownia Sanitarna", sku: "PCV-50" },
+  { name: "Rura PCV 110mm", category: "Rury", unit: "m", purchasePrice: 15, salePrice: 25, vatRate: 23, stockQuantity: 50, minStockLevel: 10, supplier: "Hurtownia Sanitarna", sku: "PCV-110" },
+  { name: "Rura miedziana 15mm", category: "Rury", unit: "m", purchasePrice: 22, salePrice: 35, vatRate: 23, stockQuantity: 30, minStockLevel: 10, supplier: "Metal-Plast", sku: "CU-15" },
+  { name: "Rura PEX 16mm", category: "Rury", unit: "m", purchasePrice: 5, salePrice: 8, vatRate: 23, stockQuantity: 200, minStockLevel: 50, supplier: "PEX-System", sku: "PEX-16" },
+  { name: "Uszczelka silikonowa", category: "Uszczelnienia", unit: "szt", purchasePrice: 3, salePrice: 5, vatRate: 23, stockQuantity: 200, minStockLevel: 50, supplier: "Uszczelki-PL", sku: "USZ-SIL" },
+  { name: "Fita uszczelniająca", category: "Uszczelnienia", unit: "szt", purchasePrice: 4, salePrice: 8, vatRate: 23, stockQuantity: 150, minStockLevel: 30, supplier: "Uszczelki-PL", sku: "FITA-1" },
+  { name: "Syfon butelkowy", category: "Syfony", unit: "szt", purchasePrice: 15, salePrice: 25, vatRate: 23, stockQuantity: 20, minStockLevel: 5, supplier: "Hurtownia Sanitarna", sku: "SYF-BUT" },
+  { name: "Syfon płaski", category: "Syfony", unit: "szt", purchasePrice: 28, salePrice: 45, vatRate: 23, stockQuantity: 10, minStockLevel: 3, supplier: "Hurtownia Sanitarna", sku: "SYF-PL" },
+  { name: "Spłuczka podtynkowa", category: "WC", unit: "szt", purchasePrice: 220, salePrice: 350, vatRate: 23, stockQuantity: 5, minStockLevel: 2, supplier: "Sanit-Plus", sku: "SPL-PT" },
+  { name: "Bateria umywalkowa", category: "Baterie", unit: "szt", purchasePrice: 100, salePrice: 180, vatRate: 23, stockQuantity: 8, minStockLevel: 3, supplier: "Sanit-Plus", sku: "BAT-UM" },
+];
+
+const DEFAULT_TEMPLATES: Omit<QuoteTemplate, "id" | "createdAt" | "updatedAt" | "usageCount">[] = [
+  {
+    name: "Standardowa łazienka",
+    description: "Kompletna instalacja łazienki - montaż umywalki, wanny, toalety i baterii",
+    category: "Łazienka",
+    defaultDiscountPercent: 5,
+    items: [],
+    additionalCosts: [],
+  },
+  {
+    name: "Kuchnia - wymiana baterii",
+    description: "Wymiana baterii kuchennej z podłączeniem",
+    category: "Kuchnia",
+    defaultDiscountPercent: 0,
+    items: [],
+    additionalCosts: [],
+  },
+  {
+    name: "Przegląd instalacji",
+    description: "Przegląd i diagnoza instalacji hydraulicznej",
+    category: "Przegląd",
+    defaultDiscountPercent: 0,
+    items: [],
+    additionalCosts: [],
+  },
 ];
 
 const DEFAULT_SETTINGS: Omit<CompanySettings, "id"> = {
@@ -63,6 +103,31 @@ export async function seedDatabase() {
     await db.services.bulkAdd(
       DEFAULT_SERVICES.map((s) => ({
         ...s,
+        createdAt: now,
+        updatedAt: now,
+      }))
+    );
+  }
+
+  const materialCount = await db.materials.count();
+  if (materialCount === 0) {
+    const now = new Date();
+    await db.materials.bulkAdd(
+      DEFAULT_MATERIALS.map((m) => ({
+        ...m,
+        createdAt: now,
+        updatedAt: now,
+      }))
+    );
+  }
+
+  const templateCount = await db.quoteTemplates.count();
+  if (templateCount === 0) {
+    const now = new Date();
+    await db.quoteTemplates.bulkAdd(
+      DEFAULT_TEMPLATES.map((t) => ({
+        ...t,
+        usageCount: 0,
         createdAt: now,
         updatedAt: now,
       }))

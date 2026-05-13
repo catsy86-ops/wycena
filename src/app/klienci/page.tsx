@@ -13,11 +13,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Pencil, Trash2, Search, Phone, Users } from "lucide-react";
 import { toast } from "sonner";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
+import { AnimatedEmptyState } from "@/components/animated-empty-state";
+import { TableSkeleton } from "@/components/skeleton";
+import { motion, AnimatePresence } from "framer-motion";
 
 const EMPTY_FORM = { name: "", phone: "", email: "", address: "", nip: "" };
 
 export default function KlienciPage() {
   const clients = useClientStore((s) => s.clients);
+  const loading = useClientStore((s) => s.loading);
   const search = useClientStore((s) => s.search);
   const setSearch = useClientStore((s) => s.setSearch);
   const add = useClientStore((s) => s.add);
@@ -82,13 +86,21 @@ export default function KlienciPage() {
         <StaggerItem>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Klienci</h1>
+              <motion.h1
+                className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 400 }}
+              >
+                Klienci
+              </motion.h1>
               <p className="text-muted-foreground mt-0.5 text-sm">Baza Twoich klientów</p>
             </div>
-            <Button className="btn-primary w-full sm:w-auto" onClick={openAdd}>
-              <Plus className="h-4 w-4" />
-              Dodaj klienta
-            </Button>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button className="btn-primary w-full sm:w-auto" onClick={openAdd}>
+                <Plus className="h-4 w-4" />
+                Dodaj klienta
+              </Button>
+            </motion.div>
           </div>
         </StaggerItem>
 
@@ -101,12 +113,20 @@ export default function KlienciPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {filtered.length === 0 ? (
-                <div className="text-center py-12">
-                  <Users className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-muted-foreground">Brak klientów</p>
-                  <p className="text-sm text-muted-foreground mt-1">Dodaj pierwszego klienta</p>
-                </div>
+              {loading ? (
+                <TableSkeleton rows={5} />
+              ) : filtered.length === 0 ? (
+                <AnimatedEmptyState
+                  icon={Users}
+                  title={clients.length === 0 ? "Brak klientów" : "Brak wyników"}
+                  description={clients.length === 0 ? "Dodaj pierwszego klienta" : "Spróbuj zmienić kryteria wyszukiwania"}
+                  action={clients.length === 0 ? (
+                    <Button className="btn-primary" onClick={openAdd}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Dodaj klienta
+                    </Button>
+                  ) : undefined}
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
@@ -121,41 +141,61 @@ export default function KlienciPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filtered.map((c) => (
-                        <TableRow key={c.id} className="group">
-                          <TableCell className="font-semibold">{c.name}</TableCell>
-                          <TableCell>
-                            <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-blue-500" />{c.phone}</span>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">{c.email || "-"}</TableCell>
-                          <TableCell className="max-w-48 truncate text-muted-foreground">{c.address || "-"}</TableCell>
-                          <TableCell className="font-mono text-sm">{c.nip || "-"}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(c.id!)}>
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" />}>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Usuń klienta</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Czy na pewno chcesz usunąć &ldquo;{c.name}&rdquo;?
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(c.id!)}>Usuń</AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      <AnimatePresence>
+                        {filtered.map((c, index) => (
+                          <motion.tr
+                            key={c.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="group border-b border-border/50 hover:bg-accent/50 transition-colors"
+                          >
+                            <TableCell className="font-semibold">{c.name}</TableCell>
+                            <TableCell>
+                              <motion.span
+                                className="flex items-center gap-1.5"
+                                whileHover={{ x: 4 }}
+                              >
+                                <Phone className="h-3.5 w-3.5 text-blue-500" />
+                                {c.phone}
+                              </motion.span>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{c.email || "-"}</TableCell>
+                            <TableCell className="max-w-48 truncate text-muted-foreground">{c.address || "-"}</TableCell>
+                            <TableCell className="font-mono text-sm">{c.nip || "-"}</TableCell>
+                            <TableCell>
+                              <motion.div
+                                className="flex gap-1"
+                                initial={{ opacity: 0 }}
+                                whileHover={{ opacity: 1 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(c.id!)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" />}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Usuń klienta</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Czy na pewno chcesz usunąć &ldquo;{c.name}&rdquo;?
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDelete(c.id!)}>Usuń</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </motion.div>
+                            </TableCell>
+                          </motion.tr>
+                        ))}
+                      </AnimatePresence>
                     </TableBody>
                   </Table>
                 </div>

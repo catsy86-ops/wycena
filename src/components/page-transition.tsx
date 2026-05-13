@@ -2,27 +2,45 @@
 
 import { motion } from "framer-motion";
 
-export function PageTransition({ children }: { children: React.ReactNode }) {
+interface PageTransitionProps {
+  children: React.ReactNode;
+}
+
+export function PageTransition({ children }: PageTransitionProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
     >
       {children}
     </motion.div>
   );
 }
 
-export function StaggerContainer({ children, className }: { children: React.ReactNode; className?: string }) {
+interface StaggerContainerProps {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+  staggerDelay?: number;
+}
+
+export function StaggerContainer({
+  children,
+  className,
+  delay = 0.1,
+  staggerDelay = 0.08,
+}: StaggerContainerProps) {
   return (
     <motion.div
       className={className}
       initial="hidden"
       animate="visible"
       variants={{
-        visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
+        visible: {
+          transition: { staggerChildren: staggerDelay, delayChildren: delay },
+        },
       }}
     >
       {children}
@@ -30,11 +48,17 @@ export function StaggerContainer({ children, className }: { children: React.Reac
   );
 }
 
-export function StaggerItem({ children }: { children: React.ReactNode }) {
+interface StaggerItemProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function StaggerItem({ children, className }: StaggerItemProps) {
   return (
     <motion.div
+      className={className}
       variants={{
-        hidden: { opacity: 0, y: 16 },
+        hidden: { opacity: 0, y: 20 },
         visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
       }}
     >

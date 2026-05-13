@@ -18,7 +18,9 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
-import { motion } from "framer-motion";
+import { AnimatedEmptyState } from "@/components/animated-empty-state";
+import { TableSkeleton } from "@/components/skeleton";
+import { motion, AnimatePresence } from "framer-motion";
 
 const STATUS_COLORS: Record<QuoteStatus, string> = {
   szkic: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
@@ -29,6 +31,7 @@ const STATUS_COLORS: Record<QuoteStatus, string> = {
 
 export default function WycenyPage() {
   const quotes = useQuoteStore((s) => s.quotes);
+  const loading = useQuoteStore((s) => s.loading);
   const search = useQuoteStore((s) => s.search);
   const statusFilter = useQuoteStore((s) => s.statusFilter);
   const setSearch = useQuoteStore((s) => s.setSearch);
@@ -67,14 +70,22 @@ export default function WycenyPage() {
         <StaggerItem>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Wyceny</h1>
+              <motion.h1
+                className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 400 }}
+              >
+                Wyceny
+              </motion.h1>
               <p className="text-muted-foreground mt-0.5 text-sm">Zarządzaj wycenami i ofertami</p>
             </div>
             <Link href="/wyceny/nowa">
-              <Button className="btn-primary w-full sm:w-auto">
-                <Plus className="h-4 w-4" />
-                Nowa wycena
-              </Button>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button className="btn-primary w-full sm:w-auto">
+                  <Plus className="h-4 w-4" />
+                  Nowa wycena
+                </Button>
+              </motion.div>
             </Link>
           </div>
         </StaggerItem>
@@ -101,13 +112,22 @@ export default function WycenyPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {filtered.length === 0 ? (
-                <div className="text-center py-12">
-                  <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-muted-foreground">
-                    {quotes.length === 0 ? "Brak wycen. Utwórz pierwszą wycenę!" : "Brak wyników dla podanych kryteriów"}
-                  </p>
-                </div>
+              {loading ? (
+                <TableSkeleton rows={5} />
+              ) : filtered.length === 0 ? (
+                <AnimatedEmptyState
+                  icon={FileText}
+                  title={quotes.length === 0 ? "Brak wycen" : "Brak wyników"}
+                  description={quotes.length === 0 ? "Utwórz pierwszą wycenę!" : "Spróbuj zmienić kryteria wyszukiwania"}
+                  action={quotes.length === 0 ? (
+                    <Link href="/wyceny/nowa">
+                      <Button className="btn-primary">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Nowa wycena
+                      </Button>
+                    </Link>
+                  ) : undefined}
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
@@ -123,57 +143,69 @@ export default function WycenyPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filtered.map((q) => (
-                        <TableRow key={q.id} className="group cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => window.location.href = `/wyceny/${q.id}`}>
-                          <TableCell className="font-semibold">{q.number}</TableCell>
-                          <TableCell>{q.clientName || <span className="text-muted-foreground">Brak klienta</span>}</TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {format(new Date(q.createdAt), "dd.MM.yyyy", { locale: pl })}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={STATUS_COLORS[q.status]}>{STATUS_LABELS[q.status]}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right">{formatCurrency(q.totalNetto)}</TableCell>
-                          <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">{formatCurrency(q.totalBrutto)}</TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); }}>
-                                  <Link href={`/wyceny/${q.id}`} className="flex items-center gap-2 w-full">
-                                    <Copy className="h-3.5 w-3.5" /> Podgląd
-                                  </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicate(q.id!); }}>
-                                  <Copy className="h-3.5 w-3.5" /> Duplikuj
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                {q.status === "szkic" && (
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeStatus(q.id!, "wyslana"); toast.success("Status zmieniony"); }}>
-                                    <Send className="h-3.5 w-3.5" /> Oznacz jako wysłana
+                      <AnimatePresence>
+                        {filtered.map((q, index) => (
+                          <motion.tr
+                            key={q.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="group border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer"
+                            onClick={() => window.location.href = `/wyceny/${q.id}`}
+                          >
+                            <TableCell className="font-semibold">{q.number}</TableCell>
+                            <TableCell>{q.clientName || <span className="text-muted-foreground">Brak klienta</span>}</TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {format(new Date(q.createdAt), "dd.MM.yyyy", { locale: pl })}
+                            </TableCell>
+                            <TableCell>
+                              <motion.div whileHover={{ scale: 1.05 }}>
+                                <Badge className={STATUS_COLORS[q.status]}>{STATUS_LABELS[q.status]}</Badge>
+                              </motion.div>
+                            </TableCell>
+                            <TableCell className="text-right">{formatCurrency(q.totalNetto)}</TableCell>
+                            <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">{formatCurrency(q.totalBrutto)}</TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); }}>
+                                    <Link href={`/wyceny/${q.id}`} className="flex items-center gap-2 w-full">
+                                      <Copy className="h-3.5 w-3.5" /> Podgląd
+                                    </Link>
                                   </DropdownMenuItem>
-                                )}
-                                {(q.status === "szkic" || q.status === "wyslana") && (
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeStatus(q.id!, "zaakceptowana"); toast.success("Status zmieniony"); }}>
-                                    <Check className="h-3.5 w-3.5" /> Zaakceptowana
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicate(q.id!); }}>
+                                    <Copy className="h-3.5 w-3.5" /> Duplikuj
                                   </DropdownMenuItem>
-                                )}
-                                {(q.status === "szkic" || q.status === "wyslana") && (
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeStatus(q.id!, "odrzucona"); toast.success("Status zmieniony"); }}>
-                                    <X className="h-3.5 w-3.5" /> Odrzucona
+                                  <DropdownMenuSeparator />
+                                  {q.status === "szkic" && (
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeStatus(q.id!, "wyslana"); toast.success("Status zmieniony"); }}>
+                                      <Send className="h-3.5 w-3.5" /> Oznacz jako wysłana
+                                    </DropdownMenuItem>
+                                  )}
+                                  {(q.status === "szkic" || q.status === "wyslana") && (
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeStatus(q.id!, "zaakceptowana"); toast.success("Status zmieniony"); }}>
+                                      <Check className="h-3.5 w-3.5" /> Zaakceptowana
+                                    </DropdownMenuItem>
+                                  )}
+                                  {(q.status === "szkic" || q.status === "wyslana") && (
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeStatus(q.id!, "odrzucona"); toast.success("Status zmieniony"); }}>
+                                      <X className="h-3.5 w-3.5" /> Odrzucona
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteId(q.id!); }}>
+                                    <X className="h-3.5 w-3.5" /> Usuń
                                   </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteId(q.id!); }}>
-                                  <X className="h-3.5 w-3.5" /> Usuń
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </motion.tr>
+                        ))}
+                      </AnimatePresence>
                     </TableBody>
                   </Table>
                 </div>

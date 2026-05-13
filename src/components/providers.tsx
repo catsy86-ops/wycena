@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { DataInitializer } from "@/components/data-initializer";
 import { Sidebar, MobileNav } from "@/components/layout/sidebar";
 import { ConstructionBackground } from "@/components/construction-background";
+import { CommandPalette } from "@/components/command-palette";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -24,6 +25,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
               </main>
             </div>
           </div>
+          <CommandPalette />
         </DataInitializer>
         <Toaster richColors position="bottom-right" />
       </TooltipProvider>

@@ -39,3 +39,64 @@ export const companySettingsSchema = z.object({
   defaultValidityDays: z.coerce.number().min(1, "Min. 1 dzień"),
   logoDataUrl: z.string().optional(),
 });
+
+export const materialSchema = z.object({
+  name: z.string().min(2, "Nazwa musi mieć min. 2 znaki"),
+  category: z.string().min(1, "Kategoria jest wymagana"),
+  unit: z.enum(["szt", "kg", "m", "m2", "godz", "kpl", "mb", "komplet"]),
+  purchasePrice: z.coerce.number().min(0, "Cena zakupu musi być >= 0"),
+  salePrice: z.coerce.number().min(0, "Cena sprzedaży musi być >= 0"),
+  vatRate: z.coerce.number().refine((v): v is 0 | 8 | 23 => [0, 8, 23].includes(v), "Nieprawidłowa stawka VAT"),
+  stockQuantity: z.coerce.number().min(0, "Stan magazynowy musi być >= 0"),
+  minStockLevel: z.coerce.number().min(0, "Minimalny stan musi być >= 0"),
+  supplier: z.string().optional(),
+  sku: z.string().optional(),
+  description: z.string().optional(),
+});
+
+export const invoiceSchema = z.object({
+  clientName: z.string().min(2, "Nazwa klienta jest wymagana"),
+  clientAddress: z.string().optional(),
+  clientNip: z.string().optional(),
+  issueDate: z.string().min(1, "Data wystawienia jest wymagana"),
+  dueDate: z.string().min(1, "Data płatności jest wymagana"),
+});
+
+export const quoteTemplateSchema = z.object({
+  name: z.string().min(2, "Nazwa szablonu jest wymagana"),
+  description: z.string().optional(),
+  category: z.string().min(1, "Kategoria jest wymagana"),
+  defaultDiscountPercent: z.coerce.number().min(0).max(100),
+});
+
+export const timeEntrySchema = z.object({
+  clientName: z.string().min(2, "Nazwa klienta jest wymagana"),
+  description: z.string().min(1, "Opis jest wymagany"),
+  startTime: z.string().min(1, "Czas rozpoczęcia jest wymagany"),
+  endTime: z.string().min(1, "Czas zakończenia jest wymagany"),
+  hourlyRate: z.coerce.number().min(0, "Stawka godzinowa musi być >= 0"),
+  category: z.enum(["robocizna", "dojazd", "inne"]),
+  notes: z.string().optional(),
+});
+
+export const scheduleEventSchema = z.object({
+  clientName: z.string().min(2, "Nazwa klienta jest wymagana"),
+  clientPhone: z.string().optional(),
+  title: z.string().min(2, "Tytuł jest wymagany"),
+  description: z.string().optional(),
+  address: z.string().optional(),
+  startTime: z.string().min(1, "Czas rozpoczęcia jest wymagany"),
+  endTime: z.string().min(1, "Czas zakończenia jest wymagany"),
+  type: z.enum(["wycena", "realizacja", "przeglad", "awaria", "inne"]),
+  status: z.enum(["zaplanowane", "w_trakcie", "zakonczone", "anulowane"]),
+  color: z.string().optional(),
+});
+
+export const recurringQuoteSchema = z.object({
+  name: z.string().min(2, "Nazwa jest wymagana"),
+  clientName: z.string().min(2, "Nazwa klienta jest wymagana"),
+  frequency: z.enum(["tygodniowo", "miesiecznie", "kwartalnie", "rocznie"]),
+  nextDueDate: z.string().min(1, "Data jest wymagana"),
+  isActive: z.boolean(),
+  notes: z.string().optional(),
+});
