@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { DataInitializer } from "@/components/data-initializer";
 import { Sidebar, MobileNav } from "@/components/layout/sidebar";
-import { ConstructionBackground } from "@/components/construction-background";
+import { HydraulicBackground } from "@/components/hydraulic-background";
 import { CommandPalette } from "@/components/command-palette";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -14,7 +14,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <TooltipProvider>
         <DataInitializer>
           <div className="flex h-screen overflow-hidden relative">
-            <ConstructionBackground />
+            <HydraulicBackground />
             <Sidebar />
             <div className="flex flex-1 flex-col overflow-hidden relative z-10">
               <MobileNav />
