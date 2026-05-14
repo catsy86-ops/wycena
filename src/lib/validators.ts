@@ -14,7 +14,7 @@ export const clientSchema = z.object({
   phone: z.string().min(5, "Numer telefonu jest wymagany"),
   email: z.string().email("Nieprawidłowy email").optional().or(z.literal("")),
   address: z.string().optional(),
-  nip: z.string().optional(),
+  nip: z.string().optional().or(z.literal("")),
 });
 
 export const quoteItemSchema = z.object({

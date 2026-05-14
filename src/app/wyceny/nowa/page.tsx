@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useServiceStore } from "@/store/service-store";
 import { useClientStore } from "@/store/client-store";
@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, Package, ArrowLeft, Users, FileText, Calculator, Settings2, Info } from "lucide-react";
+import { Plus, Trash2, Package, ArrowLeft, Users, FileText, Calculator, Settings2, Info, Copy, Lightbulb, LayoutTemplate } from "lucide-react";
 import { toast } from "sonner";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
 import { motion } from "framer-motion";
@@ -81,6 +81,29 @@ export default function NowaWycenaPage() {
   const [pricingModel, setPricingModel] = useState<PricingModelConfig>(DEFAULT_PRICING_MODEL);
   const [activeTab, setActiveTab] = useState("items");
   const [templateName, setTemplateName] = useState<string | null>(null);
+
+  const quotes = useQuoteStore((s) => s.quotes);
+
+  const suggestedServices = useMemo(() => {
+    if (!selectedClientId) return [];
+    const clientQuotes = quotes.filter((q) => q.clientId === selectedClientId);
+    const serviceUsage: Record<number, { serviceId: number; name: string; priceNetto: number; unit: Unit; vatRate: VatRate; count: number; avgQty: number }> = {};
+    clientQuotes.forEach((q) => {
+      q.items.forEach((item) => {
+        if (item.serviceId) {
+          if (!serviceUsage[item.serviceId]) {
+            serviceUsage[item.serviceId] = { serviceId: item.serviceId, name: item.name, priceNetto: item.priceNettoPerUnit, unit: item.unit, vatRate: item.vatRate, count: 0, avgQty: 0 };
+          }
+          serviceUsage[item.serviceId].count += 1;
+          serviceUsage[item.serviceId].avgQty += item.quantity;
+        }
+      });
+    });
+    return Object.values(serviceUsage)
+      .map((s) => ({ ...s, avgQty: Math.round((s.avgQty / s.count) * 100) / 100 }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+  }, [selectedClientId, quotes]);
 
   useEffect(() => {
     const templateId = searchParams?.get("templateId");
@@ -150,6 +173,23 @@ export default function NowaWycenaPage() {
     setItems((prev) => prev.filter((item) => item.id !== id));
   }
 
+  function copyItem(id: string) {
+    setItems((prev) => {
+      const idx = prev.findIndex((item) => item.id === id);
+      if (idx === -1) return prev;
+      const original = prev[idx];
+      const copied = {
+        ...original,
+        id: generateItemId(),
+        name: `${original.name} (kopia)`,
+      };
+      const newItems = [...prev];
+      newItems.splice(idx + 1, 0, copied);
+      return newItems;
+    });
+    toast.success("Pozycja zduplikowana");
+  }
+
   function addServiceToItems(serviceId: number) {
     const service = services.find((s) => s.id === serviceId);
     if (!service) return;
@@ -170,6 +210,24 @@ export default function NowaWycenaPage() {
     setServiceDialogOpen(false);
   }
 
+  function loadTemplate(templateId: number) {
+    const template = templates.find((t) => t.id === templateId);
+    if (!template) return;
+    setTemplateName(template.name);
+    if (template.items && template.items.length > 0) {
+      setItems(template.items.map((item) => ({ ...item, id: generateItemId() })));
+    }
+    if (template.additionalCosts && template.additionalCosts.length > 0) {
+      setAdditionalCosts(template.additionalCosts.map((cost) => ({ ...cost, id: generateItemId() })));
+    }
+    setGlobalDiscount(template.defaultDiscountPercent);
+    if (template.pricingModel) {
+      setPricingModel(template.pricingModel);
+      setUseAdvancedPricing(true);
+    }
+    toast.success(`Wczytano szablon: ${template.name}`);
+  }
+
   function updateAdditionalCost(id: string, updates: Partial<QuoteAdditionalCost>) {
     setAdditionalCosts((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
   }
@@ -180,6 +238,23 @@ export default function NowaWycenaPage() {
 
   function removeAdditionalCost(id: string) {
     setAdditionalCosts((prev) => prev.filter((c) => c.id !== id));
+  }
+
+  function copyAdditionalCost(id: string) {
+    setAdditionalCosts((prev) => {
+      const idx = prev.findIndex((c) => c.id === id);
+      if (idx === -1) return prev;
+      const original = prev[idx];
+      const copied = {
+        ...original,
+        id: generateItemId(),
+        name: `${original.name} (kopia)`,
+      };
+      const newCosts = [...prev];
+      newCosts.splice(idx + 1, 0, copied);
+      return newCosts;
+    });
+    toast.success("Koszt zduplikowany");
   }
 
   function updatePricingModelField(field: keyof PricingModelConfig, value: number) {
@@ -314,6 +389,41 @@ export default function NowaWycenaPage() {
           </Card>
         </StaggerItem>
 
+        {templates.length > 0 && !templateName && (
+          <StaggerItem>
+            <Card className="card-modern">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <LayoutTemplate className="h-5 w-5 text-violet-500" />
+                  Szybki wybór szablonu
+                </CardTitle>
+                <CardDescription>Wybierz szablon aby szybko wypełnić wycenę</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {templates.map((t) => (
+                    <motion.button
+                      key={t.id}
+                      onClick={() => loadTemplate(t.id!)}
+                      className="rounded-xl border border-border/50 p-4 text-left hover:bg-accent/50 hover:border-violet-300 dark:hover:border-violet-700 transition-all group"
+                      whileHover={{ y: -2, scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div className="font-semibold text-sm group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">{t.name}</div>
+                      {t.description && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{t.description}</div>}
+                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                        <span>{t.items.length} pozycji</span>
+                        <span>&middot;</span>
+                        <span>Użyto {t.usageCount}x</span>
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </StaggerItem>
+        )}
+
         <StaggerItem>
           <Card className="card-modern">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -333,14 +443,52 @@ export default function NowaWycenaPage() {
                 <CardContent>
                   <div className="flex gap-2 mb-4">
                     <Dialog open={serviceDialogOpen} onOpenChange={setServiceDialogOpen}>
-                      <DialogTrigger render={<Button variant="outline" size="sm" className="btn-secondary" />}>
-                        <Package className="mr-2 h-4 w-4" />
-                        Z katalogu
+                      <DialogTrigger>
+                        <Button variant="outline" size="sm" className="btn-secondary">
+                          <Package className="mr-2 h-4 w-4" />
+                          Z katalogu
+                        </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Wybierz usługi z katalogu</DialogTitle>
                         </DialogHeader>
+
+                        {suggestedServices.length > 0 && (
+                          <div className="mt-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Lightbulb className="h-4 w-4 text-amber-500" />
+                              <h3 className="font-semibold text-sm">Sugerowane usługi (historia klienta)</h3>
+                            </div>
+                            <div className="space-y-2">
+                              {suggestedServices.map((s) => {
+                                const alreadyAdded = items.some((i) => i.serviceId === s.serviceId);
+                                return (
+                                  <motion.button
+                                    key={s.serviceId}
+                                    onClick={() => !alreadyAdded && addServiceToItems(s.serviceId)}
+                                    disabled={alreadyAdded}
+                                    className={`flex w-full items-center justify-between rounded-xl border p-3 transition-colors text-left ${alreadyAdded ? "opacity-50 cursor-not-allowed bg-muted/50" : "hover:bg-accent/50"}`}
+                                    whileHover={!alreadyAdded ? { x: 4 } : {}}
+                                  >
+                                    <div>
+                                      <div className="font-semibold text-sm">{s.name}</div>
+                                      <div className="text-xs text-muted-foreground mt-0.5">
+                                        {UNIT_LABELS[s.unit]} &middot; VAT {s.vatRate}% &middot; Użyto {s.count}x &middot; Śr. ilość: {s.avgQty}
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="font-bold text-blue-600 dark:text-blue-400">{formatCurrency(s.priceNetto)}</div>
+                                      {alreadyAdded && <div className="text-xs text-muted-foreground">Dodane</div>}
+                                    </div>
+                                  </motion.button>
+                                );
+                              })}
+                            </div>
+                            <Separator className="my-4" />
+                          </div>
+                        )}
+
                         <div className="space-y-2 mt-4">
                           {services.map((s) => (
                             <motion.button
@@ -383,7 +531,7 @@ export default function NowaWycenaPage() {
                             <TableHead className="w-24">Rabat %</TableHead>
                             <TableHead className="text-right w-28">Netto</TableHead>
                             <TableHead className="text-right w-28">Brutto</TableHead>
-                            <TableHead className="w-10" />
+                            <TableHead className="w-20" />
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -420,9 +568,14 @@ export default function NowaWycenaPage() {
                               <TableCell className="text-right font-semibold">{formatCurrency(item.nettotal)}</TableCell>
                               <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">{formatCurrency(item.bruttoTotal)}</TableCell>
                               <TableCell>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => removeItem(item.id)}>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                                <div className="flex gap-1">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => copyItem(item.id)}>
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => removeItem(item.id)}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -451,7 +604,7 @@ export default function NowaWycenaPage() {
                             <TableHead className="w-32">Kategoria</TableHead>
                             <TableHead className="w-28">Kwota</TableHead>
                             <TableHead className="w-24">VAT</TableHead>
-                            <TableHead className="w-10" />
+                            <TableHead className="w-20" />
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -483,9 +636,14 @@ export default function NowaWycenaPage() {
                                 </Select>
                               </TableCell>
                               <TableCell>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => removeAdditionalCost(cost.id)}>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                                <div className="flex gap-1">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => copyAdditionalCost(cost.id)}>
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => removeAdditionalCost(cost.id)}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}

@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Open_Sans } from "next/font/google";
+import { Roboto } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { FloatingBackButton } from "@/components/floating-back-button";
 
-const openSans = Open_Sans({
+const roboto = Roboto({
   variable: "--font-sans",
+  weight: ["100", "300", "400", "500", "700", "900"],
   subsets: ["latin"],
   display: "swap",
   preload: false,
@@ -119,7 +120,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${openSans.variable} font-sans antialiased`}>
+      <body className={`${roboto.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>
         <FloatingBackButton />
       </body>

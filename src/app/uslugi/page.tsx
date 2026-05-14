@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useServiceStore } from "@/store/service-store";
 import { CATEGORY_LABELS, type ServiceCategory, type VatRate, VAT_RATE_LABELS, type Unit, UNIT_LABELS } from "@/types";
 import { serviceSchema } from "@/lib/validators";
@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Search, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
 import { AnimatedEmptyState } from "@/components/animated-empty-state";
@@ -55,6 +55,43 @@ export default function UslugiPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [inlineEditId, setInlineEditId] = useState<number | null>(null);
+  const [inlinePrice, setInlinePrice] = useState(0);
+  const inlineInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (inlineEditId && inlineInputRef.current) {
+      inlineInputRef.current.focus();
+      inlineInputRef.current.select();
+    }
+  }, [inlineEditId]);
+
+  function startInlineEdit(id: number, currentPrice: number) {
+    setInlineEditId(id);
+    setInlinePrice(currentPrice);
+  }
+
+  function cancelInlineEdit() {
+    setInlineEditId(null);
+    setInlinePrice(0);
+  }
+
+  function saveInlineEdit(id: number) {
+    const price = Math.max(0, inlinePrice);
+    update(id, { priceNetto: price });
+    toast.success("Cena zaktualizowana");
+    cancelInlineEdit();
+  }
+
+  function handleInlineKeyDown(e: React.KeyboardEvent, id: number) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveInlineEdit(id);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancelInlineEdit();
+    }
+  }
 
   const filtered = services.filter((s) => {
     const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -209,18 +246,15 @@ export default function UslugiPage() {
                               {formatCurrency(s.priceNetto * (1 + s.vatRate / 100))}
                             </TableCell>
                             <TableCell>
-                              <motion.div
-                                className="flex gap-1"
-                                initial={{ opacity: 0 }}
-                                whileHover={{ opacity: 1 }}
-                                transition={{ duration: 0.2 }}
-                              >
+                              <div className="flex gap-1">
                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(s.id!)}>
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
                                 <AlertDialog>
-                                  <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" />}>
-                                    <Trash2 className="h-3.5 w-3.5" />
+                                  <AlertDialogTrigger>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
@@ -235,7 +269,7 @@ export default function UslugiPage() {
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
                                 </AlertDialog>
-                              </motion.div>
+                              </div>
                             </TableCell>
                           </motion.tr>
                         ))}

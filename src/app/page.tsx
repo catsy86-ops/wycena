@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { FileText, Package, Users, Plus, TrendingUp, Clock, CheckCircle2, BarChart3 } from "lucide-react";
+import { FileText, Package, Users, Plus, TrendingUp, Clock, CheckCircle2, BarChart3, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useServiceStore } from "@/store/service-store";
@@ -39,6 +39,17 @@ export default function DashboardPage() {
   const avgQuoteValue = acceptedCount > 0 ? totalRevenue / acceptedCount : 0;
   const unpaidInvoices = invoices.filter((i) => i.status === "niezaplacona" || i.status === "czesciowo");
   const unpaidAmount = unpaidInvoices.reduce((sum, i) => sum + i.totalBrutto, 0);
+
+  const expiredQuotes = useMemo(() => {
+    const now = new Date();
+    return quotes
+      .filter((q) => {
+        if (q.status !== "wyslana" && q.status !== "szkic") return false;
+        if (!q.validUntil) return false;
+        return new Date(q.validUntil) < now;
+      })
+      .slice(0, 5);
+  }, [quotes]);
 
   const stats = [
     {
@@ -242,6 +253,32 @@ export default function DashboardPage() {
                           {new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN", maximumFractionDigits: 0 }).format(unpaidAmount)}
                         </div>
                         <div className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400">Nieopłacone faktury ({unpaidInvoices.length})</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </Link>
+          </StaggerItem>
+        )}
+
+        {expiredQuotes.length > 0 && (
+          <StaggerItem>
+            <Link href="/wyceny">
+              <motion.div whileHover={{ y: -4, scale: 1.01 }}>
+                <Card className="card-modern border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20 cursor-pointer">
+                  <CardContent className="pt-4 sm:pt-6 p-3 sm:p-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/25 shrink-0">
+                        <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-red-700 dark:text-red-300">
+                          Wygasłe wyceny ({expiredQuotes.length})
+                        </div>
+                        <div className="text-xs text-red-600 dark:text-red-400 truncate">
+                          {expiredQuotes.map((q) => q.number).join(", ")}
+                        </div>
                       </div>
                     </div>
                   </CardContent>
