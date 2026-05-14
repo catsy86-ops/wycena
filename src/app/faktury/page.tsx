@@ -237,8 +237,10 @@ export default function FakturyPage() {
                                     <Wallet className="h-3.5 w-3.5" />
                                   </Button>
                                   <AlertDialog>
-                                    <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" />}>
-                                      <Trash2 className="h-3.5 w-3.5" />
+                                    <AlertDialogTrigger>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
                                       <AlertDialogHeader>
@@ -303,7 +305,9 @@ export default function FakturyPage() {
             </div>
           </div>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>Anuluj</DialogClose>
+            <DialogClose>
+              <Button variant="outline">Anuluj</Button>
+            </DialogClose>
             <Button className="btn-primary" onClick={handleSave}>Utwórz fakturę</Button>
           </DialogFooter>
         </DialogContent>
@@ -334,7 +338,9 @@ export default function FakturyPage() {
             </div>
           </div>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>Anuluj</DialogClose>
+            <DialogClose>
+              <Button variant="outline">Anuluj</Button>
+            </DialogClose>
             <Button className="btn-primary" onClick={handleAddPayment}>Dodaj płatność</Button>
           </DialogFooter>
         </DialogContent>

@@ -567,9 +567,11 @@ export default function HarmonogramPage() {
           <DialogFooter>
             {editingId && (
               <AlertDialog>
-                <AlertDialogTrigger render={<Button variant="destructive" size="sm" data-testid="delete-event-button" />}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Usuń
+                <AlertDialogTrigger>
+                  <Button variant="destructive" size="sm" data-testid="delete-event-button">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Usuń
+                  </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -583,7 +585,9 @@ export default function HarmonogramPage() {
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            <DialogClose render={<Button variant="outline" />}>Anuluj</DialogClose>
+            <DialogClose>
+              <Button variant="outline">Anuluj</Button>
+            </DialogClose>
             <Button className="btn-primary" onClick={handleSave}>{editingId ? "Zapisz zmiany" : "Dodaj wydarzenie"}</Button>
           </DialogFooter>
         </DialogContent>

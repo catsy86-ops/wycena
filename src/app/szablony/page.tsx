@@ -340,9 +340,11 @@ export default function SzablonyPage() {
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
                               <AlertDialog>
-                                <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" />}>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </AlertDialogTrigger>
+                                  <AlertDialogTrigger>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Usuń szablon</AlertDialogTitle>
@@ -828,7 +830,9 @@ export default function SzablonyPage() {
           </Tabs>
 
           <DialogFooter className="mt-4">
-            <DialogClose render={<Button variant="outline" />}>Anuluj</DialogClose>
+            <DialogClose>
+              <Button variant="outline">Anuluj</Button>
+            </DialogClose>
             <Button className="btn-primary" onClick={handleSave}>{editingId ? "Zapisz zmiany" : "Dodaj szablon"}</Button>
           </DialogFooter>
         </DialogContent>

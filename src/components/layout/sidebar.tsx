@@ -165,8 +165,10 @@ export function MobileNav() {
       <div className="flex items-center gap-1">
         <ThemeToggle />
         <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger render={<Button variant="ghost" size="icon" className="h-9 w-9 text-white hover:bg-white/10 rounded-xl" />}>
-            <Menu className="h-5 w-5" />
+          <SheetTrigger>
+            <Button variant="ghost" size="icon" className="h-9 w-9 text-white hover:bg-white/10 rounded-xl">
+              <Menu className="h-5 w-5" />
+            </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-72 p-0 bg-slate-900 border-white/10">
             <div className="flex h-16 items-center px-5 border-b border-white/10">

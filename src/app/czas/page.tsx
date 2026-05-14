@@ -325,8 +325,10 @@ export default function CzasPage() {
                             <TableCell><Badge variant="outline">{CATEGORY_LABELS[e.category]}</Badge></TableCell>
                             <TableCell>
                               <AlertDialog>
-                                <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" />}>
-                                  <Trash2 className="h-3.5 w-3.5" />
+                                <AlertDialogTrigger>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
@@ -397,7 +399,9 @@ export default function CzasPage() {
             </div>
           </div>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>Anuluj</DialogClose>
+            <DialogClose>
+              <Button variant="outline">Anuluj</Button>
+            </DialogClose>
             <Button className="btn-primary" onClick={handleAdd}>Dodaj wpis</Button>
           </DialogFooter>
         </DialogContent>

@@ -342,8 +342,8 @@ export default function UslugiPage() {
             </div>
           </div>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
-              Anuluj
+            <DialogClose>
+              <Button variant="outline">Anuluj</Button>
             </DialogClose>
             <Button className="btn-primary" onClick={handleSave}>{editingId ? "Zapisz zmiany" : "Dodaj usługę"}</Button>
           </DialogFooter>

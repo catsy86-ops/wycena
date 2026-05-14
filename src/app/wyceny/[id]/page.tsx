@@ -235,8 +235,10 @@ export default function WycenaDetailPage() {
                 <FileDown className="mr-2 h-4 w-4" />PDF
               </Button>
               <AlertDialog>
-                <AlertDialogTrigger render={<Button variant="destructive" size="sm" />}>
-                  <Trash2 className="mr-2 h-4 w-4" />Usuń
+                <AlertDialogTrigger>
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="mr-2 h-4 w-4" />Usuń
+                  </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
