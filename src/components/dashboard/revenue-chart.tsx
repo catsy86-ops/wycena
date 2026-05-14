@@ -48,7 +48,7 @@ export function RevenueChart() {
             <XAxis dataKey="month" className="text-[10px] sm:text-xs" tick={{ fontSize: 10 }} />
             <YAxis className="text-[10px] sm:text-xs" tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
             <Tooltip
-              formatter={(v: number) => formatCurrency(v)}
+              formatter={(v) => typeof v === "number" ? formatCurrency(v) : String(v)}
               contentStyle={{ borderRadius: "12px", border: "1px solid var(--border)", fontSize: "12px" }}
             />
             <Bar dataKey="revenue" fill="url(#revenueGradient)" radius={[6, 6, 0, 0]} />

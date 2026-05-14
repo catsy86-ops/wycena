@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { FileText, Package, Users, Plus, TrendingUp, Clock, CheckCircle2, BarChart3, Calendar, FileCheck } from "lucide-react";
+import { FileText, Package, Users, Plus, TrendingUp, Clock, CheckCircle2, BarChart3 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useServiceStore } from "@/store/service-store";
@@ -12,6 +12,14 @@ import { useInvoiceStore } from "@/store/invoice-store";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
 import { AnimatedCounter } from "@/components/animated-counter";
 import { motion } from "framer-motion";
+import { LiveClock } from "@/components/dashboard/live-clock";
+import { ActiveTimerBar } from "@/components/dashboard/active-timer-bar";
+import { QuickActions } from "@/components/dashboard/quick-actions";
+import { LowStockAlert } from "@/components/dashboard/low-stock-alert";
+import { QuoteStatusBar } from "@/components/dashboard/quote-status-bar";
+import { TopClients } from "@/components/dashboard/top-clients";
+import { UpcomingEvents } from "@/components/dashboard/upcoming-events";
+import { RevenueChart } from "@/components/dashboard/revenue-chart";
 
 export default function DashboardPage() {
   const serviceCount = useServiceStore((s) => s.services.length);
@@ -21,7 +29,6 @@ export default function DashboardPage() {
   const recentQuotes = useMemo(() => quotes.slice(0, 5), [quotes]);
 
   const invoices = useInvoiceStore((s) => s.invoices);
-  const getTotalPaidForInvoice = useInvoiceStore((s) => s.getTotalPaidForInvoice);
 
   const acceptedCount = quotes.filter((q) => q.status === "zaakceptowana").length;
   const pendingCount = quotes.filter((q) => q.status === "wyslana").length;
@@ -87,6 +94,24 @@ export default function DashboardPage() {
               </motion.div>
             </Link>
           </div>
+        </StaggerItem>
+
+        <StaggerItem>
+          <div className="card-modern rounded-xl p-3 sm:p-4">
+            <LiveClock />
+          </div>
+        </StaggerItem>
+
+        <StaggerItem>
+          <ActiveTimerBar />
+        </StaggerItem>
+
+        <StaggerItem>
+          <QuickActions />
+        </StaggerItem>
+
+        <StaggerItem>
+          <LowStockAlert />
         </StaggerItem>
 
         <StaggerItem>
@@ -210,7 +235,7 @@ export default function DashboardPage() {
                   <CardContent className="pt-4 sm:pt-6 p-3 sm:p-4">
                     <div className="flex items-center gap-2 sm:gap-3">
                       <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/25 shrink-0">
-                        <FileCheck className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                        <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                       </div>
                       <div>
                         <div className="text-lg sm:text-2xl font-bold text-amber-700 dark:text-amber-300">
@@ -225,6 +250,20 @@ export default function DashboardPage() {
             </Link>
           </StaggerItem>
         )}
+
+        <StaggerItem>
+          <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
+            <QuoteStatusBar />
+            <RevenueChart />
+          </div>
+        </StaggerItem>
+
+        <StaggerItem>
+          <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
+            <TopClients />
+            <UpcomingEvents />
+          </div>
+        </StaggerItem>
 
         {recentQuotes.length > 0 && (
           <StaggerItem>
