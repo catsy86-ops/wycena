@@ -12,6 +12,7 @@ import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { FabButton } from "@/components/fab-button";
 import { SkipToContent } from "@/components/skip-to-content";
+import { OnboardingTour } from "@/components/onboarding-tour";
 
 // Lazy load non-critical components
 const CommandPalette = lazy(() => import("@/components/command-palette").then((m) => ({ default: m.CommandPalette })));
@@ -55,6 +56,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <CommandPalette />
             <OfflineIndicator />
           </Suspense>
+          <OnboardingTour />
         </DataInitializer>
 
         <Toaster richColors position="bottom-right" />

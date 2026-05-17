@@ -586,3 +586,217 @@
   aside { display: none !important; }
   main { margin: 0 !important; padding: 0 !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   UI/UX ENHANCEMENTS — glassmorphism, micro-interactions, celebrations
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Glassmorphism ── */
+.glass-card {
+  @apply rounded-xl border shadow-sm;
+  background: oklch(1 0 0 / 0.6);
+  backdrop-filter: blur(16px) saturate(1.4);
+  border-color: oklch(1 0 0 / 0.2);
+}
+.dark .glass-card {
+  background: oklch(0.15 0.022 228 / 0.6);
+  border-color: oklch(1 0 0 / 0.08);
+}
+
+.glass-dialog {
+  background: oklch(1 0 0 / 0.85) !important;
+  backdrop-filter: blur(20px) saturate(1.5);
+}
+.dark .glass-dialog {
+  background: oklch(0.13 0.022 228 / 0.9) !important;
+}
+
+/* ── Gradient animated border ── */
+.gradient-border {
+  position: relative;
+  border: none !important;
+}
+.gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(
+    135deg,
+    oklch(0.52 0.19 220),
+    oklch(0.62 0.17 195),
+    oklch(0.55 0.18 240),
+    oklch(0.52 0.19 220)
+  );
+  background-size: 300% 300%;
+  animation: gradient-rotate 4s ease-in-out infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+@keyframes gradient-rotate {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ── Micro-interactions ── */
+.btn-micro {
+  @apply transition-all duration-150;
+}
+.btn-micro:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 4px 12px oklch(0.52 0.19 220 / 0.2);
+}
+.btn-micro:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: none;
+}
+
+/* Ripple effect */
+.ripple-effect {
+  position: relative;
+  overflow: hidden;
+}
+.ripple-effect::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), oklch(0.52 0.19 220 / 0.15) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.ripple-effect:active::after {
+  opacity: 1;
+}
+
+/* Glow on hover */
+.glow-hover {
+  transition: box-shadow 0.3s ease;
+}
+.glow-hover:hover {
+  box-shadow: 0 0 20px oklch(0.52 0.19 220 / 0.15), 0 4px 12px oklch(0.52 0.19 220 / 0.1);
+}
+.dark .glow-hover:hover {
+  box-shadow: 0 0 24px oklch(0.62 0.19 215 / 0.2), 0 4px 16px oklch(0.62 0.19 215 / 0.12);
+}
+
+/* ── Tabular numbers for prices ── */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ── Better table rows ── */
+.table-row-hover {
+  @apply transition-all duration-150;
+}
+.table-row-hover:hover {
+  background: oklch(0.52 0.19 220 / 0.04);
+  transform: translateX(2px);
+}
+.dark .table-row-hover:hover {
+  background: oklch(0.62 0.19 215 / 0.06);
+}
+
+/* ── Status icons with colors ── */
+.status-dot {
+  @apply inline-block w-2 h-2 rounded-full;
+}
+.status-dot-szkic { background: oklch(0.72 0.18 60); }
+.status-dot-wyslana { background: oklch(0.52 0.19 220); }
+.status-dot-zaakceptowana { background: oklch(0.55 0.18 155); }
+.status-dot-odrzucona { background: oklch(0.60 0.20 25); }
+
+/* ── Confetti / celebration ── */
+@keyframes confetti-fall {
+  0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+.confetti-piece {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  top: -10px;
+  animation: confetti-fall 3s ease-in forwards;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* ── Smooth number transition ── */
+.number-transition {
+  display: inline-block;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s;
+}
+
+/* ── Touch targets ── */
+@media (max-width: 768px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ── Better focus ring ── */
+.focus-ring {
+  @apply outline-none;
+  transition: box-shadow 0.15s ease;
+}
+.focus-ring:focus-visible {
+  box-shadow: 0 0 0 2px oklch(0.52 0.19 220 / 0.5), 0 0 0 4px oklch(0.52 0.19 220 / 0.15);
+}
+
+/* ── Improved dark mode shadows ── */
+.dark .card-modern {
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.3), 0 0 0 1px oklch(1 0 0 / 0.04);
+}
+.dark .card-modern:hover {
+  box-shadow: 0 4px 16px oklch(0 0 0 / 0.4), 0 0 0 1px oklch(0.52 0.19 220 / 0.1);
+}
+
+/* ── Improved muted-foreground contrast in dark mode ── */
+.dark {
+  --muted-foreground: oklch(0.68 0.02 225);
+}
+
+/* ── Heading hierarchy ── */
+.heading-xl {
+  @apply text-2xl sm:text-3xl font-black tracking-tight;
+  line-height: 1.1;
+}
+.heading-lg {
+  @apply text-xl sm:text-2xl font-bold tracking-tight;
+  line-height: 1.2;
+}
+.heading-md {
+  @apply text-base sm:text-lg font-bold;
+  line-height: 1.3;
+}
+
+/* ── Monospace for numbers/codes ── */
+.mono-nums {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ── Pull to refresh indicator ── */
+@keyframes ptr-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.ptr-spinner {
+  animation: ptr-spin 0.8s linear infinite;
+}
+
+/* ── Swipe hint ── */
+@keyframes swipe-hint {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-8px); }
+}
+.swipe-hint {
+  animation: swipe-hint 2s ease-in-out 3;
+}
