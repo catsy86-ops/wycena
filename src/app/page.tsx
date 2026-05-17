@@ -96,19 +96,21 @@ export default function DashboardPage() {
 
         {/* ── Header: Powitanie + Streak + Nowa wycena ── */}
         <StaggerItem>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="space-y-1">
-              <Greeting />
-              <WorkStreak />
+          <div className="card-gauge rounded-xl p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <Greeting />
+                <WorkStreak />
+              </div>
+              <Link href="/wyceny/nowa">
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button className="btn-valve">
+                    <Plus className="h-4 w-4" />
+                    Nowa wycena
+                  </Button>
+                </motion.div>
+              </Link>
             </div>
-            <Link href="/wyceny/nowa">
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button className="btn-primary">
-                  <Plus className="h-4 w-4" />
-                  Nowa wycena
-                </Button>
-              </motion.div>
-            </Link>
           </div>
         </StaggerItem>
 
@@ -125,9 +127,9 @@ export default function DashboardPage() {
         {/* ── Pogoda + Notatki + Obciążenie ── */}
         <StaggerItem>
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-            <WeatherWidget />
-            <WorkloadIndicator />
-            <QuickNotes />
+            <div className="glow-hover"><WeatherWidget /></div>
+            <div className="glow-hover"><WorkloadIndicator /></div>
+            <div className="glow-hover"><QuickNotes /></div>
           </div>
         </StaggerItem>
 
@@ -169,7 +171,7 @@ export default function DashboardPage() {
                   whileHover={{ y: -4, scale: 1.02 }}
                 >
                   <Link href={stat.href}>
-                    <Card className="card-steel cursor-pointer group hover:-translate-y-0.5 transition-transform duration-200">
+                    <Card className="card-steel cursor-pointer group hover:-translate-y-0.5 transition-transform duration-200 glow-hover">
                       <CardContent className="pt-4 p-3 sm:p-4">
                         <div className="flex items-center justify-between">
                           <div>
@@ -243,9 +245,9 @@ export default function DashboardPage() {
         {/* ── Cash flow + Prognoza + Top usługi ── */}
         <StaggerItem>
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-            <CashFlow />
-            <RevenueForecast />
-            <TopServicesMonth />
+            <div className="glow-hover"><CashFlow /></div>
+            <div className="glow-hover"><RevenueForecast /></div>
+            <div className="glow-hover"><TopServicesMonth /></div>
           </div>
         </StaggerItem>
 

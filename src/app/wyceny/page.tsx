@@ -54,6 +54,9 @@ export default function WycenyPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 25;
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [amountMin, setAmountMin] = useState("");
+  const [amountMax, setAmountMax] = useState("");
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -79,7 +82,10 @@ export default function WycenyPage() {
         to.setHours(23, 59, 59, 999);
         matchesDate = matchesDate && new Date(q.createdAt) <= to;
       }
-      return matchesSearch && matchesStatus && matchesDate;
+      let matchesAmount = true;
+      if (amountMin) matchesAmount = matchesAmount && q.totalBrutto >= parseFloat(amountMin);
+      if (amountMax) matchesAmount = matchesAmount && q.totalBrutto <= parseFloat(amountMax);
+      return matchesSearch && matchesStatus && matchesDate && matchesAmount;
     });
 
     result.sort((a, b) => {
@@ -108,7 +114,7 @@ export default function WycenyPage() {
     });
 
     return result;
-  }, [quotes, search, statusFilter, dateFrom, dateTo, sortKey, sortDir]);
+  }, [quotes, search, statusFilter, dateFrom, dateTo, sortKey, sortDir, amountMin, amountMax]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginatedQuotes = useMemo(() => {
@@ -230,7 +236,28 @@ export default function WycenyPage() {
                   <span className="text-muted-foreground text-sm shrink-0">-</span>
                   <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full sm:w-40" placeholder="Do" />
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground shrink-0">Kwota:</span>
+                  <Input type="number" min="0" placeholder="Od" value={amountMin} onChange={(e) => setAmountMin(e.target.value)} className="w-24 h-8 text-xs" />
+                  <span className="text-muted-foreground text-xs">-</span>
+                  <Input type="number" min="0" placeholder="Do" value={amountMax} onChange={(e) => setAmountMax(e.target.value)} className="w-24 h-8 text-xs" />
+                </div>
               </div>
+              {/* Bulk actions */}
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-2 px-4 py-2 border-t">
+                  <span className="text-xs text-muted-foreground">Zaznaczono: {selectedIds.size}</span>
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { selectedIds.forEach((id) => changeStatus(id, "wyslana")); setSelectedIds(new Set()); toast.success("Status zmieniony"); }}>
+                    → Wysłana
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { selectedIds.forEach((id) => changeStatus(id, "zaakceptowana")); setSelectedIds(new Set()); toast.success("Status zmieniony"); }}>
+                    → Zaakceptowana
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-7 text-xs text-destructive" onClick={() => { selectedIds.forEach((id) => remove(id)); setSelectedIds(new Set()); toast.success("Usunięto"); }}>
+                    Usuń ({selectedIds.size})
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {loading ? (
