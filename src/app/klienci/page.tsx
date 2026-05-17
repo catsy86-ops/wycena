@@ -81,6 +81,8 @@ export default function KlienciPage() {
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [nipDuplicate, setNipDuplicate] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 25;
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -141,6 +143,12 @@ export default function KlienciPage() {
     return result;
   }, [clients, search, sortKey, sortDir]);
 
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginatedClients = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
+
   function openAdd() {
     setEditingId(null);
     setForm(EMPTY_FORM);
@@ -153,7 +161,7 @@ export default function KlienciPage() {
     const c = clients.find((x) => x.id === id);
     if (!c) return;
     setEditingId(id);
-    setForm({ name: c.name, phone: c.phone, email: c.email || "", address: c.address || "", nip: c.nip || "", notes: (c as any).notes || "", tags: (c as any).tags || "" });
+    setForm({ name: c.name, phone: c.phone, email: c.email || "", address: c.address || "", nip: c.nip || "", notes: c.notes || "", tags: c.tags || "" });
     setErrors({});
     setNipDuplicate(false);
     setDialogOpen(true);
@@ -188,10 +196,10 @@ export default function KlienciPage() {
       return;
     }
     if (editingId) {
-      update(editingId, { ...result.data, notes: form.notes, tags: form.tags } as any);
+      update(editingId, { ...result.data, notes: form.notes, tags: form.tags });
       toast.success("Klient zaktualizowany");
     } else {
-      add({ ...result.data, notes: form.notes, tags: form.tags } as any);
+      add({ ...result.data, notes: form.notes, tags: form.tags });
       toast.success("Klient dodany");
     }
     setDialogOpen(false);
@@ -204,7 +212,7 @@ export default function KlienciPage() {
 
   function exportToCSV() {
     const headers = ["Nazwa", "Telefon", "Email", "Adres", "NIP", "Notatki", "Tagi"];
-    const rows = filtered.map((c) => [c.name, c.phone, c.email || "", c.address || "", c.nip || "", (c as any).notes || "", (c as any).tags || ""]);
+    const rows = filtered.map((c) => [c.name, c.phone, c.email || "", c.address || "", c.nip || "", c.notes || "", c.tags || ""]);
     const csvContent = [headers.join(";"), ...rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(";"))].join("\n");
     const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -230,7 +238,7 @@ export default function KlienciPage() {
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].match(/(".*?"|[^;]+)/g)?.map((v) => v.replace(/^"|"$/g, "").replace(/""/g, '"')) || [];
           if (values.length >= 2) {
-            add({ name: values[0], phone: values[1], email: values[2] || "", address: values[3] || "", nip: values[4] || "", notes: values[5] || "", tags: values[6] || "" } as any);
+            add({ name: values[0], phone: values[1], email: values[2] || "", address: values[3] || "", nip: values[4] || "", notes: values[5] || "", tags: values[6] || "" });
             imported++;
           }
         }
@@ -340,16 +348,16 @@ export default function KlienciPage() {
                     </TableHeader>
                     <TableBody>
                       <AnimatePresence>
-                        {filtered.map((c, index) => {
+                        {paginatedClients.map((c, index) => {
                           const stats = clientStats[c.id!] || { quoteCount: 0, totalRevenue: 0, lastQuoteDate: null };
-                          const tags = (c as any).tags ? (c as any).tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [];
+                          const tags = c.tags ? c.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [];
                           return (
                             <motion.tr
                               key={c.id}
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
                               exit={{ opacity: 0, x: 20 }}
-                              transition={{ delay: index * 0.05 }}
+                              transition={{ delay: Math.min(index * 0.03, 0.3) }}
                               className="group border-b border-border/50 hover:bg-accent/50 transition-colors"
                             >
                               <TableCell>
@@ -435,16 +443,16 @@ export default function KlienciPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <AnimatePresence>
-                    {filtered.map((c, index) => {
+                    {paginatedClients.map((c, index) => {
                       const stats = clientStats[c.id!] || { quoteCount: 0, totalRevenue: 0, lastQuoteDate: null };
-                      const tags = (c as any).tags ? (c as any).tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [];
+                      const tags = c.tags ? c.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [];
                       return (
                         <motion.div
                           key={c.id}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
-                          transition={{ delay: index * 0.05 }}
+                          transition={{ delay: Math.min(index * 0.03, 0.3) }}
                         >
                           <Link href={`/klienci/${c.id}`}>
                             <Card className="card-modern hover:border-blue-300 dark:hover:border-blue-700 transition-colors cursor-pointer h-full">
@@ -505,6 +513,21 @@ export default function KlienciPage() {
                       );
                     })}
                   </AnimatePresence>
+                </div>
+              )}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Pokazano {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} z {filtered.length}
+                  </p>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                      Poprzednia
+                    </Button>
+                    <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                      Następna
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>

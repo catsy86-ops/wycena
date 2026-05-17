@@ -1,4 +1,4 @@
-export type VatRate = 0 | 8 | 23;
+﻿export type VatRate = 0 | 8 | 23;
 
 export type ServiceCategory =
   | "montaz"
@@ -10,12 +10,12 @@ export type ServiceCategory =
   | "inne";
 
 export const CATEGORY_LABELS: Record<ServiceCategory, string> = {
-  montaz: "Montaż",
+  montaz: "MontaĹĽ",
   naprawa: "Naprawa",
   wymiana: "Wymiana",
   czyszczenie: "Czyszczenie",
   diagnoza: "Diagnoza",
-  materialy: "Materiały",
+  materialy: "MateriaĹ‚y",
   inne: "Inne",
 };
 
@@ -31,7 +31,7 @@ export const UNIT_LABELS: Record<Unit, string> = {
   szt: "szt.",
   kg: "kg",
   m: "m",
-  m2: "m²",
+  m2: "mÂ˛",
   godz: "godz.",
   kpl: "kpl.",
   mb: "mb",
@@ -57,6 +57,8 @@ export interface Client {
   email?: string;
   address?: string;
   nip?: string;
+  notes?: string;
+  tags?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -65,7 +67,7 @@ export type QuoteStatus = "szkic" | "wyslana" | "zaakceptowana" | "odrzucona";
 
 export const STATUS_LABELS: Record<QuoteStatus, string> = {
   szkic: "Szkic",
-  wyslana: "Wysłana",
+  wyslana: "WysĹ‚ana",
   zaakceptowana: "Zaakceptowana",
   odrzucona: "Odrzucona",
 };
@@ -82,6 +84,10 @@ export interface QuoteItem {
   nettotal: number;
   vatAmount: number;
   bruttoTotal: number;
+  /** Cena z zewnÄ™trznego API (do porĂłwnania) */
+  externalPrice?: number;
+  /** ĹąrĂłdĹ‚o ceny zewnÄ™trznej */
+  externalPriceSource?: string;
 }
 
 export interface QuoteAdditionalCost {
@@ -131,6 +137,21 @@ export interface Quote {
   versions: QuoteVersion[];
   templateId?: number;
   recurringId?: number;
+  /** Wynik zaawansowanego modelu wyceny (snapshot) */
+  pricingSnapshot?: PricingSnapshot;
+}
+
+/** Snapshot wynikĂłw zaawansowanego modelu wyceny zapisywany razem z wycena */
+export interface PricingSnapshot {
+  model: PricingModelConfig;
+  result: {
+    baseNetto: number;
+    finalNetto: number;
+    finalBrutto: number;
+    marginPercent: number;
+    breakdown: Record<string, number>;
+  };
+  generatedAt: Date;
 }
 
 export interface ProgressiveDiscount {
@@ -150,6 +171,41 @@ export interface CompanySettings {
   defaultVatRate: VatRate;
   defaultValidityDays: number;
   logoDataUrl?: string;
+  /** Konfiguracja zewnÄ™trznych API cenowych */
+  externalPricingApis?: ExternalPricingApiConfig[];
+}
+
+/** Konfiguracja jednego zewnÄ™trznego API cenowego */
+export interface ExternalPricingApiConfig {
+  id: string;
+  name: string;
+  /** URL endpointu (moĹĽe byÄ‡ wĹ‚asny serwer lub proxy) */
+  url: string;
+  /** Klucz API (opcjonalny) */
+  apiKey?: string;
+  /** Czy aktywne */
+  enabled: boolean;
+  /** Typ API */
+  type: "custom" | "builtin_mock" | "cennik_gus";
+}
+
+/** Wynik zapytania do zewnÄ™trznego API cenowego */
+export interface ExternalPricingResult {
+  source: string;
+  items: ExternalPricingItem[];
+  fetchedAt: Date;
+  error?: string;
+}
+
+export interface ExternalPricingItem {
+  name: string;
+  unit: string;
+  priceNetto: number;
+  vatRate: number;
+  category?: string;
+  description?: string;
+  /** Identyfikator w zewnÄ™trznym systemie */
+  externalId?: string;
 }
 
 export interface Material {
@@ -191,9 +247,9 @@ export interface Invoice {
 export type InvoiceStatus = "niezaplacona" | "czesciowo" | "zaplacona" | "anulowana";
 
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
-  niezaplacona: "Nieopłacona",
-  czesciowo: "Częściowo opłacona",
-  zaplacona: "Opłacona",
+  niezaplacona: "NieopĹ‚acona",
+  czesciowo: "CzÄ™Ĺ›ciowo opĹ‚acona",
+  zaplacona: "OpĹ‚acona",
   anulowana: "Anulowana",
 };
 
@@ -209,7 +265,7 @@ export interface Payment {
 
 export const PAYMENT_METHOD_LABELS: Record<Payment["method"], string> = {
   przelew: "Przelew",
-  gotowka: "Gotówka",
+  gotowka: "GotĂłwka",
   karta: "Karta",
   inny: "Inny",
 };
@@ -229,23 +285,29 @@ export interface QuoteTemplate {
 }
 
 export interface PricingModelConfig {
-  complexityFactor: number; // 1.0 - 2.0
-  riskMargin: number; // 0 - 30%
-  overheadPercent: number; // 0 - 50%
-  profitMarginPercent: number; // 0 - 50%
-  inflationAdjustment: number; // 0 - 20%
-  urgencyMultiplier: number; // 1.0 - 3.0
+  complexityFactor: number;       // 1.0 - 2.0 â€” zĹ‚oĹĽonoĹ›Ä‡ projektu
+  riskMargin: number;             // 0 - 30% â€” margines ryzyka
+  overheadPercent: number;        // 0 - 50% â€” koszty poĹ›rednie
+  profitMarginPercent: number;    // 0 - 50% â€” marĹĽa zysku
+  inflationAdjustment: number;    // 0 - 20% â€” waloryzacja
+  urgencyMultiplier: number;      // 1.0 - 3.0 â€” pilnoĹ›Ä‡
   volumeDiscounts: ProgressiveDiscount[];
-  minimumMarginPercent: number; // 0 - 50%
-  laborCostMultiplier: number; // 1.0 - 3.0
-  materialWastePercent: number; // 0 - 30%
-  equipmentCostPercent: number; // 0 - 20%
-  travelCostPerKm: number; // PLN/km
-  estimatedDistanceKm: number; // km
-  permitCosts: number; // fixed costs
-  insuranceCostPercent: number; // 0 - 10%
-  warrantyPeriodMonths: number; // 0 - 60
-  warrantyReservePercent: number; // 0 - 10%
+  minimumMarginPercent: number;   // 0 - 50% â€” minimalna marĹĽa
+  laborCostMultiplier: number;    // 1.0 - 3.0 â€” mnoĹĽnik robocizny
+  materialWastePercent: number;   // 0 - 30% â€” straty materiaĹ‚owe
+  equipmentCostPercent: number;   // 0 - 20% â€” koszt sprzÄ™tu
+  travelCostPerKm: number;        // PLN/km
+  estimatedDistanceKm: number;    // km
+  permitCosts: number;            // koszty staĹ‚e (pozwolenia)
+  insuranceCostPercent: number;   // 0 - 10% â€” ubezpieczenie
+  warrantyPeriodMonths: number;   // 0 - 60 â€” okres gwarancji
+  warrantyReservePercent: number; // 0 - 10% â€” rezerwa gwarancyjna
+  /** Korekta sezonowa â€” np. +15% w sezonie grzewczym */
+  seasonalAdjustmentPercent: number; // -20 - 50%
+  /** MarĹĽa na materiaĹ‚ach (narzut na ceny zakupu) */
+  materialMarkupPercent: number;  // 0 - 100%
+  /** Minimalna kwota wyceny */
+  minimumQuoteAmount: number;     // PLN
 }
 
 export const DEFAULT_PRICING_MODEL: PricingModelConfig = {
@@ -266,6 +328,9 @@ export const DEFAULT_PRICING_MODEL: PricingModelConfig = {
   insuranceCostPercent: 0,
   warrantyPeriodMonths: 0,
   warrantyReservePercent: 0,
+  seasonalAdjustmentPercent: 0,
+  materialMarkupPercent: 0,
+  minimumQuoteAmount: 0,
 };
 
 export interface TimeEntry {
@@ -308,14 +373,14 @@ export type ScheduleStatus = "zaplanowane" | "w_trakcie" | "zakonczone" | "anulo
 export const SCHEDULE_STATUS_LABELS: Record<ScheduleStatus, string> = {
   zaplanowane: "Zaplanowane",
   w_trakcie: "W trakcie",
-  zakonczone: "Zakończone",
+  zakonczone: "ZakoĹ„czone",
   anulowane: "Anulowane",
 };
 
 export const SCHEDULE_TYPE_LABELS: Record<ScheduleEvent["type"], string> = {
   wycena: "Wycena",
   realizacja: "Realizacja",
-  przeglad: "Przegląd",
+  przeglad: "PrzeglÄ…d",
   awaria: "Awaria",
   inne: "Inne",
 };
@@ -338,7 +403,7 @@ export interface RecurringQuote {
 
 export const RECURRING_FREQUENCY_LABELS: Record<RecurringQuote["frequency"], string> = {
   tygodniowo: "Tygodniowo",
-  miesiecznie: "Miesięcznie",
+  miesiecznie: "MiesiÄ™cznie",
   kwartalnie: "Kwartalnie",
   rocznie: "Rocznie",
 };
@@ -350,3 +415,4 @@ export interface QuoteSuggestion {
   lastUsed?: Date;
   avgQuantity: number;
 }
+

@@ -1,0 +1,14 @@
+const fs = require("fs");
+const path = require("path");
+
+const sizes = [72, 96, 128, 144, 192, 384, 512];
+const dir = path.join(__dirname, "..", "public", "icons");
+
+if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+sizes.forEach((s) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 512 512"><rect width="512" height="512" rx="80" fill="#3b82f6"/><path d="M180 380 L220 140 L256 300 L292 140 L332 380" stroke="white" stroke-width="40" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="256" cy="400" r="20" fill="#60a5fa"/></svg>`;
+  fs.writeFileSync(path.join(dir, `icon-${s}x${s}.png`), svg);
+});
+
+console.log("PWA icons generated (SVG placeholders)");

@@ -21,11 +21,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, Package, ArrowLeft, Users, FileText, Calculator, Settings2, Info, Copy, Lightbulb, LayoutTemplate } from "lucide-react";
+import { Plus, Trash2, Package, ArrowLeft, Users, FileText, Calculator, Settings2, Info, Copy, Lightbulb, LayoutTemplate, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
 import { motion } from "framer-motion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ExternalPricingPanel } from "@/components/external-pricing-panel";
 
 function generateItemId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
@@ -81,6 +82,7 @@ export default function NowaWycenaPage() {
   const [pricingModel, setPricingModel] = useState<PricingModelConfig>(DEFAULT_PRICING_MODEL);
   const [activeTab, setActiveTab] = useState("items");
   const [templateName, setTemplateName] = useState<string | null>(null);
+  const [showExternalPricing, setShowExternalPricing] = useState(false);
 
   const quotes = useQuoteStore((s) => s.quotes);
 
@@ -261,6 +263,26 @@ export default function NowaWycenaPage() {
     setPricingModel((prev) => ({ ...prev, [field]: value }));
   }
 
+  function handleExternalItems(newItems: QuoteItem[]) {
+    setItems((prev) => {
+      // Filtruj puste pozycje przed dodaniem
+      const nonEmpty = prev.filter((i) => i.name.trim() !== "" || i.priceNettoPerUnit > 0);
+      return [...nonEmpty, ...newItems];
+    });
+    setActiveTab("items");
+    toast.success(`Dodano ${newItems.length} pozycji z zewnętrznego cennika`);
+  }
+
+  function handleApplyPriceToItem(itemId: string, price: number, source: string) {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId) return item;
+        return calcQuoteItem({ ...item, priceNettoPerUnit: price, externalPrice: price, externalPriceSource: source });
+      })
+    );
+    toast.success("Cena z API zastosowana");
+  }
+
   function handleSave(status: QuoteStatus = "szkic") {
     const validItems = items.filter((i) => i.name.trim() !== "" && i.quantity > 0);
     if (validItems.length === 0) {
@@ -424,6 +446,16 @@ export default function NowaWycenaPage() {
           </StaggerItem>
         )}
 
+        {showExternalPricing && (
+          <StaggerItem>
+            <ExternalPricingPanel
+              onApplyItems={handleExternalItems}
+              onApplyPriceToItem={handleApplyPriceToItem}
+              existingItems={items}
+            />
+          </StaggerItem>
+        )}
+
         <StaggerItem>
           <Card className="card-modern">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -432,11 +464,22 @@ export default function NowaWycenaPage() {
                   <FileText className="h-5 w-5 text-blue-500" />
                   Pozycje wyceny
                 </CardTitle>
-                <TabsList>
-                  <TabsTrigger value="items">Pozycje</TabsTrigger>
-                  <TabsTrigger value="costs">Koszty ({additionalCosts.length})</TabsTrigger>
-                  <TabsTrigger value="pricing">Model wyceny</TabsTrigger>
-                </TabsList>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="btn-secondary h-8 text-xs"
+                    onClick={() => setShowExternalPricing((v) => !v)}
+                  >
+                    <Globe className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Cenniki zewnętrzne</span>
+                  </Button>
+                  <TabsList>
+                    <TabsTrigger value="items">Pozycje</TabsTrigger>
+                    <TabsTrigger value="costs">Koszty ({additionalCosts.length})</TabsTrigger>
+                    <TabsTrigger value="pricing">Model wyceny</TabsTrigger>
+                  </TabsList>
+                </div>
               </CardHeader>
 
               <TabsContent value="items">
@@ -859,6 +902,31 @@ export default function NowaWycenaPage() {
                         </div>
                       </div>
 
+                      {/* Nowe pola — sezonowość, narzut na materiały, minimum */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t">
+                        <div className="grid gap-2">
+                          <Label className="text-xs flex items-center gap-1">
+                            Korekta sezonowa (%)
+                            <TooltipProvider><Tooltip><TooltipTrigger><Info className="h-3 w-3 text-muted-foreground" /></TooltipTrigger><TooltipContent><p>Np. +15% w sezonie grzewczym, -10% poza sezonem</p></TooltipContent></Tooltip></TooltipProvider>
+                          </Label>
+                          <Input type="number" min="-20" max="50" value={pricingModel.seasonalAdjustmentPercent} onChange={(e) => updatePricingModelField("seasonalAdjustmentPercent", parseFloat(e.target.value) || 0)} />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label className="text-xs flex items-center gap-1">
+                            Narzut na materiały (%)
+                            <TooltipProvider><Tooltip><TooltipTrigger><Info className="h-3 w-3 text-muted-foreground" /></TooltipTrigger><TooltipContent><p>Marża handlowa na materiałach (cena zakupu → sprzedaży)</p></TooltipContent></Tooltip></TooltipProvider>
+                          </Label>
+                          <Input type="number" min="0" max="100" value={pricingModel.materialMarkupPercent} onChange={(e) => updatePricingModelField("materialMarkupPercent", parseFloat(e.target.value) || 0)} />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label className="text-xs flex items-center gap-1">
+                            Minimum kwotowe (PLN)
+                            <TooltipProvider><Tooltip><TooltipTrigger><Info className="h-3 w-3 text-muted-foreground" /></TooltipTrigger><TooltipContent><p>Minimalna wartość wyceny netto — wycena nie może być niższa</p></TooltipContent></Tooltip></TooltipProvider>
+                          </Label>
+                          <Input type="number" min="0" step="50" value={pricingModel.minimumQuoteAmount} onChange={(e) => updatePricingModelField("minimumQuoteAmount", parseFloat(e.target.value) || 0)} />
+                        </div>
+                      </div>
+
                       {advancedPricing && (
                         <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800 mt-4">
                           <CardHeader className="pb-2"><CardTitle className="text-sm">Szczegółowa kalkulacja</CardTitle></CardHeader>
@@ -971,6 +1039,22 @@ export default function NowaWycenaPage() {
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Marża:</span>
                       <span>{advancedPricing.marginPercent}%</span>
+                    </div>
+                    {advancedPricing.minimumApplied && (
+                      <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-md px-2 py-1.5 mt-1">
+                        <Info className="h-3.5 w-3.5 shrink-0" />
+                        Zastosowano minimum kwotowe
+                      </div>
+                    )}
+                    <Separator />
+                    <div className={`flex items-start gap-2 rounded-md px-2 py-2 text-xs ${
+                      advancedPricing.profitability.rating === "excellent" ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400" :
+                      advancedPricing.profitability.rating === "good" ? "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400" :
+                      advancedPricing.profitability.rating === "acceptable" ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400" :
+                      "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400"
+                    }`}>
+                      <Calculator className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                      <span>{advancedPricing.profitability.suggestion}</span>
                     </div>
                   </>
                 ) : (

@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useQuoteStore } from "@/store/quote-store";
+import { useInvoiceStore } from "@/store/invoice-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { STATUS_LABELS, UNIT_LABELS, VAT_RATE_LABELS, type QuoteStatus } from "@/types";
 import { formatCurrency, round } from "@/lib/calculations";
@@ -13,11 +14,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Printer, FileDown, Trash2, Copy, FileText, Users, Calendar, Tag } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  ArrowLeft, Printer, FileDown, Trash2, Copy, FileText, Users,
+  Calendar, Tag, Pencil, FileCheck, ExternalLink, ClipboardCopy,
+  AlertCircle, History, CheckCircle2,
+} from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, isPast, differenceInDays } from "date-fns";
 import { pl } from "date-fns/locale";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
+import { motion } from "framer-motion";
+import Link from "next/link";
 
 const STATUS_COLORS: Record<QuoteStatus, string> = {
   szkic: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
@@ -34,7 +42,9 @@ export default function WycenaDetailPage() {
   const changeStatus = useQuoteStore((s) => s.changeStatus);
   const remove = useQuoteStore((s) => s.remove);
   const duplicate = useQuoteStore((s) => s.duplicate);
+  const addInvoice = useInvoiceStore((s) => s.add);
   const settings = useSettingsStore((s) => s.settings);
+  const [convertingInvoice, setConvertingInvoice] = useState(false);
 
   const quote = useMemo(() => quotes.find((item) => item.id === id), [quotes, id]);
   const q = quote!;
@@ -48,9 +58,19 @@ export default function WycenaDetailPage() {
     );
   }
 
-  function handlePrint() {
-    window.print();
+  // Sprawdzenie wygaśnięcia
+  const isExpired = q.validUntil && isPast(new Date(q.validUntil)) && q.status !== "zaakceptowana" && q.status !== "odrzucona";
+  const daysUntilExpiry = q.validUntil && !isPast(new Date(q.validUntil))
+    ? differenceInDays(new Date(q.validUntil), new Date())
+    : null;
+  const expiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 3;
+
+  function handleCopyNumber() {
+    navigator.clipboard.writeText(q.number);
+    toast.success("Numer skopiowany do schowka");
   }
+
+  function handlePrint() { window.print(); }
 
   async function handleDuplicate() {
     const newId = await duplicate(id);
@@ -69,10 +89,41 @@ export default function WycenaDetailPage() {
     toast.success(`Status zmieniony na: ${STATUS_LABELS[newStatus]}`);
   }
 
+  async function handleConvertToInvoice() {
+    setConvertingInvoice(true);
+    try {
+      const today = new Date();
+      const dueDate = new Date(today);
+      dueDate.setDate(dueDate.getDate() + (settings?.defaultValidityDays ?? 14));
+      const invoiceId = await addInvoice({
+        quoteId: id,
+        clientName: q.clientName,
+        clientAddress: q.clientAddress,
+        clientNip: q.clientNip,
+        items: q.items,
+        additionalCosts: q.additionalCosts,
+        totalNetto: q.totalNetto,
+        totalVat: q.totalVat,
+        totalBrutto: q.totalBrutto,
+        status: "niezaplacona",
+        issueDate: today,
+        dueDate,
+      });
+      if (q.status !== "zaakceptowana") {
+        changeStatus(id, "zaakceptowana");
+      }
+      toast.success("Faktura utworzona");
+      router.push(`/faktury`);
+    } catch {
+      toast.error("Błąd podczas tworzenia faktury");
+    } finally {
+      setConvertingInvoice(false);
+    }
+  }
+
   async function handleExportPDF() {
     const { default: jsPDF } = await import("jspdf");
     const { default: autoTable } = await import("jspdf-autotable");
-
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
@@ -80,44 +131,33 @@ export default function WycenaDetailPage() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
     doc.text("OFERTA CENOWA", pageWidth / 2, 25, { align: "center" });
-
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-
     let y = 35;
 
     if (settings?.name) {
       doc.setFont("helvetica", "bold");
       doc.text("Sprzedawca:", margin, y);
       doc.setFont("helvetica", "normal");
-      y += 5;
-      doc.text(settings.name, margin, y);
-      y += 5;
-      if (settings.address) { doc.text(settings.address, margin, y); y += 5; }
+      y += 5; doc.text(settings.name, margin, y);
+      y += 5; if (settings.address) { doc.text(settings.address, margin, y); y += 5; }
       if (settings.phone) { doc.text(`Tel: ${settings.phone}`, margin, y); y += 5; }
       if (settings.email) { doc.text(`Email: ${settings.email}`, margin, y); y += 5; }
       if (settings.nip) { doc.text(`NIP: ${settings.nip}`, margin, y); y += 5; }
     }
 
     y += 5;
-
     doc.setFont("helvetica", "bold");
     doc.text(`Oferta nr: ${q.number}`, margin, y);
     doc.setFont("helvetica", "normal");
-    y += 5;
-    doc.text(`Data: ${format(new Date(q.createdAt), "dd.MM.yyyy", { locale: pl })}`, margin, y);
-    if (q.validUntil) {
-      y += 5;
-      doc.text(`Ważna do: ${format(new Date(q.validUntil), "dd.MM.yyyy", { locale: pl })}`, margin, y);
-    }
+    y += 5; doc.text(`Data: ${format(new Date(q.createdAt), "dd.MM.yyyy", { locale: pl })}`, margin, y);
+    if (q.validUntil) { y += 5; doc.text(`Ważna do: ${format(new Date(q.validUntil), "dd.MM.yyyy", { locale: pl })}`, margin, y); }
 
     if (q.clientName) {
       y += 10;
-      doc.setFont("helvetica", "bold");
-      doc.text("Klient:", pageWidth - margin, y, { align: "right" });
+      doc.setFont("helvetica", "bold"); doc.text("Klient:", pageWidth - margin, y, { align: "right" });
       doc.setFont("helvetica", "normal");
-      y += 5;
-      doc.text(q.clientName, pageWidth - margin, y, { align: "right" });
+      y += 5; doc.text(q.clientName, pageWidth - margin, y, { align: "right" });
       if (q.clientAddress) { y += 5; doc.text(q.clientAddress, pageWidth - margin, y, { align: "right" }); }
       if (q.clientPhone) { y += 5; doc.text(`Tel: ${q.clientPhone}`, pageWidth - margin, y, { align: "right" }); }
       if (q.clientEmail) { y += 5; doc.text(`Email: ${q.clientEmail}`, pageWidth - margin, y, { align: "right" }); }
@@ -125,16 +165,11 @@ export default function WycenaDetailPage() {
     }
 
     y += 10;
-
     const tableBody = q.items.map((item) => [
-      item.name,
-      item.quantity.toString(),
-      UNIT_LABELS[item.unit],
+      item.name, item.quantity.toString(), UNIT_LABELS[item.unit],
       formatCurrency(item.priceNettoPerUnit),
       item.discountPercent > 0 ? `${item.discountPercent}%` : "-",
-      `${item.vatRate}%`,
-      formatCurrency(item.nettotal),
-      formatCurrency(item.bruttoTotal),
+      `${item.vatRate}%`, formatCurrency(item.nettotal), formatCurrency(item.bruttoTotal),
     ]);
 
     autoTable(doc, {
@@ -144,26 +179,29 @@ export default function WycenaDetailPage() {
       margin: { left: margin, right: margin },
       styles: { fontSize: 8 },
       headStyles: { fillColor: [37, 99, 235], textColor: 255 },
-      columnStyles: {
-        0: { cellWidth: 40 },
-        3: { halign: "right" },
-        6: { halign: "right" },
-        7: { halign: "right" },
-      },
+      columnStyles: { 0: { cellWidth: 40 }, 3: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right" } },
     });
 
-    y = (doc as any).lastAutoTable.finalY + 10;
+    y = (doc as any).lastAutoTable.finalY + 8;
+
+    // Koszty dodatkowe w PDF (punkt 15)
+    if (q.additionalCosts && q.additionalCosts.length > 0) {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+      doc.text("Koszty dodatkowe:", margin, y); y += 5;
+      doc.setFont("helvetica", "normal");
+      q.additionalCosts.forEach((cost) => {
+        doc.text(`${cost.name}: ${formatCurrency(cost.amount)}`, margin + 4, y); y += 5;
+      });
+      y += 3;
+    }
 
     const totalNetto = q.items.reduce((s, i) => s + i.nettotal, 0);
     const totalVat = q.items.reduce((s, i) => s + i.vatAmount, 0);
     const totalBruttoBefore = q.items.reduce((s, i) => s + i.bruttoTotal, 0);
 
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Suma netto: ${formatCurrency(totalNetto)}`, pageWidth - margin, y, { align: "right" });
-    y += 6;
-    doc.text(`Suma VAT: ${formatCurrency(totalVat)}`, pageWidth - margin, y, { align: "right" });
-    y += 6;
+    doc.setFontSize(10); doc.setFont("helvetica", "normal");
+    doc.text(`Suma netto: ${formatCurrency(totalNetto)}`, pageWidth - margin, y, { align: "right" }); y += 6;
+    doc.text(`Suma VAT: ${formatCurrency(totalVat)}`, pageWidth - margin, y, { align: "right" }); y += 6;
     doc.text(`Suma brutto: ${formatCurrency(totalBruttoBefore)}`, pageWidth - margin, y, { align: "right" });
 
     if (q.globalDiscountPercent > 0) {
@@ -173,25 +211,18 @@ export default function WycenaDetailPage() {
     }
 
     y += 8;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
     doc.text(`DO ZAPŁATY: ${formatCurrency(q.totalBrutto)}`, pageWidth - margin, y, { align: "right" });
 
     if (q.notes) {
-      y += 12;
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text("Uwagi:", margin, y);
-      doc.setFont("helvetica", "normal");
-      y += 5;
+      y += 12; doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+      doc.text("Uwagi:", margin, y); doc.setFont("helvetica", "normal"); y += 5;
       const lines = doc.splitTextToSize(q.notes, pageWidth - margin * 2);
       doc.text(lines, margin, y);
     }
 
     if (settings?.bankAccount) {
-      y += 15;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
+      y += 15; doc.setFont("helvetica", "normal"); doc.setFontSize(9);
       doc.text(`Konto bankowe: ${settings.bankName || ""} ${settings.bankAccount}`, margin, y);
     }
 
@@ -202,6 +233,35 @@ export default function WycenaDetailPage() {
   return (
     <PageTransition>
       <StaggerContainer className="space-y-6 max-w-5xl mx-auto">
+
+        {/* Alert wygaśnięcia (punkt 7) */}
+        {isExpired && (
+          <StaggerItem>
+            <motion.div
+              initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-3 rounded-xl border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-700 dark:text-red-400"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span className="font-semibold">Wycena wygasła</span>
+              <span className="text-red-600/70 dark:text-red-400/70">
+                — ważna do {format(new Date(q.validUntil!), "dd.MM.yyyy", { locale: pl })}
+              </span>
+            </motion.div>
+          </StaggerItem>
+        )}
+        {expiringSoon && !isExpired && (
+          <StaggerItem>
+            <motion.div
+              initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-700 dark:text-amber-400"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>Wycena wygasa za <strong>{daysUntilExpiry} {daysUntilExpiry === 1 ? "dzień" : "dni"}</strong></span>
+            </motion.div>
+          </StaggerItem>
+        )}
+
+        {/* Header */}
         <StaggerItem>
           <div className="print:hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -209,7 +269,17 @@ export default function WycenaDetailPage() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{q.number}</h1>
+                {/* Numer z przyciskiem kopiowania (punkt 12) */}
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-pipe">{q.number}</h1>
+                  <button
+                    onClick={handleCopyNumber}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                    title="Kopiuj numer"
+                  >
+                    <ClipboardCopy className="h-4 w-4" />
+                  </button>
+                </div>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge className={STATUS_COLORS[q.status]}>{STATUS_LABELS[q.status]}</Badge>
                   <span className="text-sm text-muted-foreground">{format(new Date(q.createdAt), "dd.MM.yyyy", { locale: pl })}</span>
@@ -225,9 +295,33 @@ export default function WycenaDetailPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {/* Przycisk Edytuj (punkt 1) */}
+              <Button variant="outline" size="sm" className="btn-secondary" onClick={() => router.push(`/wyceny/${id}/edytuj`)}>
+                <Pencil className="mr-2 h-4 w-4" />Edytuj
+              </Button>
               <Button variant="outline" size="sm" className="btn-secondary" onClick={handleDuplicate}>
                 <Copy className="mr-2 h-4 w-4" />Duplikuj
               </Button>
+              {/* Konwersja na fakturę (punkt 3) */}
+              <AlertDialog>
+                <AlertDialogTrigger>
+                  <Button size="sm" className="btn-secondary border-emerald-400 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30" disabled={convertingInvoice}>
+                    <FileCheck className="mr-2 h-4 w-4" />Faktura
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Utwórz fakturę</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Zostanie utworzona faktura na podstawie wyceny {q.number}. Status wyceny zmieni się na &ldquo;Zaakceptowana&rdquo;.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConvertToInvoice}>Utwórz fakturę</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <Button variant="outline" size="sm" className="btn-secondary" onClick={handlePrint}>
                 <Printer className="mr-2 h-4 w-4" />Drukuj
               </Button>
@@ -255,34 +349,41 @@ export default function WycenaDetailPage() {
           </div>
         </StaggerItem>
 
+        {/* Dane stron */}
         {(q.clientName || settings?.name) && (
           <StaggerItem>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2">
               {settings?.name && (
                 <Card className="card-modern">
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground flex items-center gap-2"><Users className="h-4 w-4" />Sprzedawca</CardTitle></CardHeader>
-                  <CardContent>
-                    <div className="space-y-1 text-sm">
-                      <div className="font-semibold">{settings.name}</div>
-                      {settings.address && <div>{settings.address}</div>}
-                      {settings.phone && <div>Tel: {settings.phone}</div>}
-                      {settings.email && <div>Email: {settings.email}</div>}
-                      {settings.nip && <div>NIP: {settings.nip}</div>}
-                    </div>
+                  <CardContent className="space-y-1 text-sm">
+                    <div className="font-semibold">{settings.name}</div>
+                    {settings.address && <div>{settings.address}</div>}
+                    {settings.phone && <div>Tel: {settings.phone}</div>}
+                    {settings.email && <div>Email: {settings.email}</div>}
+                    {settings.nip && <div>NIP: {settings.nip}</div>}
                   </CardContent>
                 </Card>
               )}
               {q.clientName && (
                 <Card className="card-modern">
-                  <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground flex items-center gap-2"><Users className="h-4 w-4" />Klient</CardTitle></CardHeader>
-                  <CardContent>
-                    <div className="space-y-1 text-sm">
-                      <div className="font-semibold">{q.clientName}</div>
-                      {q.clientAddress && <div>{q.clientAddress}</div>}
-                      {q.clientPhone && <div>Tel: {q.clientPhone}</div>}
-                      {q.clientEmail && <div>Email: {q.clientEmail}</div>}
-                      {q.clientNip && <div>NIP: {q.clientNip}</div>}
-                    </div>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-muted-foreground flex items-center justify-between">
+                      <span className="flex items-center gap-2"><Users className="h-4 w-4" />Klient</span>
+                      {/* Link do klienta (punkt 13) */}
+                      {q.clientId && (
+                        <Link href={`/klienci/${q.clientId}`} className="flex items-center gap-1 text-xs text-primary hover:underline">
+                          <ExternalLink className="h-3 w-3" />Profil klienta
+                        </Link>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1 text-sm">
+                    <div className="font-semibold">{q.clientName}</div>
+                    {q.clientAddress && <div>{q.clientAddress}</div>}
+                    {q.clientPhone && <a href={`tel:${q.clientPhone}`} className="block hover:text-primary transition-colors">Tel: {q.clientPhone}</a>}
+                    {q.clientEmail && <a href={`mailto:${q.clientEmail}`} className="block hover:text-primary transition-colors">Email: {q.clientEmail}</a>}
+                    {q.clientNip && <div>NIP: {q.clientNip}</div>}
                   </CardContent>
                 </Card>
               )}
@@ -290,44 +391,68 @@ export default function WycenaDetailPage() {
           </StaggerItem>
         )}
 
+        {/* Pozycje */}
         <StaggerItem>
           <Card className="card-modern">
-            <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-blue-500" />Pozycje wyceny</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Pozycje wyceny</CardTitle></CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nazwa</TableHead>
-                    <TableHead className="text-center">Ilość</TableHead>
-                    <TableHead>Jedn.</TableHead>
-                    <TableHead className="text-right">Cena netto</TableHead>
-                    <TableHead className="text-center">Rabat</TableHead>
-                    <TableHead className="text-center">VAT</TableHead>
-                    <TableHead className="text-right">Netto</TableHead>
-                    <TableHead className="text-right">VAT kwota</TableHead>
-                    <TableHead className="text-right">Brutto</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {q.items.map((item, idx) => (
-                    <TableRow key={item.id || idx}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="text-center">{item.quantity}</TableCell>
-                      <TableCell>{UNIT_LABELS[item.unit]}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.priceNettoPerUnit)}</TableCell>
-                      <TableCell className="text-center">{item.discountPercent > 0 ? `${item.discountPercent}%` : "-"}</TableCell>
-                      <TableCell className="text-center">{VAT_RATE_LABELS[item.vatRate]}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.nettotal)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.vatAmount)}</TableCell>
-                      <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">{formatCurrency(item.bruttoTotal)}</TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nazwa</TableHead>
+                      <TableHead className="text-center">Ilość</TableHead>
+                      <TableHead>Jedn.</TableHead>
+                      <TableHead className="text-right">Cena netto</TableHead>
+                      <TableHead className="text-center">Rabat</TableHead>
+                      <TableHead className="text-center">VAT</TableHead>
+                      <TableHead className="text-right">Netto</TableHead>
+                      <TableHead className="text-right">VAT kwota</TableHead>
+                      <TableHead className="text-right">Brutto</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {q.items.map((item, idx) => (
+                      <TableRow key={item.id || idx}>
+                        <TableCell className="font-medium">
+                          {item.name}
+                          {item.externalPriceSource && (
+                            <span className="ml-2 text-xs text-muted-foreground/60">({item.externalPriceSource})</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">{item.quantity}</TableCell>
+                        <TableCell>{UNIT_LABELS[item.unit]}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.priceNettoPerUnit)}</TableCell>
+                        <TableCell className="text-center">{item.discountPercent > 0 ? `${item.discountPercent}%` : "-"}</TableCell>
+                        <TableCell className="text-center">{VAT_RATE_LABELS[item.vatRate]}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.nettotal)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.vatAmount)}</TableCell>
+                        <TableCell className="text-right font-bold text-primary">{formatCurrency(item.bruttoTotal)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Koszty dodatkowe w widoku (punkt 15) */}
+              {q.additionalCosts && q.additionalCosts.length > 0 && (
+                <div className="mt-4 pt-4 border-t">
+                  <p className="text-sm font-semibold mb-2 text-muted-foreground">Koszty dodatkowe</p>
+                  <div className="space-y-1">
+                    {q.additionalCosts.map((cost) => (
+                      <div key={cost.id} className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{cost.name}</span>
+                        <span className="font-semibold">{formatCurrency(cost.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </StaggerItem>
 
+        {/* Informacje + Podsumowanie */}
         <StaggerItem>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2">
             <Card className="card-modern">
@@ -337,10 +462,18 @@ export default function WycenaDetailPage() {
                   <span className="text-muted-foreground">Data utworzenia:</span>
                   <span>{format(new Date(q.createdAt), "dd.MM.yyyy", { locale: pl })}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Ostatnia zmiana:</span>
+                  <span>{format(new Date(q.updatedAt), "dd.MM.yyyy HH:mm", { locale: pl })}</span>
+                </div>
                 {q.validUntil && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Ważna do:</span>
-                    <span>{format(new Date(q.validUntil), "dd.MM.yyyy", { locale: pl })}</span>
+                    <span className={isExpired ? "text-red-600 dark:text-red-400 font-semibold" : expiringSoon ? "text-amber-600 dark:text-amber-400 font-semibold" : ""}>
+                      {format(new Date(q.validUntil), "dd.MM.yyyy", { locale: pl })}
+                      {isExpired && " (wygasła)"}
+                      {expiringSoon && !isExpired && ` (za ${daysUntilExpiry} dni)`}
+                    </span>
                   </div>
                 )}
                 {q.notes && (
@@ -353,7 +486,7 @@ export default function WycenaDetailPage() {
               </CardContent>
             </Card>
 
-            <Card className="card-modern bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
+            <Card className="card-modern" style={{ background: "linear-gradient(135deg, oklch(0.52 0.19 220 / 0.06), oklch(0.62 0.17 195 / 0.04))", borderColor: "oklch(0.52 0.19 220 / 0.2)" }}>
               <CardHeader><CardTitle className="text-sm">Podsumowanie</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between text-sm">
@@ -365,13 +498,13 @@ export default function WycenaDetailPage() {
                   <span className="font-semibold">{formatCurrency(q.totalVat)}</span>
                 </div>
                 {q.globalDiscountPercent > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
+                  <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
                     <span>Rabat globalny ({q.globalDiscountPercent}%):</span>
                     <span>-{formatCurrency(round(q.items.reduce((s, i) => s + i.bruttoTotal, 0) * q.globalDiscountPercent / 100))}</span>
                   </div>
                 )}
                 <Separator />
-                <div className="flex justify-between text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <div className="flex justify-between text-xl font-black text-pipe">
                   <span>DO ZAPŁATY:</span>
                   <span>{formatCurrency(q.totalBrutto)}</span>
                 </div>
@@ -379,6 +512,37 @@ export default function WycenaDetailPage() {
             </Card>
           </div>
         </StaggerItem>
+
+        {/* Historia wersji (punkt 16) */}
+        {q.versions && q.versions.length > 0 && (
+          <StaggerItem>
+            <Card className="card-modern">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <History className="h-4 w-4 text-primary" />Historia wersji ({q.versions.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[...q.versions].reverse().map((v) => (
+                    <div key={v.id} className="flex items-start justify-between rounded-lg border border-border/50 p-3 text-sm">
+                      <div>
+                        <div className="font-semibold">Wersja {v.versionNumber}</div>
+                        {v.changeDescription && <div className="text-muted-foreground text-xs mt-0.5">{v.changeDescription}</div>}
+                        {v.createdBy && <div className="text-muted-foreground text-xs">{v.createdBy}</div>}
+                      </div>
+                      <div className="text-right shrink-0 ml-4">
+                        <div className="font-bold text-primary">{formatCurrency(v.totalBrutto)}</div>
+                        <div className="text-xs text-muted-foreground">{format(new Date(v.createdAt), "dd.MM.yyyy HH:mm", { locale: pl })}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </StaggerItem>
+        )}
+
       </StaggerContainer>
     </PageTransition>
   );

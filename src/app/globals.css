@@ -48,73 +48,97 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ─── LIGHT: ciepły beton / stal ─── */
 :root {
-  --background: oklch(0.985 0.005 240);
-  --foreground: oklch(0.18 0.02 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 260);
-  --primary: oklch(0.55 0.22 245);
+  --background: oklch(0.97 0.006 60);
+  --foreground: oklch(0.18 0.015 50);
+  --card: oklch(0.995 0.003 60);
+  --card-foreground: oklch(0.18 0.015 50);
+  --popover: oklch(0.995 0.003 60);
+  --popover-foreground: oklch(0.18 0.015 50);
+  --primary: oklch(0.52 0.19 220);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.01 240);
-  --secondary-foreground: oklch(0.3 0.04 260);
-  --muted: oklch(0.96 0.01 240);
-  --muted-foreground: oklch(0.5 0.02 260);
-  --accent: oklch(0.94 0.03 240);
-  --accent-foreground: oklch(0.55 0.22 245);
+  --secondary: oklch(0.94 0.01 55);
+  --secondary-foreground: oklch(0.28 0.03 50);
+  --muted: oklch(0.93 0.01 55);
+  --muted-foreground: oklch(0.52 0.02 55);
+  --accent: oklch(0.91 0.025 55);
+  --accent-foreground: oklch(0.52 0.19 220);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.01 240);
-  --input: oklch(0.92 0.01 240);
-  --ring: oklch(0.55 0.22 245);
-  --chart-1: oklch(0.55 0.22 245);
-  --chart-2: oklch(0.45 0.18 220);
-  --chart-3: oklch(0.65 0.15 200);
-  --chart-4: oklch(0.4 0.12 180);
-  --chart-5: oklch(0.35 0.1 160);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.15 0.04 260);
-  --sidebar-foreground: oklch(0.98 0 0);
-  --sidebar-primary: oklch(0.55 0.22 245);
+  --border: oklch(0.88 0.015 55);
+  --input: oklch(0.88 0.015 55);
+  --ring: oklch(0.52 0.19 220);
+  --chart-1: oklch(0.52 0.19 220);
+  --chart-2: oklch(0.62 0.17 195);
+  --chart-3: oklch(0.58 0.14 170);
+  --chart-4: oklch(0.65 0.16 240);
+  --chart-5: oklch(0.55 0.18 260);
+  --radius: 0.625rem;
+
+  /* Sidebar: ciemna stal / antracyt */
+  --sidebar: oklch(0.17 0.025 230);
+  --sidebar-foreground: oklch(0.96 0 0);
+  --sidebar-primary: oklch(0.52 0.19 220);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.25 0.05 260);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.3 0.05 260);
-  --sidebar-ring: oklch(0.55 0.22 245);
+  --sidebar-accent: oklch(0.24 0.03 225);
+  --sidebar-accent-foreground: oklch(0.96 0 0);
+  --sidebar-border: oklch(0.28 0.03 225);
+  --sidebar-ring: oklch(0.52 0.19 220);
+
+  /* Kolory tematyczne */
+  --pipe-blue: oklch(0.52 0.19 220);
+  --pipe-cyan: oklch(0.62 0.17 195);
+  --steel-dark: oklch(0.22 0.025 230);
+  --steel-mid: oklch(0.38 0.03 225);
+  --steel-light: oklch(0.72 0.02 225);
+  --rust-orange: oklch(0.62 0.18 45);
+  --warning-yellow: oklch(0.82 0.18 85);
+  --hazard-black: oklch(0.15 0.01 0);
 }
 
+/* ─── DARK: głęboka stal / noc na budowie ─── */
 .dark {
-  --background: oklch(0.12 0.02 260);
-  --foreground: oklch(0.98 0 0);
-  --card: oklch(0.16 0.03 260);
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.16 0.03 260);
-  --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.65 0.22 245);
-  --primary-foreground: oklch(0.1 0 0);
-  --secondary: oklch(0.2 0.04 260);
-  --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.2 0.04 260);
-  --muted-foreground: oklch(0.65 0.02 260);
-  --accent: oklch(0.22 0.05 260);
-  --accent-foreground: oklch(0.65 0.22 245);
+  --background: oklch(0.11 0.018 230);
+  --foreground: oklch(0.96 0.005 220);
+  --card: oklch(0.15 0.022 228);
+  --card-foreground: oklch(0.96 0.005 220);
+  --popover: oklch(0.15 0.022 228);
+  --popover-foreground: oklch(0.96 0.005 220);
+  --primary: oklch(0.62 0.19 215);
+  --primary-foreground: oklch(0.08 0 0);
+  --secondary: oklch(0.19 0.025 228);
+  --secondary-foreground: oklch(0.96 0.005 220);
+  --muted: oklch(0.19 0.025 228);
+  --muted-foreground: oklch(0.62 0.02 225);
+  --accent: oklch(0.21 0.03 228);
+  --accent-foreground: oklch(0.62 0.19 215);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.65 0.22 245);
-  --chart-1: oklch(0.65 0.22 245);
-  --chart-2: oklch(0.55 0.18 220);
-  --chart-3: oklch(0.75 0.15 200);
-  --chart-4: oklch(0.5 0.12 180);
-  --chart-5: oklch(0.45 0.1 160);
-  --sidebar: oklch(0.08 0.02 260);
-  --sidebar-foreground: oklch(0.98 0 0);
-  --sidebar-primary: oklch(0.65 0.22 245);
-  --sidebar-primary-foreground: oklch(0.08 0 0);
-  --sidebar-accent: oklch(0.18 0.04 260);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.65 0.22 245);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.62 0.19 215);
+  --chart-1: oklch(0.62 0.19 215);
+  --chart-2: oklch(0.72 0.17 195);
+  --chart-3: oklch(0.68 0.14 170);
+  --chart-4: oklch(0.75 0.16 240);
+  --chart-5: oklch(0.65 0.18 260);
+
+  --sidebar: oklch(0.08 0.018 230);
+  --sidebar-foreground: oklch(0.96 0 0);
+  --sidebar-primary: oklch(0.62 0.19 215);
+  --sidebar-primary-foreground: oklch(0.06 0 0);
+  --sidebar-accent: oklch(0.16 0.025 228);
+  --sidebar-accent-foreground: oklch(0.96 0 0);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.62 0.19 215);
+
+  --pipe-blue: oklch(0.62 0.19 215);
+  --pipe-cyan: oklch(0.72 0.17 195);
+  --steel-dark: oklch(0.08 0.018 230);
+  --steel-mid: oklch(0.28 0.025 228);
+  --steel-light: oklch(0.55 0.02 225);
+  --rust-orange: oklch(0.72 0.18 45);
+  --warning-yellow: oklch(0.88 0.18 85);
+  --hazard-black: oklch(0.08 0.01 0);
 }
 
 @layer base {
@@ -132,40 +156,36 @@
   }
 
   ::selection {
-    @apply bg-blue-500/30 text-blue-900 dark:text-blue-100;
+    background: oklch(0.52 0.19 220 / 0.3);
+    color: oklch(0.18 0.015 50);
+  }
+  .dark ::selection {
+    background: oklch(0.62 0.19 215 / 0.35);
+    color: oklch(0.96 0.005 220);
   }
 
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
+  /* Scrollbar — styl rury */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/20 rounded-full transition-colors;
+    background: oklch(0.52 0.19 220 / 0.35);
+    border-radius: 99px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/40;
+    background: oklch(0.52 0.19 220 / 0.6);
   }
 
-  /* Focus visible improvements */
   :focus-visible {
-    @apply outline-none ring-2 ring-blue-500/50 ring-offset-2 ring-offset-background;
+    @apply outline-none ring-2 ring-primary/60 ring-offset-2 ring-offset-background;
   }
 
-  /* Performance: content visibility for off-screen content */
   .content-auto {
     content-visibility: auto;
     contain-intrinsic-size: 0 500px;
   }
 
-  /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
+    *, *::before, *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
@@ -175,315 +195,394 @@
 }
 
 @layer components {
+
+  /* ── Przyciski ── */
   .btn-primary {
-    @apply relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 sm:px-5 py-2 sm:py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5 active:translate-y-0 active:shadow-md;
+    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden
+           rounded-lg bg-gradient-to-br from-[oklch(0.58_0.22_215)] to-[oklch(0.44_0.20_230)]
+           px-4 sm:px-5 py-2 sm:py-2.5 text-sm font-bold text-white
+           shadow-lg shadow-[oklch(0.52_0.19_220)/0.35]
+           transition-all duration-200
+           hover:shadow-xl hover:shadow-[oklch(0.52_0.19_220)/0.45] hover:-translate-y-0.5
+           active:translate-y-0 active:shadow-md;
   }
+  .btn-primary::after {
+    content: "";
+    @apply absolute inset-0 bg-white/0 transition-colors duration-200;
+  }
+  .btn-primary:hover::after { background: rgba(255,255,255,0.06); }
 
   .btn-secondary {
-    @apply relative inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 sm:px-5 py-2 sm:py-2.5 text-sm font-semibold shadow-sm transition-all duration-300 hover:bg-accent hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm;
+    @apply relative inline-flex items-center justify-center gap-2 rounded-lg
+           border border-border bg-card px-4 sm:px-5 py-2 sm:py-2.5
+           text-sm font-semibold shadow-sm
+           transition-all duration-200
+           hover:bg-accent hover:border-primary/30 hover:-translate-y-0.5 hover:shadow-md
+           active:translate-y-0 active:shadow-sm;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-accent-foreground;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2
+           text-sm font-medium text-muted-foreground
+           transition-all duration-200
+           hover:bg-accent hover:text-accent-foreground;
   }
 
+  /* ── Karty ── */
   .card-modern {
-    @apply rounded-2xl border border-border bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+    @apply rounded-xl border border-border bg-card/90 shadow-sm backdrop-blur-sm
+           transition-all duration-300
+           hover:shadow-md hover:border-primary/20 hover:-translate-y-0.5;
   }
 
-  .card-glow {
-    @apply relative;
+  /* Karta z efektem "spawu" — świecąca krawędź przy hover */
+  .card-weld {
+    @apply relative rounded-xl border border-border bg-card/90 shadow-sm backdrop-blur-sm
+           transition-all duration-300 overflow-hidden;
   }
-
-  .card-glow::before {
+  .card-weld::before {
     content: "";
-    @apply absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-violet-500/20 opacity-0 transition-opacity duration-300 blur-xl -z-10;
+    @apply absolute inset-0 rounded-xl opacity-0 transition-opacity duration-500;
+    background: linear-gradient(135deg,
+      oklch(0.52 0.19 220 / 0.12) 0%,
+      oklch(0.62 0.17 195 / 0.08) 50%,
+      transparent 100%);
+  }
+  .card-weld:hover::before { opacity: 1; }
+  .card-weld:hover {
+    @apply shadow-lg border-primary/30 -translate-y-0.5;
   }
 
-  .card-glow:hover::before {
-    @apply opacity-100;
-  }
+  /* ── Wzory tła ── */
 
-  .glass {
-    @apply bg-white/70 backdrop-blur-xl border border-white/20;
-  }
-
-  .dark .glass {
-    @apply bg-black/40 backdrop-blur-xl border border-white/10;
-  }
-
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
-
-  .animate-pulse-slow {
-    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  .animate-glow {
-    animation: glow 2s ease-in-out infinite alternate;
-  }
-
-  /* Hydraulic background animations */
-  .hydraulic-gradient-bg {
-    background:
-      radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 20%, rgba(99, 102, 241, 0.06) 0%, transparent 50%),
-      radial-gradient(ellipse at 40% 80%, rgba(6, 182, 212, 0.05) 0%, transparent 50%),
-      radial-gradient(ellipse at 60% 40%, rgba(139, 92, 246, 0.04) 0%, transparent 40%);
-    animation: hydraulic-gradient-shift 20s ease-in-out infinite;
-  }
-
-  .dark .hydraulic-gradient-bg {
-    background:
-      radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.12) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse at 40% 80%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
-      radial-gradient(ellipse at 60% 40%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
-  }
-
-  @keyframes hydraulic-bubble {
-    0% {
-      transform: translateY(100vh) scale(0);
-      opacity: 0;
-    }
-    10% {
-      opacity: 1;
-    }
-    50% {
-      transform: translateY(50vh) scale(1);
-    }
-    90% {
-      opacity: 1;
-    }
-    100% {
-      transform: translateY(-20vh) scale(0.5);
-      opacity: 0;
-    }
-  }
-
-  @keyframes hydraulic-flow {
-    0% {
-      transform: translateX(-100%);
-    }
-    100% {
-      transform: translateX(200%);
-    }
-  }
-
-  @keyframes hydraulic-glow {
-    0%, 100% {
-      opacity: 0.3;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 0.6;
-      transform: scale(1.1);
-    }
-  }
-
-  @keyframes hydraulic-gradient-shift {
-    0%, 100% {
-      background-position: 0% 0%;
-    }
-    25% {
-      background-position: 100% 50%;
-    }
-    50% {
-      background-position: 50% 100%;
-    }
-    75% {
-      background-position: 100% 0%;
-    }
-  }
-
-  /* Modern UI effects */
-  .shimmer {
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.08) 50%,
-      transparent 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 2s ease-in-out infinite;
-  }
-
-  .dark .shimmer {
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.04) 50%,
-      transparent 100%
-    );
-    background-size: 200% 100%;
-  }
-
-  @keyframes shimmer {
-    0% {
-      background-position: -200% 0;
-    }
-    100% {
-      background-position: 200% 0;
-    }
-  }
-
-  .text-gradient {
-    @apply bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent;
-    background-size: 200% auto;
-    animation: text-gradient-shift 4s ease-in-out infinite;
-  }
-
-  @keyframes text-gradient-shift {
-    0%, 100% {
-      background-position: 0% center;
-    }
-    50% {
-      background-position: 100% center;
-    }
-  }
-
-  .border-gradient {
-    position: relative;
-    border: none;
-  }
-
-  .border-gradient::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(139, 92, 246, 0.5));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-  }
-
-  .hover-lift {
-    @apply transition-transform duration-300;
-  }
-
-  .hover-lift:hover {
-    transform: translateY(-4px);
-  }
-
-  .hover-scale {
-    @apply transition-transform duration-200;
-  }
-
-  .hover-scale:hover {
-    transform: scale(1.02);
-  }
-
-  .ripple {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .ripple::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), rgba(59, 130, 246, 0.3) 0%, transparent 60%);
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-
-  .ripple:active::after {
-    opacity: 1;
-    transition: opacity 0s;
-  }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-  }
-
-  @keyframes glow {
-    from { box-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
-    to { box-shadow: 0 0 20px rgba(59, 130, 246, 0.6); }
-  }
-
-  .construction-pattern {
+  /* Siatka techniczna / blueprint */
+  .blueprint-grid {
     background-image:
-      repeating-linear-gradient(
-        -45deg,
-        transparent,
-        transparent 10px,
-        rgba(59, 130, 246, 0.03) 10px,
-        rgba(59, 130, 246, 0.03) 20px
-      );
+      linear-gradient(oklch(0.52 0.19 220 / 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(0.52 0.19 220 / 0.07) 1px, transparent 1px),
+      linear-gradient(oklch(0.52 0.19 220 / 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(0.52 0.19 220 / 0.03) 1px, transparent 1px);
+    background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
   }
-
-  .dark .construction-pattern {
+  .dark .blueprint-grid {
     background-image:
-      repeating-linear-gradient(
-        -45deg,
-        transparent,
-        transparent 10px,
-        rgba(59, 130, 246, 0.06) 10px,
-        rgba(59, 130, 246, 0.06) 20px
-      );
+      linear-gradient(oklch(0.62 0.19 215 / 0.12) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(0.62 0.19 215 / 0.12) 1px, transparent 1px),
+      linear-gradient(oklch(0.62 0.19 215 / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(0.62 0.19 215 / 0.05) 1px, transparent 1px);
+    background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
   }
 
-  .grid-pattern {
-    background-image:
-      linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
-    background-size: 20px 20px;
-  }
-
-  .dark .grid-pattern {
-    background-image:
-      linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
-  }
-
-  .blueprint-pattern {
-    background-image:
-      linear-gradient(rgba(59, 130, 246, 0.08) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(59, 130, 246, 0.08) 1px, transparent 1px),
-      linear-gradient(rgba(59, 130, 246, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
-    background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
-  }
-
-  .dark .blueprint-pattern {
-    background-image:
-      linear-gradient(rgba(59, 130, 246, 0.15) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(59, 130, 246, 0.15) 1px, transparent 1px),
-      linear-gradient(rgba(59, 130, 246, 0.08) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(59, 130, 246, 0.08) 1px, transparent 1px);
-  }
-
+  /* Wzór ostrzegawczy (żółto-czarne pasy) */
   .hazard-stripe {
     background: repeating-linear-gradient(
       -45deg,
-      #f59e0b,
-      #f59e0b 10px,
-      #1f2937 10px,
-      #1f2937 20px
+      oklch(0.82 0.18 85),
+      oklch(0.82 0.18 85) 8px,
+      oklch(0.15 0.01 0) 8px,
+      oklch(0.15 0.01 0) 16px
     );
   }
 
+  /* Wzór kratki spawalniczej */
+  .weld-pattern {
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 18px,
+        oklch(0.52 0.19 220 / 0.04) 18px,
+        oklch(0.52 0.19 220 / 0.04) 19px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 18px,
+        oklch(0.52 0.19 220 / 0.04) 18px,
+        oklch(0.52 0.19 220 / 0.04) 19px
+      );
+  }
+
+  /* Wzór rur (ukośne linie) */
+  .pipe-pattern {
+    background-image: repeating-linear-gradient(
+      -60deg,
+      transparent,
+      transparent 12px,
+      oklch(0.52 0.19 220 / 0.035) 12px,
+      oklch(0.52 0.19 220 / 0.035) 13px
+    );
+  }
+
+  /* ── Gradient tła głównego ── */
+  .app-bg-gradient {
+    background:
+      radial-gradient(ellipse 80% 60% at 15% 40%, oklch(0.52 0.19 220 / 0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 85% 20%, oklch(0.62 0.17 195 / 0.05) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 70% at 50% 90%, oklch(0.55 0.18 240 / 0.04) 0%, transparent 50%);
+    animation: bg-breathe 18s ease-in-out infinite;
+  }
+  .dark .app-bg-gradient {
+    background:
+      radial-gradient(ellipse 80% 60% at 15% 40%, oklch(0.62 0.19 215 / 0.10) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 85% 20%, oklch(0.72 0.17 195 / 0.07) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 70% at 50% 90%, oklch(0.65 0.18 240 / 0.06) 0%, transparent 50%);
+  }
+
+  /* ── Animacje ── */
+
+  @keyframes bg-breathe {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  @keyframes pipe-flow {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(300%); }
+  }
+
+  @keyframes bubble-rise {
+    0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+    8%   { opacity: 1; }
+    92%  { opacity: 0.8; }
+    100% { transform: translateY(-15vh) scale(0.6); opacity: 0; }
+  }
+
+  @keyframes drip {
+    0%   { transform: translateY(-8px) scaleY(0.5); opacity: 0; }
+    20%  { opacity: 1; }
+    80%  { transform: translateY(0) scaleY(1); opacity: 1; }
+    100% { transform: translateY(6px) scaleY(1.2); opacity: 0; }
+  }
+
+  @keyframes gear-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  @keyframes gear-spin-rev {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(-360deg); }
+  }
+
+  @keyframes pressure-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.4; }
+    50%       { transform: scale(1.15); opacity: 0.7; }
+  }
+
+  @keyframes weld-spark {
+    0%   { opacity: 0; transform: scale(0) rotate(0deg); }
+    30%  { opacity: 1; transform: scale(1.2) rotate(120deg); }
+    60%  { opacity: 0.6; transform: scale(0.8) rotate(240deg); }
+    100% { opacity: 0; transform: scale(0) rotate(360deg); }
+  }
+
+  @keyframes pipe-pressure {
+    0%, 100% { box-shadow: 0 0 0 0 oklch(0.52 0.19 220 / 0); }
+    50%       { box-shadow: 0 0 0 6px oklch(0.52 0.19 220 / 0.15); }
+  }
+
+  @keyframes slide-in-pipe {
+    0%   { transform: translateX(-100%) scaleX(0); opacity: 0; }
+    60%  { transform: translateX(0) scaleX(1.02); opacity: 1; }
+    100% { transform: translateX(0) scaleX(1); opacity: 1; }
+  }
+
+  @keyframes float-tool {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    33%       { transform: translateY(-12px) rotate(5deg); }
+    66%       { transform: translateY(-6px) rotate(-3deg); }
+  }
+
+  @keyframes shimmer-steel {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  @keyframes text-weld {
+    0%, 100% { background-position: 0% center; }
+    50%       { background-position: 100% center; }
+  }
+
+  @keyframes bolt-tighten {
+    0%   { transform: rotate(0deg) scale(1); }
+    25%  { transform: rotate(90deg) scale(1.1); }
+    50%  { transform: rotate(180deg) scale(1); }
+    75%  { transform: rotate(270deg) scale(1.1); }
+    100% { transform: rotate(360deg) scale(1); }
+  }
+
+  /* ── Utility klasy animacji ── */
+
+  .animate-pipe-flow {
+    animation: pipe-flow 4s linear infinite;
+  }
+
+  .animate-bubble {
+    animation: bubble-rise var(--duration, 10s) ease-in-out var(--delay, 0s) infinite;
+  }
+
+  .animate-gear {
+    animation: gear-spin var(--duration, 8s) linear infinite;
+  }
+
+  .animate-gear-rev {
+    animation: gear-spin-rev var(--duration, 6s) linear infinite;
+  }
+
+  .animate-pressure {
+    animation: pressure-pulse 3s ease-in-out infinite;
+  }
+
+  .animate-float-tool {
+    animation: float-tool 5s ease-in-out infinite;
+  }
+
+  .animate-weld-spark {
+    animation: weld-spark 1.5s ease-out infinite;
+  }
+
+  .animate-pipe-pressure {
+    animation: pipe-pressure 2s ease-in-out infinite;
+  }
+
+  /* ── Efekty tekstu ── */
+
+  .text-pipe {
+    background: linear-gradient(
+      135deg,
+      oklch(0.52 0.19 220) 0%,
+      oklch(0.62 0.17 195) 40%,
+      oklch(0.55 0.20 240) 70%,
+      oklch(0.52 0.19 220) 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: text-weld 4s ease-in-out infinite;
+  }
+
+  .text-steel {
+    background: linear-gradient(
+      135deg,
+      oklch(0.72 0.02 225) 0%,
+      oklch(0.92 0.01 220) 40%,
+      oklch(0.62 0.03 225) 70%,
+      oklch(0.82 0.02 220) 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: text-weld 6s ease-in-out infinite;
+  }
+
+  /* ── Shimmer na kartach ── */
+  .shimmer-steel {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      oklch(0.52 0.19 220 / 0.08) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer-steel 2.5s ease-in-out infinite;
+  }
+  .dark .shimmer-steel {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      oklch(0.62 0.19 215 / 0.12) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  /* ── Pipe indicator (pasek postępu w stylu rury) ── */
+  .pipe-indicator {
+    @apply relative h-2 rounded-full overflow-hidden;
+    background: oklch(0.52 0.19 220 / 0.15);
+  }
+  .pipe-indicator::after {
+    content: "";
+    @apply absolute inset-y-0 left-0 rounded-full;
+    background: linear-gradient(90deg,
+      oklch(0.52 0.19 220),
+      oklch(0.62 0.17 195),
+      oklch(0.52 0.19 220)
+    );
+    background-size: 200% 100%;
+    animation: shimmer-steel 2s linear infinite;
+    width: var(--progress, 50%);
+  }
+
+  /* ── Hazard badge ── */
+  .badge-hazard {
+    @apply inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-bold;
+    background: repeating-linear-gradient(
+      -45deg,
+      oklch(0.82 0.18 85),
+      oklch(0.82 0.18 85) 4px,
+      oklch(0.15 0.01 0) 4px,
+      oklch(0.15 0.01 0) 8px
+    );
+    color: oklch(0.15 0.01 0);
+  }
+
+  /* ── Sidebar pipe decoration ── */
+  .sidebar-pipe-line {
+    @apply absolute left-0 top-0 bottom-0 w-0.5;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      oklch(0.52 0.19 220 / 0.6) 20%,
+      oklch(0.62 0.17 195 / 0.8) 50%,
+      oklch(0.52 0.19 220 / 0.6) 80%,
+      transparent 100%
+    );
+    animation: pressure-pulse 4s ease-in-out infinite;
+  }
+
+  /* ── Transition overlay (efekt "wody" przy zmianie strony) ── */
+  .page-wipe-overlay {
+    @apply fixed inset-0 pointer-events-none z-50;
+    background: linear-gradient(
+      135deg,
+      oklch(0.52 0.19 220 / 0.95) 0%,
+      oklch(0.62 0.17 195 / 0.95) 50%,
+      oklch(0.44 0.20 230 / 0.95) 100%
+    );
+  }
+
+  /* ── Bolt/rivet dekoracje ── */
+  .rivet {
+    @apply inline-block w-2 h-2 rounded-full;
+    background: radial-gradient(circle at 35% 35%,
+      oklch(0.82 0.02 225),
+      oklch(0.42 0.03 225)
+    );
+    box-shadow: inset 0 1px 2px oklch(0 0 0 / 0.4), 0 1px 0 oklch(1 0 0 / 0.2);
+  }
+
+  /* ── Gauge / manometr dekoracja ── */
+  .gauge-ring {
+    @apply relative rounded-full border-4;
+    border-color: oklch(0.52 0.19 220 / 0.4);
+    box-shadow:
+      0 0 0 2px oklch(0.52 0.19 220 / 0.15),
+      inset 0 0 12px oklch(0.52 0.19 220 / 0.1);
+    animation: pipe-pressure 3s ease-in-out infinite;
+  }
+
   @media (max-width: 640px) {
-    .btn-primary {
-      @apply text-sm py-2.5 px-4;
-    }
+    .btn-primary { @apply text-sm py-2.5 px-4; }
+    .btn-secondary { @apply text-sm py-2 px-3; }
   }
 }
 
 @media print {
-  .print\:hidden {
-    display: none !important;
-  }
-  aside {
-    display: none !important;
-  }
-  main {
-    margin: 0 !important;
-    padding: 0 !important;
-  }
+  .print\:hidden { display: none !important; }
+  aside { display: none !important; }
+  main { margin: 0 !important; padding: 0 !important; }
 }

@@ -26,17 +26,22 @@ export const useClientStore = create<ClientState>((set, get) => ({
   },
   add: async (client): Promise<number> => {
     const now = new Date();
-    const id = await db.clients.add({ ...client, createdAt: now, updatedAt: now } as Client);
-    await get().load();
+    const newClient = { ...client, createdAt: now, updatedAt: now } as Client;
+    const id = await db.clients.add(newClient);
+    const saved = { ...newClient, id };
+    set((s) => ({ clients: [...s.clients, saved].sort((a, b) => a.name.localeCompare(b.name)) }));
     return id!;
   },
   update: async (id, client) => {
-    await db.clients.update(id, { ...client, updatedAt: new Date() });
-    await get().load();
+    const updatedAt = new Date();
+    await db.clients.update(id, { ...client, updatedAt });
+    set((s) => ({
+      clients: s.clients.map((c) => (c.id === id ? { ...c, ...client, updatedAt } : c)),
+    }));
   },
   remove: async (id) => {
     await db.clients.delete(id);
-    await get().load();
+    set((s) => ({ clients: s.clients.filter((c) => c.id !== id) }));
   },
   getById: (id) => get().clients.find((c) => c.id === id),
 }));

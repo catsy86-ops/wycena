@@ -36,10 +36,10 @@ db.version(1).stores({
 
 db.version(2).stores({
   services: "++id, name, category, createdAt",
-  clients: "++id, name, phone, createdAt",
-  quotes: "++id, number, status, clientId, createdAt",
+  clients: "++id, name, phone, email, nip, createdAt",
+  quotes: "++id, number, status, clientId, clientName, createdAt",
   settings: "++id",
-  materials: "++id, name, category, supplier, createdAt",
+  materials: "++id, name, category, supplier, sku, createdAt",
   invoices: "++id, number, status, quoteId, issueDate, dueDate",
   payments: "++id, invoiceId, date, method",
   quoteTemplates: "++id, name, category, createdAt",

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { db } from "@/lib/db";
 import type { Invoice, InvoiceStatus, Payment } from "@/types";
-import { generateInvoiceNumber } from "@/lib/calculations";
+import { generateSequentialInvoiceNumber } from "@/lib/calculations";
 
 interface InvoiceState {
   invoices: Invoice[];
@@ -42,7 +42,8 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
   },
   add: async (invoiceData): Promise<number> => {
     const now = new Date();
-    const number = generateInvoiceNumber();
+    const existingNumbers = get().invoices.map((i) => i.number);
+    const number = generateSequentialInvoiceNumber(existingNumbers);
     const invoice: Invoice = {
       ...invoiceData,
       number,

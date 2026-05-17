@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuoteStore } from "@/store/quote-store";
 import { STATUS_LABELS, UNIT_LABELS, VAT_RATE_LABELS, type QuoteStatus } from "@/types";
 import { formatCurrency } from "@/lib/calculations";
@@ -35,6 +36,7 @@ type SortKey = "number" | "clientName" | "createdAt" | "status" | "totalNetto" |
 type SortDir = "asc" | "desc";
 
 export default function WycenyPage() {
+  const router = useRouter();
   const quotes = useQuoteStore((s) => s.quotes);
   const loading = useQuoteStore((s) => s.loading);
   const search = useQuoteStore((s) => s.search);
@@ -50,6 +52,8 @@ export default function WycenyPage() {
   const [dateTo, setDateTo] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 25;
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -105,6 +109,12 @@ export default function WycenyPage() {
 
     return result;
   }, [quotes, search, statusFilter, dateFrom, dateTo, sortKey, sortDir]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginatedQuotes = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
 
   function SortIcon({ column }: { column: SortKey }) {
     if (sortKey !== column) return <span className="ml-1 text-muted-foreground/30"><ChevronUp className="h-3 w-3 inline" /></span>;
@@ -255,15 +265,15 @@ export default function WycenyPage() {
                     </TableHeader>
                     <TableBody>
                       <AnimatePresence>
-                        {filtered.map((q, index) => (
+                        {paginatedQuotes.map((q, index) => (
                           <motion.tr
                             key={q.id}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 20 }}
-                            transition={{ delay: index * 0.05 }}
+                            transition={{ delay: Math.min(index * 0.03, 0.3) }}
                             className="group border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer"
-                            onClick={() => window.location.href = `/wyceny/${q.id}`}
+                            onClick={() => router.push(`/wyceny/${q.id}`)}
                           >
                             <TableCell className="font-semibold">{q.number}</TableCell>
                             <TableCell>{q.clientName || <span className="text-muted-foreground">Brak klienta</span>}</TableCell>
@@ -350,6 +360,21 @@ export default function WycenyPage() {
                       </AnimatePresence>
                     </TableBody>
                   </Table>
+                </div>
+              )}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Pokazano {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} z {filtered.length}
+                  </p>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                      Poprzednia
+                    </Button>
+                    <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                      Następna
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -474,7 +499,7 @@ export default function WycenyPage() {
                 <DialogClose>
                   <Button variant="outline">Zamknij</Button>
                 </DialogClose>
-                <Button onClick={() => { window.location.href = `/wyceny/${previewQuote.id}`; }}>
+                <Button onClick={() => { router.push(`/wyceny/${previewQuote.id}`); }}>
                   Otwórz pełny widok
                 </Button>
               </div>

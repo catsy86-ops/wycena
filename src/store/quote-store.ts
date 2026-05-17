@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { db } from "@/lib/db";
 import type { Quote, QuoteItem, QuoteStatus, QuoteVersion } from "@/types";
-import { calcQuoteItem, generateQuoteNumber } from "@/lib/calculations";
+import { calcQuoteItem, generateSequentialQuoteNumber } from "@/lib/calculations";
 
 interface QuoteState {
   quotes: Quote[];
@@ -34,7 +34,8 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
   },
   add: async (quoteData): Promise<number> => {
     const now = new Date();
-    const number = generateQuoteNumber();
+    const existingNumbers = get().quotes.map((q) => q.number);
+    const number = generateSequentialQuoteNumber(existingNumbers);
     const items = quoteData.items.map(calcQuoteItem);
     const totalNetto = items.reduce((s, i) => s + i.nettotal, 0);
     const totalVat = items.reduce((s, i) => s + i.vatAmount, 0);
@@ -57,7 +58,8 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       updatedAt: now,
     };
     const id = await db.quotes.add(quote);
-    await get().load();
+    const saved = { ...quote, id: id! };
+    set((s) => ({ quotes: [saved, ...s.quotes] }));
     return id!;
   },
   update: async (id, quoteData) => {
@@ -74,21 +76,27 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       }
     }
     await db.quotes.update(id, updated);
-    await get().load();
+    set((s) => ({
+      quotes: s.quotes.map((q) => (q.id === id ? updated : q)),
+    }));
   },
   remove: async (id) => {
     await db.quotes.delete(id);
-    await get().load();
+    set((s) => ({ quotes: s.quotes.filter((q) => q.id !== id) }));
   },
   changeStatus: async (id, status) => {
-    await db.quotes.update(id, { status, updatedAt: new Date() });
-    await get().load();
+    const updatedAt = new Date();
+    await db.quotes.update(id, { status, updatedAt });
+    set((s) => ({
+      quotes: s.quotes.map((q) => (q.id === id ? { ...q, status, updatedAt } : q)),
+    }));
   },
   duplicate: async (id) => {
     const existing = await db.quotes.get(id);
     if (!existing) return 0;
     const now = new Date();
-    const number = generateQuoteNumber();
+    const existingNumbers = get().quotes.map((q) => q.number);
+    const number = generateSequentialQuoteNumber(existingNumbers);
     const newQuote: Quote = {
       ...existing,
       id: undefined as unknown as number,
@@ -99,7 +107,8 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       updatedAt: now,
     };
     const newId = await db.quotes.add(newQuote);
-    await get().load();
+    const saved = { ...newQuote, id: newId! };
+    set((s) => ({ quotes: [saved, ...s.quotes] }));
     return newId!;
   },
   addVersion: async (id, versionData) => {
@@ -111,11 +120,12 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
       versionNumber,
       createdAt: new Date(),
     };
-    await db.quotes.update(id, {
-      versions: [...(quote.versions || []), version],
-      updatedAt: new Date(),
-    });
-    await get().load();
+    const updatedVersions = [...(quote.versions || []), version];
+    const updatedAt = new Date();
+    await db.quotes.update(id, { versions: updatedVersions, updatedAt });
+    set((s) => ({
+      quotes: s.quotes.map((q) => (q.id === id ? { ...q, versions: updatedVersions, updatedAt } : q)),
+    }));
   },
   getById: (id) => get().quotes.find((q) => q.id === id),
 }));

@@ -15,171 +15,458 @@ import {
   FileCheck,
   BarChart3,
   ClipboardList,
+  Wrench,
+  Gauge,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Pulpit", icon: LayoutDashboard },
-  { href: "/uslugi", label: "Usługi", icon: Package },
-  { href: "/klienci", label: "Klienci", icon: Users },
-  { href: "/wyceny", label: "Wyceny", icon: FileText },
-  { href: "/materialy", label: "Materiały", icon: Package },
-  { href: "/harmonogram", label: "Harmonogram", icon: Calendar },
-  { href: "/czas", label: "Czas pracy", icon: Clock },
-  { href: "/faktury", label: "Faktury", icon: FileCheck },
-  { href: "/raporty", label: "Raporty", icon: BarChart3 },
-  { href: "/szablony", label: "Szablony", icon: ClipboardList },
-  { href: "/ustawienia", label: "Ustawienia", icon: Settings },
+  { href: "/",             label: "Pulpit",       icon: LayoutDashboard, group: "main" },
+  { href: "/wyceny",       label: "Wyceny",        icon: FileText,        group: "main" },
+  { href: "/klienci",      label: "Klienci",       icon: Users,           group: "main" },
+  { href: "/uslugi",       label: "Usługi",        icon: Wrench,          group: "catalog" },
+  { href: "/materialy",    label: "Materiały",     icon: Package,         group: "catalog" },
+  { href: "/szablony",     label: "Szablony",      icon: ClipboardList,   group: "catalog" },
+  { href: "/harmonogram",  label: "Harmonogram",   icon: Calendar,        group: "ops" },
+  { href: "/czas",         label: "Czas pracy",    icon: Clock,           group: "ops" },
+  { href: "/faktury",      label: "Faktury",       icon: FileCheck,       group: "ops" },
+  { href: "/raporty",      label: "Raporty",       icon: BarChart3,       group: "ops" },
+  { href: "/ustawienia",   label: "Ustawienia",    icon: Settings,        group: "system" },
 ];
 
-function NavContent({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = usePathname();
+const GROUP_LABELS: Record<string, string> = {
+  main:    "Główne",
+  catalog: "Katalog",
+  ops:     "Operacje",
+  system:  "System",
+};
+
+/* ── Nit dekoracyjny ── */
+function Rivet({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn("w-2 h-2 rounded-full shrink-0", className)}
+      style={{
+        background: "radial-gradient(circle at 35% 35%, oklch(0.72 0.02 225 / 0.6), oklch(0.32 0.03 225 / 0.4))",
+        boxShadow: "inset 0 1px 1px oklch(0 0 0 / 0.5), 0 1px 0 oklch(1 0 0 / 0.1)",
+      }}
+    />
+  );
+}
+
+/* ── Logo ── */
+function Logo({ size = "default" }: { size?: "default" | "sm" }) {
+  const isSmall = size === "sm";
 
   return (
-    <nav className="flex flex-col gap-1 p-3">
-      {NAV_ITEMS.map((item, index) => {
-        const Icon = item.icon;
-        const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
-        return (
+    <div className="flex items-center gap-3">
+      {/* Ikona — manometr / rura */}
+      <div className="relative">
+        <motion.div
+          className="absolute inset-0 rounded-xl blur-lg"
+          style={{ background: "oklch(0.52 0.19 220 / 0.4)" }}
+          animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.7, 0.4] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className={cn(
+            "relative flex items-center justify-center rounded-xl",
+            "border border-white/10",
+            isSmall ? "h-8 w-8" : "h-10 w-10"
+          )}
+          style={{
+            background: "linear-gradient(135deg, oklch(0.52 0.19 220), oklch(0.44 0.20 230))",
+            boxShadow: "0 4px 16px oklch(0.52 0.19 220 / 0.4), inset 0 1px 0 oklch(1 0 0 / 0.15)",
+          }}
+          whileHover={{ rotate: 15, scale: 1.08 }}
+          transition={{ type: "spring", stiffness: 400, damping: 12 }}
+        >
+          <Droplets className={cn("text-white", isSmall ? "h-4 w-4" : "h-5 w-5")} />
+        </motion.div>
+      </div>
+
+      {/* Tekst */}
+      <div>
+        <motion.div
+          className={cn(
+            "font-black tracking-widest uppercase",
+            isSmall ? "text-base" : "text-lg"
+          )}
+          style={{
+            background: "linear-gradient(135deg, oklch(0.92 0.01 220), oklch(0.72 0.17 195), oklch(0.92 0.01 220))",
+            backgroundSize: "200% auto",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+            animation: "text-weld 5s ease-in-out infinite",
+          }}
+          whileHover={{ scale: 1.02 }}
+        >
+          WYCENKA
+        </motion.div>
+        <div
+          className="text-[9px] font-semibold tracking-[0.2em] uppercase -mt-0.5"
+          style={{ color: "oklch(0.62 0.17 195 / 0.7)" }}
+        >
+          System wycen
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Pozycja nawigacji ── */
+function NavItem({
+  item,
+  index,
+  isActive,
+  onNavigate,
+}: {
+  item: typeof NAV_ITEMS[0];
+  index: number;
+  isActive: boolean;
+  onNavigate?: () => void;
+}) {
+  const Icon = item.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -24 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.3, ease: "easeOut" }}
+    >
+      <Link
+        href={item.href}
+        onClick={onNavigate}
+        className={cn(
+          "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium",
+          "transition-all duration-200 overflow-hidden",
+          isActive
+            ? "text-white"
+            : "text-slate-400 hover:text-white"
+        )}
+      >
+        {/* Aktywne tło — efekt spawu */}
+        {isActive && (
           <motion.div
-            key={item.href}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.08, duration: 0.3 }}
+            layoutId="active-nav-bg"
+            className="absolute inset-0 rounded-lg"
+            style={{
+              background: "linear-gradient(135deg, oklch(0.52 0.19 220 / 0.9), oklch(0.44 0.20 230 / 0.9))",
+              boxShadow: "0 2px 12px oklch(0.52 0.19 220 / 0.4), inset 0 1px 0 oklch(1 0 0 / 0.1)",
+            }}
+            transition={{ type: "spring", stiffness: 350, damping: 30 }}
+          />
+        )}
+
+        {/* Hover tło */}
+        {!isActive && (
+          <div
+            className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            style={{ background: "oklch(1 0 0 / 0.06)" }}
+          />
+        )}
+
+        {/* Lewa krawędź — rura */}
+        {isActive && (
+          <motion.div
+            layoutId="active-nav-pipe"
+            className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full"
+            style={{ background: "oklch(0.72 0.17 195)" }}
+            transition={{ type: "spring", stiffness: 350, damping: 30 }}
+          />
+        )}
+
+        {/* Ikona */}
+        <motion.div
+          className="relative z-10 shrink-0"
+          whileHover={{ rotate: 8, scale: 1.15 }}
+          transition={{ type: "spring", stiffness: 500, damping: 15 }}
+        >
+          <Icon className="h-4 w-4" />
+        </motion.div>
+
+        {/* Label */}
+        <span className="relative z-10 flex-1">{item.label}</span>
+
+        {/* Nit aktywny */}
+        {isActive && (
+          <motion.div
+            layoutId="active-nav-rivet"
+            className="relative z-10"
+            transition={{ type: "spring", stiffness: 350, damping: 30 }}
           >
-            <Link
-              href={item.href}
-              onClick={onNavigate}
-              className={cn(
-                "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-300 overflow-hidden",
-                isActive
-                  ? "text-white shadow-lg shadow-blue-500/25"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              )}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="active-nav"
-                  className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600"
-                  style={{ zIndex: -1 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-              )}
-              <motion.div
-                whileHover={{ rotate: 10, scale: 1.1 }}
-                transition={{ type: "spring", stiffness: 400, damping: 10 }}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-              </motion.div>
-              <span>{item.label}</span>
-              {isActive && (
-                <motion.div
-                  className="absolute right-2 h-1.5 w-1.5 rounded-full bg-white"
-                  layoutId="active-dot"
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-              )}
-            </Link>
+            <Rivet />
           </motion.div>
+        )}
+      </Link>
+    </motion.div>
+  );
+}
+
+/* ── Zawartość nawigacji ── */
+function NavContent({ onNavigate }: { onNavigate?: () => void }) {
+  const pathname = usePathname();
+  const groups = ["main", "catalog", "ops", "system"];
+
+  return (
+    <nav className="flex flex-col gap-0.5 p-3">
+      {groups.map((group) => {
+        const items = NAV_ITEMS.filter((i) => i.group === group);
+        const globalIndex = NAV_ITEMS.findIndex((i) => i.group === group);
+        return (
+          <div key={group} className="mb-2">
+            {/* Separator grupy */}
+            <div className="flex items-center gap-2 px-3 mb-1 mt-1">
+              <div className="h-px flex-1" style={{ background: "oklch(1 0 0 / 0.08)" }} />
+              <span
+                className="text-[9px] font-bold tracking-[0.15em] uppercase"
+                style={{ color: "oklch(0.52 0.19 220 / 0.5)" }}
+              >
+                {GROUP_LABELS[group]}
+              </span>
+              <div className="h-px flex-1" style={{ background: "oklch(1 0 0 / 0.08)" }} />
+            </div>
+            {items.map((item, i) => {
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/" && pathname.startsWith(item.href));
+              return (
+                <NavItem
+                  key={item.href}
+                  item={item}
+                  index={globalIndex + i}
+                  isActive={isActive}
+                  onNavigate={onNavigate}
+                />
+              );
+            })}
+          </div>
         );
       })}
     </nav>
   );
 }
 
-function Logo({ size = "default" }: { size?: "default" | "sm" }) {
-  const sizeClasses = size === "sm" ? "h-8 w-8" : "h-10 w-10";
-  const textSize = size === "sm" ? "text-lg" : "text-xl";
-
-  return (
-    <div className="flex items-center gap-3">
-      <div className="relative">
-        <motion.div
-          className="absolute inset-0 bg-blue-500/40 blur-xl rounded-2xl"
-          animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.6, 0.4] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className={cn("relative flex items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 shadow-xl shadow-blue-500/30", sizeClasses)}
-          whileHover={{ rotate: 10, scale: 1.05 }}
-          transition={{ type: "spring", stiffness: 400, damping: 10 }}
-        >
-          <Droplets className="h-5 w-5 text-white" />
-        </motion.div>
-      </div>
-      <div>
-        <motion.span
-          className={cn("font-black tracking-tight text-white", textSize)}
-          whileHover={{ scale: 1.02 }}
-        >
-          WYCENKA
-        </motion.span>
-        <div className="text-[10px] text-slate-400 -mt-0.5 font-medium tracking-wide uppercase">System wycen</div>
-      </div>
-    </div>
-  );
-}
-
+/* ── Sidebar desktop ── */
 export function Sidebar() {
   return (
-    <aside className="hidden md:flex md:w-64 md:flex-col border-r bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 relative overflow-hidden">
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute inset-0 grid-pattern" />
-      </div>
+    <aside
+      className="hidden md:flex md:w-60 md:flex-col relative overflow-hidden shrink-0"
+      style={{
+        background: "linear-gradient(180deg, oklch(0.13 0.022 228) 0%, oklch(0.10 0.018 230) 100%)",
+        borderRight: "1px solid oklch(1 0 0 / 0.07)",
+      }}
+    >
+      {/* Blueprint grid w tle sidebara */}
+      <div
+        className="absolute inset-0 opacity-30"
+        style={{
+          backgroundImage:
+            "linear-gradient(oklch(0.52 0.19 220 / 0.08) 1px, transparent 1px), linear-gradient(90deg, oklch(0.52 0.19 220 / 0.08) 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
+      />
+
+      {/* Pionowa linia rury po lewej */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-0.5"
+        style={{
+          background: "linear-gradient(to bottom, transparent, oklch(0.52 0.19 220 / 0.5) 20%, oklch(0.62 0.17 195 / 0.7) 50%, oklch(0.52 0.19 220 / 0.5) 80%, transparent)",
+          animation: "pressure-pulse 5s ease-in-out infinite",
+        }}
+      />
+
+      {/* Header z logo */}
       <motion.div
-        className="relative z-10 flex h-16 items-center px-5 border-b border-white/10"
-        initial={{ opacity: 0, y: -20 }}
+        className="relative z-10 flex h-16 items-center px-4 shrink-0"
+        style={{ borderBottom: "1px solid oklch(1 0 0 / 0.07)" }}
+        initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
       >
+        {/* Nity w headerze */}
+        <div className="absolute top-2 left-2"><Rivet /></div>
+        <div className="absolute top-2 right-2"><Rivet /></div>
+        <div className="absolute bottom-2 left-2"><Rivet /></div>
+        <div className="absolute bottom-2 right-2"><Rivet /></div>
         <Logo />
       </motion.div>
+
+      {/* Nawigacja */}
       <div className="relative z-10 flex-1 overflow-y-auto">
         <NavContent />
       </div>
+
+      {/* Footer */}
       <motion.div
-        className="relative z-10 border-t border-white/10 p-3"
+        className="relative z-10 p-3 shrink-0"
+        style={{ borderTop: "1px solid oklch(1 0 0 / 0.07)" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
+        transition={{ delay: 0.6 }}
       >
-        <div className="flex items-center justify-between px-3">
+        {/* Pasek ciśnienia */}
+        <div className="mb-3 px-3">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1.5">
+              <Gauge className="h-3 w-3" style={{ color: "oklch(0.62 0.17 195 / 0.6)" }} />
+              <span className="text-[9px] font-semibold tracking-widest uppercase" style={{ color: "oklch(0.52 0.19 220 / 0.5)" }}>
+                System
+              </span>
+            </div>
+            <span className="text-[9px]" style={{ color: "oklch(0.62 0.17 195 / 0.5)" }}>OK</span>
+          </div>
+          <div
+            className="h-1 rounded-full overflow-hidden"
+            style={{ background: "oklch(1 0 0 / 0.06)" }}
+          >
+            <motion.div
+              className="h-full rounded-full"
+              style={{
+                background: "linear-gradient(90deg, oklch(0.52 0.19 220), oklch(0.62 0.17 195))",
+              }}
+              animate={{ width: ["60%", "85%", "72%", "90%", "68%"] }}
+              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between px-1">
           <ThemeToggle />
+          <div className="flex gap-1">
+            <Rivet />
+            <Rivet />
+          </div>
         </div>
       </motion.div>
     </aside>
   );
 }
 
+/* ── Mobile nav ── */
 export function MobileNav() {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Zamknij przy zmianie strony
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   return (
-    <div className="md:hidden flex items-center justify-between border-b px-4 h-14 bg-gradient-to-r from-slate-900 to-slate-950 sticky top-0 z-50">
+    <div
+      className="md:hidden flex items-center justify-between px-4 h-14 sticky top-0 z-50"
+      style={{
+        background: "linear-gradient(90deg, oklch(0.13 0.022 228), oklch(0.10 0.018 230))",
+        borderBottom: "1px solid oklch(1 0 0 / 0.08)",
+        boxShadow: "0 2px 16px oklch(0 0 0 / 0.3)",
+      }}
+    >
+      {/* Nity w rogach */}
+      <div className="absolute top-1.5 left-1.5"><Rivet /></div>
+      <div className="absolute top-1.5 right-1.5"><Rivet /></div>
+
+      {/* Linia rury na dole */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-px"
+        style={{
+          background: "linear-gradient(90deg, transparent, oklch(0.52 0.19 220 / 0.6) 30%, oklch(0.62 0.17 195 / 0.8) 50%, oklch(0.52 0.19 220 / 0.6) 70%, transparent)",
+          animation: "pipe-flow 4s linear infinite",
+        }}
+      />
+
       <Logo size="sm" />
+
       <div className="flex items-center gap-1">
         <ThemeToggle />
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger>
-            <Button variant="ghost" size="icon" className="h-9 w-9 text-white hover:bg-white/10 rounded-xl">
-              <Menu className="h-5 w-5" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-lg text-white hover:bg-white/10"
+              aria-label="Menu"
+            >
+              <AnimatePresence mode="wait">
+                {open ? (
+                  <motion.div
+                    key="close"
+                    initial={{ rotate: -90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: 90, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <X className="h-5 w-5" />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="menu"
+                    initial={{ rotate: 90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: -90, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <Menu className="h-5 w-5" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0 bg-slate-900 border-white/10">
-            <div className="flex h-16 items-center px-5 border-b border-white/10">
+
+          <SheetContent
+            side="left"
+            className="w-72 p-0 border-r-0"
+            style={{
+              background: "linear-gradient(180deg, oklch(0.13 0.022 228) 0%, oklch(0.10 0.018 230) 100%)",
+              borderRight: "1px solid oklch(1 0 0 / 0.07)",
+            }}
+          >
+            {/* Header */}
+            <div
+              className="relative flex h-16 items-center px-4"
+              style={{ borderBottom: "1px solid oklch(1 0 0 / 0.07)" }}
+            >
+              <div className="absolute top-2 left-2"><Rivet /></div>
+              <div className="absolute top-2 right-2"><Rivet /></div>
+              <div className="absolute bottom-2 left-2"><Rivet /></div>
+              <div className="absolute bottom-2 right-2"><Rivet /></div>
               <Logo />
             </div>
-            <div className="relative flex-1 overflow-y-auto">
+
+            {/* Blueprint grid */}
+            <div
+              className="absolute inset-0 opacity-20 pointer-events-none"
+              style={{
+                backgroundImage:
+                  "linear-gradient(oklch(0.52 0.19 220 / 0.1) 1px, transparent 1px), linear-gradient(90deg, oklch(0.52 0.19 220 / 0.1) 1px, transparent 1px)",
+                backgroundSize: "24px 24px",
+              }}
+            />
+
+            {/* Nawigacja */}
+            <div className="relative overflow-y-auto h-[calc(100%-8rem)]">
               <NavContent onNavigate={() => setOpen(false)} />
             </div>
-            <div className="absolute bottom-0 left-0 right-0 border-t border-white/10 p-3">
-              <div className="flex items-center justify-between px-3">
+
+            {/* Footer */}
+            <div
+              className="absolute bottom-0 left-0 right-0 p-3"
+              style={{ borderTop: "1px solid oklch(1 0 0 / 0.07)" }}
+            >
+              <div className="flex items-center justify-between px-1">
                 <ThemeToggle />
+                <div className="flex gap-1">
+                  <Rivet />
+                  <Rivet />
+                  <Rivet />
+                </div>
               </div>
             </div>
           </SheetContent>
