@@ -26,6 +26,13 @@ import { pl } from "date-fns/locale";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { StatusTimeline } from "@/components/quote/status-timeline";
+import { InternalComments, type InternalComment } from "@/components/quote/internal-comments";
+import { SignaturePad } from "@/components/quote/signature-pad";
+import { ShareQuoteDialog } from "@/components/quote/share-quote";
+import { QuoteProfitability } from "@/components/quote/quote-profitability";
+import { TimeComparison } from "@/components/quote/time-comparison";
+import { Share2, PenTool } from "lucide-react";
 
 const STATUS_COLORS: Record<QuoteStatus, string> = {
   szkic: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
@@ -45,6 +52,9 @@ export default function WycenaDetailPage() {
   const addInvoice = useInvoiceStore((s) => s.add);
   const settings = useSettingsStore((s) => s.settings);
   const [convertingInvoice, setConvertingInvoice] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [showSignature, setShowSignature] = useState(false);
+  const [comments, setComments] = useState<InternalComment[]>([]);
 
   const quote = useMemo(() => quotes.find((item) => item.id === id), [quotes, id]);
   const q = quote!;
@@ -325,6 +335,14 @@ export default function WycenaDetailPage() {
               <Button variant="outline" size="sm" className="btn-secondary" onClick={handlePrint}>
                 <Printer className="mr-2 h-4 w-4" />Drukuj
               </Button>
+              <Button variant="outline" size="sm" className="btn-secondary" onClick={() => setShareOpen(true)}>
+                <Share2 className="mr-2 h-4 w-4" />Udostępnij
+              </Button>
+              {q.status === "wyslana" && (
+                <Button variant="outline" size="sm" className="btn-secondary border-violet-300 text-violet-700 dark:text-violet-400" onClick={() => setShowSignature(true)}>
+                  <PenTool className="mr-2 h-4 w-4" />Podpis
+                </Button>
+              )}
               <Button size="sm" className="btn-primary" onClick={handleExportPDF}>
                 <FileDown className="mr-2 h-4 w-4" />PDF
               </Button>
@@ -544,6 +562,62 @@ export default function WycenaDetailPage() {
         )}
 
       </StaggerContainer>
+
+      {/* ── Podpis elektroniczny ── */}
+      {showSignature && (
+        <div className="max-w-5xl mx-auto mt-6">
+          <SignaturePad
+            onSign={(dataUrl) => {
+              // W produkcji: zapisz podpis w quote i zmień status
+              changeStatus(id, "zaakceptowana");
+              toast.success("Wycena zaakceptowana z podpisem klienta");
+              setShowSignature(false);
+            }}
+            onCancel={() => setShowSignature(false)}
+          />
+        </div>
+      )}
+
+      {/* ── Nowe sekcje pod wycena ── */}
+      <div className="max-w-5xl mx-auto space-y-6 mt-6">
+        {/* Timeline + Komentarze + Rentowność */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Timeline statusów */}
+          <Card className="card-modern">
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Historia statusów</CardTitle></CardHeader>
+            <CardContent>
+              <StatusTimeline
+                events={[
+                  { status: "szkic", date: q.createdAt },
+                  ...(q.status !== "szkic" ? [{ status: q.status, date: q.updatedAt }] : []),
+                ]}
+                currentStatus={q.status}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Rentowność */}
+          <QuoteProfitability quote={q} />
+
+          {/* Porównanie czasu */}
+          <TimeComparison quote={q} />
+        </div>
+
+        {/* Komentarze wewnętrzne */}
+        <InternalComments
+          comments={comments}
+          onAdd={(text) => {
+            setComments((prev) => [...prev, { id: Date.now().toString(36), text, createdAt: new Date() }]);
+          }}
+          onRemove={(commentId) => {
+            setComments((prev) => prev.filter((c) => c.id !== commentId));
+          }}
+        />
+      </div>
+
+      {/* ── Dialog udostępniania ── */}
+      <ShareQuoteDialog quote={q} open={shareOpen} onOpenChange={setShareOpen} />
+
     </PageTransition>
   );
 }

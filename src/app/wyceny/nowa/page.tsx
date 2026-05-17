@@ -27,6 +27,12 @@ import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page
 import { motion } from "framer-motion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ExternalPricingPanel } from "@/components/external-pricing-panel";
+import { QuoteItemsDnD } from "@/components/quote/quote-items-dnd";
+import { QuoteVariants } from "@/components/quote/quote-variants";
+import { PhotoGallery } from "@/components/photo-gallery";
+import { TravelCalculator } from "@/components/travel-calculator";
+import { AIConversionPrediction } from "@/components/ai-assistant";
+import type { QuoteVariant, QuotePhoto } from "@/types";
 
 function generateItemId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
@@ -83,6 +89,9 @@ export default function NowaWycenaPage() {
   const [activeTab, setActiveTab] = useState("items");
   const [templateName, setTemplateName] = useState<string | null>(null);
   const [showExternalPricing, setShowExternalPricing] = useState(false);
+  const [photos, setPhotos] = useState<QuotePhoto[]>([]);
+  const [variants, setVariants] = useState<QuoteVariant[]>([]);
+  const [selectedVariantId, setSelectedVariantId] = useState<string>("");
 
   const quotes = useQuoteStore((s) => s.quotes);
 
@@ -562,69 +571,12 @@ export default function NowaWycenaPage() {
                   {items.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">Brak pozycji. Dodaj pozycję z katalogu lub ręcznie.</div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="min-w-48">Nazwa</TableHead>
-                            <TableHead className="w-20">Ilość</TableHead>
-                            <TableHead className="w-28">Jedn.</TableHead>
-                            <TableHead className="w-28">Cena netto</TableHead>
-                            <TableHead className="w-24">VAT</TableHead>
-                            <TableHead className="w-24">Rabat %</TableHead>
-                            <TableHead className="text-right w-28">Netto</TableHead>
-                            <TableHead className="text-right w-28">Brutto</TableHead>
-                            <TableHead className="w-20" />
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {items.map((item) => (
-                            <TableRow key={item.id}>
-                              <TableCell>
-                                <Input value={item.name} onChange={(e) => updateItem(item.id, { name: e.target.value })} placeholder="Nazwa usługi" className="h-9" />
-                              </TableCell>
-                              <TableCell>
-                                <Input type="number" min="0.01" step="0.01" value={item.quantity} onChange={(e) => updateItem(item.id, { quantity: parseFloat(e.target.value) || 0 })} className="h-9" />
-                              </TableCell>
-                              <TableCell>
-                                <Select value={item.unit} onValueChange={(v) => updateItem(item.id, { unit: (v ?? "szt") as Unit })}>
-                                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    {Object.entries(UNIT_LABELS).map(([k, l]) => (<SelectItem key={k} value={k}>{l}</SelectItem>))}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Input type="number" min="0" step="0.01" value={item.priceNettoPerUnit} onChange={(e) => updateItem(item.id, { priceNettoPerUnit: parseFloat(e.target.value) || 0 })} className="h-9" />
-                              </TableCell>
-                              <TableCell>
-                                <Select value={String(item.vatRate)} onValueChange={(v) => updateItem(item.id, { vatRate: parseInt(v ?? "8") as VatRate })}>
-                                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    {Object.entries(VAT_RATE_LABELS).map(([k, l]) => (<SelectItem key={k} value={k}>{l}</SelectItem>))}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Input type="number" min="0" max="100" value={item.discountPercent} onChange={(e) => updateItem(item.id, { discountPercent: parseFloat(e.target.value) || 0 })} className="h-9" />
-                              </TableCell>
-                              <TableCell className="text-right font-semibold">{formatCurrency(item.nettotal)}</TableCell>
-                              <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">{formatCurrency(item.bruttoTotal)}</TableCell>
-                              <TableCell>
-                                <div className="flex gap-1">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => copyItem(item.id)}>
-                                    <Copy className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => removeItem(item.id)}>
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
+                    <QuoteItemsDnD
+                      items={items}
+                      onItemsChange={setItems}
+                      onCopyItem={copyItem}
+                      onRemoveItem={removeItem}
+                    />
                   )}
                 </CardContent>
               </TabsContent>
@@ -1095,6 +1047,33 @@ export default function NowaWycenaPage() {
                 )}
               </CardContent>
             </Card>
+          </div>
+        </StaggerItem>
+
+        {/* ── Warianty + Galeria + Kalkulator + AI ── */}
+        <StaggerItem>
+          <QuoteVariants
+            variants={variants}
+            selectedVariantId={selectedVariantId}
+            onVariantsChange={setVariants}
+            onSelectVariant={setSelectedVariantId}
+            currentItems={items}
+            currentCosts={additionalCosts}
+            currentDiscount={globalDiscount}
+            currentTotals={{ netto: totalNetto, vat: totalVat, brutto: finalBrutto }}
+          />
+        </StaggerItem>
+
+        <StaggerItem>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <PhotoGallery photos={photos} onPhotosChange={setPhotos} />
+            <TravelCalculator
+              fromAddress={settings?.address}
+              ratePerKm={pricingModel.travelCostPerKm || 2.5}
+              onCalculated={(km, cost) => {
+                setPricingModel((prev) => ({ ...prev, estimatedDistanceKm: km, travelCostPerKm: cost / (km * 2) }));
+              }}
+            />
           </div>
         </StaggerItem>
 

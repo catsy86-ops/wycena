@@ -5,8 +5,10 @@ import { Providers } from "@/components/providers";
 
 const inter = Inter({
   variable: "--font-sans",
-  subsets: ["latin", "latin-ext"],
+  subsets: ["latin"],
   display: "swap",
+  preload: true,
+  weight: ["400", "500", "700", "900"],
 });
 
 const APP_URL = "https://wycenka.pl";
@@ -94,7 +96,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pl" suppressHydrationWarning>
+    <html lang="pl" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />

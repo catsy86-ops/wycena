@@ -118,24 +118,24 @@ export function QuoteItemsDnD({ items, onItemsChange, onCopyItem, onRemoveItem }
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader className="table-header-industrial">
-          <TableRow>
-            <TableHead className="w-8" />
-            <TableHead className="min-w-44">Nazwa</TableHead>
-            <TableHead className="w-20">Ilość</TableHead>
-            <TableHead className="w-24">Jedn.</TableHead>
-            <TableHead className="w-28">Cena netto</TableHead>
-            <TableHead className="w-20">VAT</TableHead>
-            <TableHead className="w-20">Rabat%</TableHead>
-            <TableHead className="text-right w-24">Netto</TableHead>
-            <TableHead className="text-right w-24">Brutto</TableHead>
-            <TableHead className="w-20" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader className="table-header-industrial">
+            <TableRow>
+              <TableHead className="w-8" />
+              <TableHead className="min-w-44">Nazwa</TableHead>
+              <TableHead className="w-20">Ilość</TableHead>
+              <TableHead className="w-24">Jedn.</TableHead>
+              <TableHead className="w-28">Cena netto</TableHead>
+              <TableHead className="w-20">VAT</TableHead>
+              <TableHead className="w-20">Rabat%</TableHead>
+              <TableHead className="text-right w-24">Netto</TableHead>
+              <TableHead className="text-right w-24">Brutto</TableHead>
+              <TableHead className="w-20" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
               {items.map((item) => (
                 <SortableRow
@@ -147,9 +147,9 @@ export function QuoteItemsDnD({ items, onItemsChange, onCopyItem, onRemoveItem }
                 />
               ))}
             </SortableContext>
-          </DndContext>
-        </TableBody>
-      </Table>
-    </div>
+          </TableBody>
+        </Table>
+      </div>
+    </DndContext>
   );
 }

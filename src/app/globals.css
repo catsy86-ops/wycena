@@ -150,7 +150,6 @@
   }
   html {
     @apply font-sans;
-    scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
