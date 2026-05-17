@@ -800,3 +800,163 @@
 .swipe-hint {
   animation: swipe-hint 2s ease-in-out 3;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   COMPACT MODE — mniejsze paddingi, gęstszy UI
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+html.compact {
+  font-size: 14px;
+}
+html.compact .card-modern {
+  @apply rounded-lg;
+}
+html.compact .card-modern .p-3,
+html.compact .card-modern .p-4 {
+  padding: 0.5rem;
+}
+html.compact .sm\:p-4 {
+  padding: 0.625rem;
+}
+html.compact .space-y-5 > * + *,
+html.compact .space-y-6 > * + * {
+  margin-top: 0.75rem;
+}
+html.compact .gap-3,
+html.compact .gap-4 {
+  gap: 0.5rem;
+}
+html.compact .text-2xl {
+  font-size: 1.25rem;
+}
+html.compact .text-3xl {
+  font-size: 1.5rem;
+}
+html.compact .h-10 {
+  height: 2rem;
+}
+html.compact .w-10 {
+  width: 2rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PRINT STYLES — zoptymalizowane drukowanie wycen i faktur
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    font-size: 11pt;
+    line-height: 1.4;
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  .print\:hidden,
+  aside,
+  nav,
+  .card-modern::before,
+  .gradient-border::before,
+  [data-slot="sheet"],
+  [data-slot="dialog"],
+  .fixed {
+    display: none !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .card-modern {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    background: #fff !important;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 6px 8px;
+    text-align: left;
+  }
+  th {
+    background: #f5f5f5 !important;
+    font-weight: bold;
+  }
+
+  .text-pipe,
+  .text-primary,
+  .text-blue-600 {
+    color: #1d4ed8 !important;
+    -webkit-text-fill-color: #1d4ed8 !important;
+  }
+
+  h1 {
+    font-size: 18pt;
+    margin-bottom: 8pt;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  button {
+    display: none !important;
+  }
+
+  /* Pokaż URL linków */
+  a[href]::after {
+    content: none;
+  }
+
+  @page {
+    margin: 15mm;
+    size: A4;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   SLOT MACHINE NUMBER ANIMATION
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes slot-up {
+  0% { transform: translateY(100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slot-down {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-100%); opacity: 0; }
+}
+
+.slot-enter {
+  animation: slot-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.slot-exit {
+  animation: slot-down 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   NOTIFICATION BADGE PULSE
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+.badge-notify {
+  @apply absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white;
+  background: oklch(0.60 0.20 25);
+  animation: badge-pulse 2s ease-in-out infinite;
+}
