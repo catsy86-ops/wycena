@@ -252,7 +252,7 @@ export default function WycenyPage() {
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="table-header-industrial">
                       <TableRow>
                         <TableHead className="cursor-pointer select-none" onClick={() => handleSort("number")}>Numer<SortIcon column="number" /></TableHead>
                         <TableHead className="cursor-pointer select-none" onClick={() => handleSort("clientName")}>Klient<SortIcon column="clientName" /></TableHead>

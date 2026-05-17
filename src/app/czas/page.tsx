@@ -29,6 +29,7 @@ import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page
 import { AnimatedEmptyState } from "@/components/animated-empty-state";
 import { motion, AnimatePresence } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BoltRow, PipeSeparator, PipeProgress, GaugeDisplay, FlowIndicator, HydraulicBadge } from "@/components/hydraulic-decorations";
 
 const CATEGORY_LABELS: Record<string, string> = { robocizna: "Robocizna", dojazd: "Dojazd", inne: "Inne" };
 const CATEGORY_COLORS: Record<string, string> = {
@@ -212,7 +213,7 @@ export default function CzasPage() {
         <StaggerItem>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-pipe">Czas pracy</h1>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-pipe section-industrial">Czas pracy</h1>
               <p className="text-muted-foreground mt-0.5 text-sm">Śledzenie godzin, analityka i raporty</p>
             </div>
             <div className="flex gap-2">
@@ -292,11 +293,17 @@ export default function CzasPage() {
 
         {/* KPI + Cel tygodniowy */}
         <StaggerItem>
+          <BoltRow>Statystyki tygodnia</BoltRow>
+        </StaggerItem>
+        <StaggerItem>
           <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
-            <Card className="card-modern">
+            <Card className="card-steel">
               <CardContent className="pt-4 p-3">
-                <div className="text-xs text-muted-foreground">Ten tydzień</div>
-                <div className="text-xl font-black">{stats.thisWeekHours}h</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <span className="pressure-indicator" />
+                  Ten tydzień
+                </div>
+                <div className="text-xl font-black tabular-nums">{stats.thisWeekHours}h</div>
                 {stats.hoursTrend !== 0 && (
                   <div className={`flex items-center gap-0.5 text-[10px] font-semibold ${stats.hoursTrend > 0 ? "text-emerald-600" : "text-red-500"}`}>
                     {stats.hoursTrend > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
@@ -305,41 +312,33 @@ export default function CzasPage() {
                 )}
               </CardContent>
             </Card>
-            <Card className="card-modern">
+            <Card className="card-gauge">
               <CardContent className="pt-4 p-3">
                 <div className="text-xs text-muted-foreground">Zarobek (tydzień)</div>
-                <div className="text-lg font-black text-primary">{formatCurrency(stats.thisWeekEarnings)}</div>
+                <div className="text-lg font-black text-primary tabular-nums">{formatCurrency(stats.thisWeekEarnings)}</div>
               </CardContent>
             </Card>
-            <Card className="card-modern">
+            <Card className="card-steel">
               <CardContent className="pt-4 p-3">
                 <div className="text-xs text-muted-foreground">Efektywna stawka</div>
-                <div className="text-lg font-black">{formatCurrency(stats.effectiveRate)}/h</div>
+                <div className="text-lg font-black tabular-nums">{formatCurrency(stats.effectiveRate)}/h</div>
               </CardContent>
             </Card>
-            <Card className="card-modern">
+            <Card className="card-steel">
               <CardContent className="pt-4 p-3">
                 <div className="text-xs text-muted-foreground">Łącznie</div>
-                <div className="text-lg font-black">{stats.totalHours}h</div>
-                <div className="text-[10px] text-muted-foreground">{formatCurrency(stats.totalEarnings)}</div>
+                <div className="text-lg font-black tabular-nums">{stats.totalHours}h</div>
+                <div className="text-[10px] text-muted-foreground tabular-nums">{formatCurrency(stats.totalEarnings)}</div>
               </CardContent>
             </Card>
-            {/* Cel tygodniowy */}
-            <Card className="card-modern">
+            {/* Cel tygodniowy — PipeProgress */}
+            <Card className="card-steel">
               <CardContent className="pt-4 p-3">
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-2">
                   <div className="text-xs text-muted-foreground flex items-center gap-1"><Target className="h-3 w-3" />Cel</div>
                   <span className="text-xs font-bold">{stats.weeklyProgress}%</span>
                 </div>
-                <div className="h-2 rounded-full overflow-hidden" style={{ background: "oklch(0.52 0.19 220 / 0.1)" }}>
-                  <motion.div
-                    className="h-full rounded-full"
-                    style={{ background: stats.weeklyProgress >= 100 ? "oklch(0.55 0.18 155)" : "oklch(0.52 0.19 220)" }}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${stats.weeklyProgress}%` }}
-                    transition={{ duration: 1, ease: "easeOut" }}
-                  />
-                </div>
+                <PipeProgress percent={stats.weeklyProgress} />
                 <div className="text-[10px] text-muted-foreground mt-1">{stats.thisWeekHours}/{weeklyGoal}h</div>
               </CardContent>
             </Card>
@@ -347,6 +346,9 @@ export default function CzasPage() {
         </StaggerItem>
 
         {/* Tabs: Lista / Wykres / Klienci */}
+        <StaggerItem>
+          <BoltRow>Wpisy</BoltRow>
+        </StaggerItem>
         <StaggerItem>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-3">
@@ -381,7 +383,7 @@ export default function CzasPage() {
                   ) : (
                     <div className="overflow-x-auto">
                       <Table>
-                        <TableHeader>
+                        <TableHeader className="table-header-industrial">
                           <TableRow>
                             <TableHead>Klient</TableHead>
                             <TableHead>Opis</TableHead>
@@ -502,6 +504,9 @@ export default function CzasPage() {
               </Card>
             </TabsContent>
           </Tabs>
+        </StaggerItem>
+        <StaggerItem>
+          <FlowIndicator active />
         </StaggerItem>
       </StaggerContainer>
 

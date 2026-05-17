@@ -25,6 +25,7 @@ import { WeatherWidget } from "@/components/dashboard/weather-widget";
 import { QuickNotes } from "@/components/dashboard/quick-notes";
 import { WorkloadIndicator } from "@/components/dashboard/workload-indicator";
 import { Sparkline } from "@/components/dashboard/sparkline";
+import { PipeSeparator, BoltRow, FlowIndicator, HydraulicBadge, PressureStatus } from "@/components/hydraulic-decorations";
 import { subMonths, subDays, startOfDay, isSameDay } from "date-fns";
 
 // Lazy load heavy dashboard widgets (recharts, etc.)
@@ -111,6 +112,11 @@ export default function DashboardPage() {
           <ActiveTimerBar />
         </StaggerItem>
 
+        {/* ── Separator hydrauliczny ── */}
+        <StaggerItem>
+          <PipeSeparator />
+        </StaggerItem>
+
         {/* ── Pogoda + Notatki + Obciążenie ── */}
         <StaggerItem>
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
@@ -130,6 +136,9 @@ export default function DashboardPage() {
 
         {/* ── KPI Cards ── */}
         <StaggerItem>
+          <BoltRow>Statystyki</BoltRow>
+        </StaggerItem>
+        <StaggerItem>
           <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
             {[
               { title: "Wyceny", value: quoteCount, icon: FileText, color: "from-blue-500 to-indigo-600", href: "/wyceny", sparkline: sparklineQuotes },
@@ -147,7 +156,7 @@ export default function DashboardPage() {
                   whileHover={{ y: -4, scale: 1.02 }}
                 >
                   <Link href={stat.href}>
-                    <Card className="card-modern cursor-pointer group">
+                    <Card className="card-steel cursor-pointer group hover:-translate-y-0.5 transition-transform duration-200">
                       <CardContent className="pt-4 p-3 sm:p-4">
                         <div className="flex items-center justify-between">
                           <div>
@@ -175,13 +184,16 @@ export default function DashboardPage() {
         {/* ── Przychód + Średnia + Trend ── */}
         <StaggerItem>
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-            <Card className="card-modern">
+            <Card className="card-gauge">
               <CardContent className="pt-4 p-3 sm:p-4">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-muted-foreground">Przychód łączny</span>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <span className="pressure-indicator" />
+                    Przychód łączny
+                  </span>
                   <Sparkline data={sparklineRevenue} height={20} width={56} />
                 </div>
-                <div className="text-lg sm:text-xl font-black text-primary">{formatCurrency(totalRevenue)}</div>
+                <div className="text-lg sm:text-xl font-black text-primary tabular-nums">{formatCurrency(totalRevenue)}</div>
                 {revenueTrend !== 0 && (
                   <div className={`flex items-center gap-0.5 text-xs font-semibold mt-1 ${revenueTrend > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
                     <ArrowUpRight className={`h-3 w-3 ${revenueTrend < 0 ? "rotate-90" : ""}`} />
@@ -190,14 +202,14 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
-            <Card className="card-modern">
+            <Card className="card-steel">
               <CardContent className="pt-4 p-3 sm:p-4">
                 <div className="text-xs text-muted-foreground mb-1">Średnia wartość</div>
-                <div className="text-lg sm:text-xl font-black">{formatCurrency(avgQuoteValue)}</div>
+                <div className="text-lg sm:text-xl font-black tabular-nums">{formatCurrency(avgQuoteValue)}</div>
                 <div className="text-[10px] text-muted-foreground mt-1">zaakceptowanych wycen</div>
               </CardContent>
             </Card>
-            <Card className="card-modern">
+            <Card className="card-steel">
               <CardContent className="pt-4 p-3 sm:p-4">
                 <div className="text-xs text-muted-foreground mb-1">Baza</div>
                 <div className="flex items-center gap-4">
@@ -275,6 +287,9 @@ export default function DashboardPage() {
 
         {/* ── Wykresy ── */}
         <StaggerItem>
+          <BoltRow>Analityka</BoltRow>
+        </StaggerItem>
+        <StaggerItem>
           <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
             <Suspense fallback={<div className="h-64 rounded-xl bg-muted/30 animate-pulse" />}>
               <QuoteStatusBar />
@@ -286,6 +301,9 @@ export default function DashboardPage() {
         </StaggerItem>
 
         {/* ── Ostatnia aktywność + Ostatnie wyceny ── */}
+        <StaggerItem>
+          <BoltRow>Aktywność</BoltRow>
+        </StaggerItem>
         <StaggerItem>
           <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
             <Suspense fallback={<div className="h-48 rounded-xl bg-muted/30 animate-pulse" />}>
@@ -332,6 +350,11 @@ export default function DashboardPage() {
               </Card>
             )}
           </div>
+        </StaggerItem>
+
+        {/* ── Flow indicator na dole ── */}
+        <StaggerItem>
+          <FlowIndicator active />
         </StaggerItem>
 
       </StaggerContainer>

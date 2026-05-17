@@ -11,8 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Save, Building2, Landmark, Settings2 } from "lucide-react";
+import { Save, Building2, Landmark, Settings2, Palette, Minimize2, Database, Download, Upload, Shield } from "lucide-react";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
+import { ThemePicker } from "@/components/theme-picker";
+import { CompactModeToggle } from "@/components/compact-mode";
+import { downloadBackup, importDatabase, type BackupData } from "@/lib/backup";
 
 export default function UstawieniaPage() {
   const settings = useSettingsStore((s) => s.settings);
@@ -164,6 +167,70 @@ export default function UstawieniaPage() {
               Zapisz ustawienia
             </Button>
           </div>
+        </StaggerItem>
+
+        {/* Wygląd */}
+        <StaggerItem>
+          <Card className="card-modern">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Palette className="h-5 w-5 text-primary" />Wygląd</CardTitle>
+              <CardDescription>Personalizacja interfejsu</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Kolor akcentu</Label>
+                  <p className="text-xs text-muted-foreground">Zmień główny kolor aplikacji</p>
+                </div>
+                <ThemePicker />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Gęstość interfejsu</Label>
+                  <p className="text-xs text-muted-foreground">Kompaktowy widok = więcej danych na ekranie</p>
+                </div>
+                <CompactModeToggle />
+              </div>
+            </CardContent>
+          </Card>
+        </StaggerItem>
+
+        {/* Backup */}
+        <StaggerItem>
+          <Card className="card-modern">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Database className="h-5 w-5 text-primary" />Kopia zapasowa</CardTitle>
+              <CardDescription>Eksport i import danych aplikacji</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button variant="outline" className="btn-secondary flex-1" onClick={async () => { await downloadBackup(); toast.success("Kopia zapasowa pobrana"); }}>
+                  <Download className="h-4 w-4" />
+                  Eksportuj kopię zapasową
+                </Button>
+                <label className="flex-1">
+                  <span className="btn-secondary inline-flex items-center justify-center gap-2 w-full rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold shadow-sm cursor-pointer hover:bg-accent transition-colors">
+                    <Upload className="h-4 w-4" />
+                    Importuj kopię zapasową
+                  </span>
+                  <input type="file" accept=".json" className="hidden" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const text = await file.text();
+                      const data = JSON.parse(text) as BackupData;
+                      const result = await importDatabase(data);
+                      toast.success(`Zaimportowano ${result.imported} rekordów. Odśwież stronę.`);
+                    } catch { toast.error("Błąd importu — nieprawidłowy format pliku"); }
+                  }} />
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                <Shield className="h-3 w-3 inline mr-1" />
+                Import nadpisuje istniejące dane. Zalecane wykonanie eksportu przed importem.
+              </p>
+            </CardContent>
+          </Card>
         </StaggerItem>
       </StaggerContainer>
     </PageTransition>

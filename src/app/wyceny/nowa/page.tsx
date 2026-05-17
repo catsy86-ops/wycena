@@ -988,7 +988,7 @@ export default function NowaWycenaPage() {
               </CardContent>
             </Card>
 
-            <Card className="card-modern bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
+            <Card className="card-gauge">
               <CardHeader className="pb-2"><CardTitle className="text-sm">Podsumowanie</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 {useAdvancedPricing && advancedPricing ? (

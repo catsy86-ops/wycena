@@ -32,6 +32,7 @@ import { TableSkeleton } from "@/components/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
+import { BoltRow, PipeSeparator, HydraulicBadge, FlowIndicator } from "@/components/hydraulic-decorations";
 
 function generateItemId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 9); }
 function createEmptyItem(vat: VatRate = 8): QuoteItem {
@@ -199,7 +200,7 @@ export default function SzablonyPage() {
         <StaggerItem>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-pipe">Szablony wycen</h1>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-pipe section-industrial">Szablony wycen</h1>
               <p className="text-muted-foreground mt-0.5 text-sm">{templates.length} szablonów · {categories.length} kategorii</p>
             </div>
             <div className="flex gap-2">
@@ -221,7 +222,10 @@ export default function SzablonyPage() {
 
         {/* Filtry + sortowanie */}
         <StaggerItem>
-          <Card className="card-modern">
+          <BoltRow>Katalog szablonów</BoltRow>
+        </StaggerItem>
+        <StaggerItem>
+          <Card className="card-steel">
             <CardHeader className="pb-3">
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
@@ -272,14 +276,14 @@ export default function SzablonyPage() {
                           exit={{ opacity: 0, y: -16 }}
                           transition={{ delay: Math.min(i * 0.04, 0.3) }}
                         >
-                          <Card className="card-modern group h-full flex flex-col">
+                          <Card className="card-steel group h-full flex flex-col hover:-translate-y-0.5 transition-transform duration-200">
                             <CardHeader className="pb-2">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0 flex-1">
                                   <CardTitle className="text-sm truncate">{t.name}</CardTitle>
                                   {t.description && <CardDescription className="line-clamp-2 mt-0.5">{t.description}</CardDescription>}
                                 </div>
-                                <Badge variant="outline" className="text-[10px] shrink-0">{t.category}</Badge>
+                                <HydraulicBadge>{t.category}</HydraulicBadge>
                               </div>
                             </CardHeader>
                             <CardContent className="flex-1 flex flex-col justify-between">
@@ -341,6 +345,9 @@ export default function SzablonyPage() {
               )}
             </CardContent>
           </Card>
+        </StaggerItem>
+        <StaggerItem>
+          <FlowIndicator active />
         </StaggerItem>
       </StaggerContainer>
 

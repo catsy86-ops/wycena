@@ -6,6 +6,7 @@ import { ArrowUp } from "lucide-react";
 
 /**
  * Przycisk "scroll to top" — pojawia się po scrollowaniu w dół.
+ * Pozycja: na mobile — nad bottom nav (left side), na desktop — prawy dolny róg.
  */
 export function ScrollToTop() {
   const [visible, setVisible] = useState(false);
@@ -35,10 +36,10 @@ export function ScrollToTop() {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.8, y: 10 }}
           onClick={scrollToTop}
-          className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-40 flex h-10 w-10 items-center justify-center rounded-full shadow-lg transition-colors"
+          className="fixed z-40 flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-colors bottom-[4.5rem] left-4 md:bottom-6 md:left-auto md:right-6"
           style={{
-            background: "oklch(0.52 0.19 220 / 0.9)",
-            boxShadow: "0 4px 12px oklch(0.52 0.19 220 / 0.3)",
+            background: "oklch(0.52 0.19 220 / 0.85)",
+            boxShadow: "0 2px 10px oklch(0.52 0.19 220 / 0.25)",
           }}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}

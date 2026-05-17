@@ -334,7 +334,7 @@ export default function KlienciPage() {
               ) : viewMode === "table" ? (
                 <div className="overflow-x-auto">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="table-header-industrial">
                       <TableRow>
                         <TableHead className="cursor-pointer select-none" onClick={() => handleSort("name")}>Klient<SortIcon column="name" /></TableHead>
                         <TableHead className="cursor-pointer select-none" onClick={() => handleSort("phone")}>Telefon<SortIcon column="phone" /></TableHead>

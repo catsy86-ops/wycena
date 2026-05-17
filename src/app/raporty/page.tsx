@@ -19,6 +19,7 @@ import {
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
 import { AnimatedCounter } from "@/components/animated-counter";
 import { motion } from "framer-motion";
+import { BoltRow, PipeSeparator, FlowIndicator } from "@/components/hydraulic-decorations";
 import { toast } from "sonner";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -292,6 +293,9 @@ export default function RaportyPage() {
 
         {/* Tabs */}
         <StaggerItem>
+          <BoltRow>Szczegóły</BoltRow>
+        </StaggerItem>
+        <StaggerItem>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Przegląd</TabsTrigger>
@@ -524,6 +528,9 @@ export default function RaportyPage() {
               </Card>
             </TabsContent>
           </Tabs>
+        </StaggerItem>
+        <StaggerItem>
+          <FlowIndicator active />
         </StaggerItem>
       </StaggerContainer>
     </PageTransition>

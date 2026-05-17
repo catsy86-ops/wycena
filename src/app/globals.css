@@ -960,3 +960,325 @@ html.compact .w-10 {
   background: oklch(0.60 0.20 25);
   animation: badge-pulse 2s ease-in-out infinite;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   HYDRAULIC-CONSTRUCTION THEME ENHANCEMENTS
+   Dodatkowe akcenty budowlane na całym layoucie
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Pipe connector dots (złączki rur) ── */
+.pipe-connector {
+  @apply relative;
+}
+.pipe-connector::before,
+.pipe-connector::after {
+  content: "";
+  @apply absolute w-2 h-2 rounded-full;
+  background: radial-gradient(circle at 35% 35%, oklch(0.72 0.17 195 / 0.6), oklch(0.42 0.19 220 / 0.4));
+  box-shadow: inset 0 1px 2px oklch(0 0 0 / 0.3), 0 1px 0 oklch(1 0 0 / 0.1);
+}
+.pipe-connector::before { left: -4px; top: 50%; transform: translateY(-50%); }
+.pipe-connector::after { right: -4px; top: 50%; transform: translateY(-50%); }
+
+/* ── Pipe section divider (separator w stylu rury) ── */
+.pipe-divider {
+  @apply relative h-px my-4;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    oklch(0.52 0.19 220 / 0.3) 15%,
+    oklch(0.62 0.17 195 / 0.5) 50%,
+    oklch(0.52 0.19 220 / 0.3) 85%,
+    transparent 100%
+  );
+}
+.pipe-divider::before {
+  content: "";
+  @apply absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full;
+  background: radial-gradient(circle at 40% 40%, oklch(0.72 0.17 195 / 0.8), oklch(0.42 0.19 220 / 0.5));
+  box-shadow: 0 0 6px oklch(0.52 0.19 220 / 0.3);
+}
+
+/* ── Pressure gauge card (karta z manometrem) ── */
+.card-gauge {
+  @apply relative rounded-xl border overflow-hidden;
+  background: oklch(0.99 0.003 60 / 0.9);
+  border-color: oklch(0.52 0.19 220 / 0.15);
+}
+.dark .card-gauge {
+  background: oklch(0.15 0.022 228 / 0.9);
+  border-color: oklch(0.52 0.19 220 / 0.2);
+}
+.card-gauge::before {
+  content: "";
+  @apply absolute top-0 left-0 right-0 h-1;
+  background: linear-gradient(90deg,
+    oklch(0.52 0.19 220),
+    oklch(0.62 0.17 195),
+    oklch(0.52 0.19 220)
+  );
+  background-size: 200% 100%;
+  animation: shimmer-steel 3s linear infinite;
+}
+
+/* ── Bolt/rivet row (rząd nitów dekoracyjnych) ── */
+.bolt-row {
+  @apply flex items-center gap-3 py-1;
+}
+.bolt-row::before,
+.bolt-row::after {
+  content: "";
+  @apply flex-1 h-px;
+  background: oklch(0.52 0.19 220 / 0.15);
+}
+
+/* ── Steel plate card (karta w stylu blachy stalowej) ── */
+.card-steel {
+  @apply rounded-xl border relative overflow-hidden;
+  background: linear-gradient(145deg, oklch(0.97 0.006 60) 0%, oklch(0.94 0.008 55) 100%);
+  border-color: oklch(0.52 0.19 220 / 0.12);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.5),
+    inset 0 -1px 0 oklch(0 0 0 / 0.05),
+    0 2px 8px oklch(0 0 0 / 0.06);
+}
+.dark .card-steel {
+  background: linear-gradient(145deg, oklch(0.16 0.025 228) 0%, oklch(0.13 0.022 230) 100%);
+  border-color: oklch(1 0 0 / 0.08);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.06),
+    inset 0 -1px 0 oklch(0 0 0 / 0.3),
+    0 2px 12px oklch(0 0 0 / 0.3);
+}
+
+/* Corner rivets on steel cards */
+.card-steel::after {
+  content: "";
+  @apply absolute top-2 right-2 w-2 h-2 rounded-full;
+  background: radial-gradient(circle at 35% 35%, oklch(0.82 0.02 225 / 0.5), oklch(0.42 0.03 225 / 0.3));
+  box-shadow: 
+    -24px 0 0 0 oklch(0.62 0.02 225 / 0.3),
+    0 24px 0 0 oklch(0.62 0.02 225 / 0.3),
+    -24px 24px 0 0 oklch(0.62 0.02 225 / 0.3);
+}
+
+/* ── Hydraulic input (input w stylu manometru) ── */
+.input-hydraulic {
+  @apply rounded-lg border transition-all duration-200;
+  border-color: oklch(0.52 0.19 220 / 0.15);
+  box-shadow: inset 0 1px 3px oklch(0 0 0 / 0.04);
+}
+.input-hydraulic:focus {
+  border-color: oklch(0.52 0.19 220 / 0.5);
+  box-shadow:
+    inset 0 1px 3px oklch(0 0 0 / 0.04),
+    0 0 0 3px oklch(0.52 0.19 220 / 0.1),
+    0 0 12px oklch(0.52 0.19 220 / 0.08);
+}
+
+/* ── Valve button (przycisk w stylu zaworu) ── */
+.btn-valve {
+  @apply relative inline-flex items-center justify-center gap-2 rounded-full
+         px-5 py-2.5 text-sm font-bold text-white overflow-hidden;
+  background: linear-gradient(135deg, oklch(0.52 0.19 220), oklch(0.44 0.20 230));
+  box-shadow:
+    0 4px 16px oklch(0.52 0.19 220 / 0.35),
+    inset 0 1px 0 oklch(1 0 0 / 0.15),
+    inset 0 -2px 0 oklch(0 0 0 / 0.15);
+  transition: all 0.2s ease;
+}
+.btn-valve:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 24px oklch(0.52 0.19 220 / 0.45),
+    inset 0 1px 0 oklch(1 0 0 / 0.2),
+    inset 0 -2px 0 oklch(0 0 0 / 0.15);
+}
+.btn-valve:active {
+  transform: translateY(0);
+  box-shadow:
+    0 2px 8px oklch(0.52 0.19 220 / 0.3),
+    inset 0 2px 4px oklch(0 0 0 / 0.2);
+}
+
+/* ── Pipe progress bar (pasek postępu w stylu rury) ── */
+.progress-pipe {
+  @apply relative h-3 rounded-full overflow-hidden;
+  background: oklch(0.52 0.19 220 / 0.08);
+  box-shadow: inset 0 1px 3px oklch(0 0 0 / 0.1);
+}
+.progress-pipe-fill {
+  @apply absolute inset-y-0 left-0 rounded-full;
+  background: linear-gradient(90deg,
+    oklch(0.52 0.19 220),
+    oklch(0.62 0.17 195),
+    oklch(0.52 0.19 220)
+  );
+  background-size: 200% 100%;
+  animation: shimmer-steel 2s linear infinite;
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.2);
+}
+/* Bubble inside pipe */
+.progress-pipe-fill::after {
+  content: "";
+  @apply absolute top-0.5 right-1 w-1.5 h-1.5 rounded-full;
+  background: oklch(1 0 0 / 0.3);
+  animation: bubble-rise 3s ease-in-out infinite;
+}
+
+/* ── Wrench icon decoration ── */
+.wrench-accent {
+  @apply relative;
+}
+.wrench-accent::after {
+  content: "🔧";
+  @apply absolute -top-1 -right-1 text-[8px] opacity-30;
+}
+
+/* ── Water drop decoration ── */
+.water-drop {
+  @apply relative;
+}
+.water-drop::after {
+  content: "";
+  @apply absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-b-full;
+  background: oklch(0.62 0.17 195 / 0.4);
+  animation: drip 3s ease-in-out infinite;
+}
+
+/* ── Construction tape accent (pasek ostrzegawczy) ── */
+.tape-accent {
+  @apply relative overflow-hidden;
+}
+.tape-accent::before {
+  content: "";
+  @apply absolute top-0 left-0 right-0 h-0.5;
+  background: repeating-linear-gradient(
+    -45deg,
+    oklch(0.82 0.18 85 / 0.6),
+    oklch(0.82 0.18 85 / 0.6) 4px,
+    oklch(0.15 0.01 0 / 0.4) 4px,
+    oklch(0.15 0.01 0 / 0.4) 8px
+  );
+}
+
+/* ── Meter/gauge number display ── */
+.gauge-display {
+  @apply inline-flex items-center justify-center rounded-lg px-3 py-1.5;
+  background: oklch(0.08 0.02 230 / 0.9);
+  border: 1px solid oklch(0.52 0.19 220 / 0.3);
+  box-shadow: inset 0 2px 4px oklch(0 0 0 / 0.4), 0 1px 0 oklch(1 0 0 / 0.05);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+.gauge-display .value {
+  @apply text-lg font-black;
+  color: oklch(0.72 0.17 195);
+  text-shadow: 0 0 8px oklch(0.62 0.17 195 / 0.5);
+}
+
+/* ── Pipe joint separator (złączka między sekcjami) ── */
+.joint-separator {
+  @apply flex items-center gap-2 my-4;
+}
+.joint-separator::before,
+.joint-separator::after {
+  content: "";
+  @apply flex-1 h-0.5 rounded-full;
+  background: linear-gradient(90deg, transparent, oklch(0.52 0.19 220 / 0.3), transparent);
+}
+.joint-separator .joint-icon {
+  @apply flex h-5 w-5 items-center justify-center rounded-full shrink-0;
+  background: oklch(0.52 0.19 220 / 0.1);
+  border: 1px solid oklch(0.52 0.19 220 / 0.2);
+}
+
+/* ── Hydraulic badge (badge w stylu tabliczki znamionowej) ── */
+.badge-hydraulic {
+  @apply inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider;
+  background: oklch(0.52 0.19 220 / 0.1);
+  border: 1px solid oklch(0.52 0.19 220 / 0.2);
+  color: oklch(0.52 0.19 220);
+}
+.dark .badge-hydraulic {
+  background: oklch(0.62 0.19 215 / 0.15);
+  border-color: oklch(0.62 0.19 215 / 0.3);
+  color: oklch(0.72 0.17 195);
+}
+
+/* ── Pressure indicator (wskaźnik ciśnienia) ── */
+.pressure-indicator {
+  @apply relative inline-flex items-center gap-1.5;
+}
+.pressure-indicator::before {
+  content: "";
+  @apply w-2 h-2 rounded-full;
+  background: oklch(0.55 0.18 155);
+  box-shadow: 0 0 4px oklch(0.55 0.18 155 / 0.5);
+  animation: pressure-pulse 2s ease-in-out infinite;
+}
+.pressure-indicator.warning::before {
+  background: oklch(0.72 0.18 60);
+  box-shadow: 0 0 4px oklch(0.72 0.18 60 / 0.5);
+}
+.pressure-indicator.danger::before {
+  background: oklch(0.60 0.20 25);
+  box-shadow: 0 0 4px oklch(0.60 0.20 25 / 0.5);
+}
+
+/* ── Welding spark effect on important elements ── */
+.spark-effect {
+  @apply relative;
+}
+.spark-effect::after {
+  content: "";
+  @apply absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full;
+  background: oklch(0.92 0.18 85);
+  box-shadow: 0 0 4px oklch(0.92 0.18 85 / 0.8), 0 0 8px oklch(0.82 0.18 60 / 0.4);
+  animation: weld-spark 2s ease-out infinite;
+}
+
+/* ── Industrial section header ── */
+.section-industrial {
+  @apply relative pl-4 py-2;
+}
+.section-industrial::before {
+  content: "";
+  @apply absolute left-0 top-0 bottom-0 w-1 rounded-full;
+  background: linear-gradient(to bottom, oklch(0.52 0.19 220), oklch(0.62 0.17 195));
+  box-shadow: 0 0 6px oklch(0.52 0.19 220 / 0.3);
+}
+
+/* ── Metallic text effect ── */
+.text-metallic {
+  background: linear-gradient(
+    180deg,
+    oklch(0.85 0.02 225) 0%,
+    oklch(0.55 0.03 225) 45%,
+    oklch(0.75 0.02 225) 50%,
+    oklch(0.45 0.03 225) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── Animated pipe connection between cards ── */
+.pipe-connect-right {
+  @apply relative;
+}
+.pipe-connect-right::after {
+  content: "";
+  @apply absolute top-1/2 -right-2 w-4 h-0.5 -translate-y-1/2 hidden lg:block;
+  background: oklch(0.52 0.19 220 / 0.3);
+}
+
+/* ── Table header with industrial style ── */
+.table-header-industrial th {
+  @apply relative;
+  background: oklch(0.52 0.19 220 / 0.04) !important;
+  border-bottom: 2px solid oklch(0.52 0.19 220 / 0.15) !important;
+}
+.dark .table-header-industrial th {
+  background: oklch(0.52 0.19 220 / 0.08) !important;
+  border-bottom-color: oklch(0.52 0.19 220 / 0.2) !important;
+}

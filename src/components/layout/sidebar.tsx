@@ -25,6 +25,8 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSidebarBadges } from "@/components/sidebar-badges";
+import { PressureStatus } from "@/components/hydraulic-decorations";
 
 const NAV_ITEMS = [
   { href: "/",             label: "Pulpit",       icon: LayoutDashboard, group: "main" },
@@ -127,11 +129,13 @@ function NavItem({
   index,
   isActive,
   onNavigate,
+  badge,
 }: {
   item: typeof NAV_ITEMS[0];
   index: number;
   isActive: boolean;
   onNavigate?: () => void;
+  badge?: number;
 }) {
   const Icon = item.icon;
 
@@ -195,6 +199,11 @@ function NavItem({
         {/* Label */}
         <span className="relative z-10 flex-1">{item.label}</span>
 
+        {/* Badge powiadomień */}
+        {badge && badge > 0 && !isActive && (
+          <span className="relative z-10 badge-notify">{badge}</span>
+        )}
+
         {/* Nit aktywny */}
         {isActive && (
           <motion.div
@@ -214,6 +223,9 @@ function NavItem({
 function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const groups = ["main", "catalog", "ops", "system"];
+
+  // Badge powiadomień
+  const badges = useSidebarBadges();
 
   return (
     <nav className="flex flex-col gap-0.5 p-3">
@@ -237,6 +249,8 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
               const isActive =
                 pathname === item.href ||
                 (item.href !== "/" && pathname.startsWith(item.href));
+              // Mapuj badge na href
+              const badgeCount = item.href === "/wyceny" ? badges.wyceny : item.href === "/faktury" ? badges.faktury : undefined;
               return (
                 <NavItem
                   key={item.href}
@@ -244,6 +258,7 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
                   index={globalIndex + i}
                   isActive={isActive}
                   onNavigate={onNavigate}
+                  badge={badgeCount}
                 />
               );
             })}
@@ -321,7 +336,7 @@ export function Sidebar() {
                 System
               </span>
             </div>
-            <span className="text-[9px]" style={{ color: "oklch(0.62 0.17 195 / 0.5)" }}>OK</span>
+            <PressureStatus level="ok" label="OK" />
           </div>
           <div
             className="h-1 rounded-full overflow-hidden"

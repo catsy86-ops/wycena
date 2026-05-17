@@ -14,6 +14,7 @@ import { FabButton } from "@/components/fab-button";
 import { SkipToContent } from "@/components/skip-to-content";
 import { OnboardingTour } from "@/components/onboarding-tour";
 import { ScrollToTop } from "@/components/scroll-to-top";
+import { WaterCursor } from "@/components/water-cursor";
 
 // Lazy load non-critical components
 const CommandPalette = lazy(() => import("@/components/command-palette").then((m) => ({ default: m.CommandPalette })));
@@ -50,6 +51,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <MobileBottomNav />
           <FabButton />
           <ScrollToTop />
+          <WaterCursor />
 
           {/* Keyboard shortcuts */}
           <KeyboardShortcuts />

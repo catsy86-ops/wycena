@@ -156,7 +156,7 @@ export function CommandPalette() {
       label: c.name,
       description: c.phone,
       icon: <Users className="h-4 w-4" />,
-      action: () => router.push("/klienci"),
+      action: () => router.push(`/klienci/${c.id}`),
       category: "Klienci",
     });
   });

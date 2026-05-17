@@ -29,6 +29,7 @@ import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page
 import { AnimatedEmptyState } from "@/components/animated-empty-state";
 import { TableSkeleton } from "@/components/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
+import { BoltRow, PipeSeparator } from "@/components/hydraulic-decorations";
 
 const CATEGORY_COLORS: Record<ServiceCategory, string> = {
   montaz: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
@@ -224,7 +225,7 @@ export default function UslugiPage() {
         <StaggerItem>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-pipe">Katalog usług</h1>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-pipe section-industrial">Katalog usług</h1>
               <p className="text-muted-foreground mt-0.5 text-sm">{services.length} usług · {Object.keys(CATEGORY_LABELS).length} kategorii</p>
             </div>
             <div className="flex gap-2">
@@ -250,7 +251,7 @@ export default function UslugiPage() {
 
         {/* Filtry */}
         <StaggerItem>
-          <Card className="card-modern">
+          <Card className="card-steel">
             <CardHeader className="pb-3">
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
@@ -281,7 +282,7 @@ export default function UslugiPage() {
                 <>
                   <div className="overflow-x-auto">
                     <Table>
-                      <TableHeader>
+                      <TableHeader className="table-header-industrial">
                         <TableRow>
                           <TableHead className="w-10">
                             <button onClick={toggleSelectAll} className="flex items-center justify-center">

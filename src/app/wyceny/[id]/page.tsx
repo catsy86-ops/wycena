@@ -486,7 +486,7 @@ export default function WycenaDetailPage() {
               </CardContent>
             </Card>
 
-            <Card className="card-modern" style={{ background: "linear-gradient(135deg, oklch(0.52 0.19 220 / 0.06), oklch(0.62 0.17 195 / 0.04))", borderColor: "oklch(0.52 0.19 220 / 0.2)" }}>
+            <Card className="card-gauge">
               <CardHeader><CardTitle className="text-sm">Podsumowanie</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between text-sm">
