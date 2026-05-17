@@ -1,12 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Roboto } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { FloatingBackButton } from "@/components/floating-back-button";
 
-const roboto = Roboto({
+const inter = Inter({
   variable: "--font-sans",
-  weight: ["400", "700", "900"],
   subsets: ["latin", "latin-ext"],
   display: "swap",
 });
@@ -128,7 +127,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${roboto.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>
         <FloatingBackButton />
       </body>
