@@ -181,6 +181,36 @@ export interface Quote {
   recurringId?: number;
   /** Wynik zaawansowanego modelu wyceny (snapshot) */
   pricingSnapshot?: PricingSnapshot;
+  /** Warianty wyceny (ekonomiczny / standard / premium) */
+  variants?: QuoteVariant[];
+  /** Wybrany wariant przez klienta */
+  selectedVariantId?: string;
+  /** Galeria zdjęć (base64) */
+  photos?: QuotePhoto[];
+  /** Predykcja konwersji (0-100%) */
+  conversionPrediction?: number;
+}
+
+/** Wariant wyceny */
+export interface QuoteVariant {
+  id: string;
+  name: string; // np. "Ekonomiczny", "Standard", "Premium"
+  description?: string;
+  items: QuoteItem[];
+  additionalCosts: QuoteAdditionalCost[];
+  globalDiscountPercent: number;
+  totalNetto: number;
+  totalVat: number;
+  totalBrutto: number;
+}
+
+/** Zdjęcie w wycenie */
+export interface QuotePhoto {
+  id: string;
+  dataUrl: string; // base64
+  caption?: string;
+  type: "before" | "after" | "other";
+  createdAt: Date;
 }
 
 /** Snapshot wynikĂłw zaawansowanego modelu wyceny zapisywany razem z wycena */

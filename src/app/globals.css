@@ -1282,3 +1282,63 @@ html.compact .w-10 {
   background: oklch(0.52 0.19 220 / 0.08) !important;
   border-bottom-color: oklch(0.52 0.19 220 / 0.2) !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   FINAL UX POLISH
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Status change pulse animation ── */
+@keyframes status-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 currentColor; }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 6px transparent; }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+}
+.status-changed {
+  animation: status-pulse 0.6s ease-out;
+}
+
+/* ── Autofocus glow on dialog inputs ── */
+[data-slot="dialog-content"] input:first-of-type,
+[data-slot="dialog-content"] textarea:first-of-type {
+  transition: box-shadow 0.3s ease;
+}
+[data-slot="dialog-content"] input:first-of-type:focus,
+[data-slot="dialog-content"] textarea:first-of-type:focus {
+  box-shadow: 0 0 0 3px oklch(0.52 0.19 220 / 0.15), 0 0 12px oklch(0.52 0.19 220 / 0.08);
+}
+
+/* ── Sticky header dark mode ── */
+.dark [data-sticky-header] {
+  background: oklch(0.11 0.018 230 / 0.9) !important;
+}
+
+/* ── Empty state illustration container ── */
+.empty-illustration {
+  @apply relative w-24 h-24 mx-auto mb-4;
+}
+.empty-illustration svg {
+  @apply w-full h-full;
+  opacity: 0.6;
+}
+
+/* ── Success checkmark animation ── */
+@keyframes draw-check {
+  0% { stroke-dashoffset: 50; }
+  100% { stroke-dashoffset: 0; }
+}
+.check-animated path {
+  stroke-dasharray: 50;
+  animation: draw-check 0.4s ease-out 0.2s forwards;
+  stroke-dashoffset: 50;
+}
+
+/* ── Improved dialog overlay ── */
+[data-slot="dialog-backdrop"],
+[data-slot="alert-dialog-backdrop"] {
+  backdrop-filter: blur(4px) !important;
+}
+
+/* ── Better badge transition on status change ── */
+[data-slot="badge"] {
+  transition: all 0.2s ease;
+}

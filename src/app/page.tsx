@@ -26,6 +26,11 @@ import { QuickNotes } from "@/components/dashboard/quick-notes";
 import { WorkloadIndicator } from "@/components/dashboard/workload-indicator";
 import { Sparkline } from "@/components/dashboard/sparkline";
 import { PipeSeparator, BoltRow, FlowIndicator, HydraulicBadge, PressureStatus } from "@/components/hydraulic-decorations";
+import { CashFlow } from "@/components/dashboard/cash-flow";
+import { RevenueForecast } from "@/components/dashboard/revenue-forecast";
+import { TopServicesMonth } from "@/components/dashboard/top-services-month";
+import { AIInsight } from "@/components/dashboard/ai-insight";
+import { QuickTimer } from "@/components/dashboard/quick-timer";
 import { subMonths, subDays, startOfDay, isSameDay } from "date-fns";
 
 // Lazy load heavy dashboard widgets (recharts, etc.)
@@ -123,6 +128,14 @@ export default function DashboardPage() {
             <WeatherWidget />
             <WorkloadIndicator />
             <QuickNotes />
+          </div>
+        </StaggerItem>
+
+        {/* ── AI Insight + Quick Timer ── */}
+        <StaggerItem>
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+            <AIInsight />
+            <QuickTimer />
           </div>
         </StaggerItem>
 
@@ -224,6 +237,15 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </StaggerItem>
+
+        {/* ── Cash flow + Prognoza + Top usługi ── */}
+        <StaggerItem>
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+            <CashFlow />
+            <RevenueForecast />
+            <TopServicesMonth />
           </div>
         </StaggerItem>
 
