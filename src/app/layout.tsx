@@ -6,8 +6,8 @@ import { FloatingBackButton } from "@/components/floating-back-button";
 
 const roboto = Roboto({
   variable: "--font-sans",
-  weight: ["100", "300", "400", "500", "700", "900"],
-  subsets: ["latin"],
+  weight: ["400", "700", "900"],
+  subsets: ["latin", "latin-ext"],
   display: "swap",
 });
 

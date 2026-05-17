@@ -38,14 +38,56 @@ export const UNIT_LABELS: Record<Unit, string> = {
   komplet: "komplet",
 };
 
+export interface ServiceVariant {
+  id: string;
+  name: string;
+  priceNetto: number;
+  description?: string;
+}
+
+export interface ServicePriceHistory {
+  date: string; // ISO date
+  priceNetto: number;
+  reason?: string;
+}
+
+export interface ServicePackage {
+  id?: number;
+  name: string;
+  description?: string;
+  category: string;
+  serviceIds: number[];
+  materialIds?: number[];
+  discountPercent: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Service {
   id?: number;
   name: string;
   category: ServiceCategory;
+  subcategory?: string;
   unit: Unit;
   priceNetto: number;
+  priceMin?: number;
+  priceMax?: number;
   vatRate: VatRate;
   description?: string;
+  /** Szacowany czas wykonania w minutach */
+  estimatedMinutes?: number;
+  /** Notatki wewnętrzne (nie widoczne dla klienta) */
+  internalNotes?: string;
+  /** Warianty cenowe */
+  variants?: ServiceVariant[];
+  /** Historia zmian cen */
+  priceHistory?: ServicePriceHistory[];
+  /** Powiązane materiały (ID z tabeli materials) */
+  relatedMaterialIds?: number[];
+  /** Koszt własny (materiały + czas) */
+  costPrice?: number;
+  /** Czy aktywna (widoczna w katalogu) */
+  isActive?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
