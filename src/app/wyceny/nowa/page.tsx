@@ -32,6 +32,7 @@ import { QuoteVariants } from "@/components/quote/quote-variants";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { TravelCalculator } from "@/components/travel-calculator";
 import { AIConversionPrediction } from "@/components/ai-assistant";
+import { QuoteAIPanel } from "@/components/quote/quote-ai-panel";
 import type { QuoteVariant, QuotePhoto } from "@/types";
 
 function generateItemId() {
@@ -1076,6 +1077,13 @@ export default function NowaWycenaPage() {
             />
           </div>
         </StaggerItem>
+
+        {/* AI Predykcja konwersji */}
+        {finalBrutto > 0 && (
+          <StaggerItem>
+            <QuoteAIPanel clientId={selectedClientId} quoteValue={finalBrutto} />
+          </StaggerItem>
+        )}
 
         <StaggerItem>
           <div className="flex justify-end gap-3 pb-4">

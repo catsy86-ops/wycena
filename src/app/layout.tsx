@@ -7,8 +7,6 @@ const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
   display: "swap",
-  preload: true,
-  weight: ["400", "500", "700", "900"],
 });
 
 const APP_URL = "https://wycenka.pl";

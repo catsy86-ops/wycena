@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Search, Phone, Users, Mail, MapPin, FileText, ExternalLink, ChevronUp, ChevronDown, Building2, Copy, Download, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Phone, Users, Mail, MapPin, FileText, ExternalLink, ChevronUp, ChevronDown, Building2, Copy, Download, Upload, CheckSquare, Star, AlertTriangle, UserPlus, Clock, Tag } from "lucide-react";
 import { formatCurrency } from "@/lib/calculations";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
@@ -25,11 +25,29 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const EMPTY_FORM = { name: "", phone: "", email: "", address: "", nip: "", notes: "", tags: "" };
 
-type SortKey = "name" | "phone" | "email" | "createdAt";
+type SortKey = "name" | "phone" | "email" | "createdAt" | "revenue" | "quoteCount";
 type SortDir = "asc" | "desc";
+
+const SEGMENT_BADGES: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
+  vip: { label: "VIP", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 border-amber-300", icon: <Star className="h-2.5 w-2.5" /> },
+  staly: { label: "Stały", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 border-emerald-300", icon: <CheckSquare className="h-2.5 w-2.5" /> },
+  nowy: { label: "Nowy", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-blue-300", icon: <UserPlus className="h-2.5 w-2.5" /> },
+  nieaktywny: { label: "Nieaktywny", className: "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400 border-red-300", icon: <Clock className="h-2.5 w-2.5" /> },
+};
+
+function SegmentBadge({ segment }: { segment: string }) {
+  const badge = SEGMENT_BADGES[segment];
+  if (!badge) return null;
+  return (
+    <span className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0 text-[10px] font-semibold border ${badge.className}`}>
+      {badge.icon}{badge.label}
+    </span>
+  );
+}
 
 const TAG_COLORS = ["bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300", "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300", "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300", "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300", "bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300", "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300"];
 
@@ -83,6 +101,82 @@ export default function KlienciPage() {
   const [nipDuplicate, setNipDuplicate] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 25;
+  const [tagFilter, setTagFilter] = useState("");
+  const [segmentFilter, setSegmentFilter] = useState<"all" | "vip" | "staly" | "nowy" | "nieaktywny">("all");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === paginatedClients.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedClients.map((c) => c.id!)));
+    }
+  }
+
+  function bulkDelete() {
+    selectedIds.forEach((id) => remove(id));
+    toast.success(`Usunięto ${selectedIds.size} klientów`);
+    setSelectedIds(new Set());
+  }
+
+  function bulkAddTag(tag: string) {
+    selectedIds.forEach((id) => {
+      const c = clients.find((x) => x.id === id);
+      if (c) {
+        const existingTags = c.tags ? c.tags.split(",").map((t) => t.trim()).filter(Boolean) : [];
+        if (!existingTags.includes(tag)) {
+          update(id, { tags: [...existingTags, tag].join(", ") });
+        }
+      }
+    });
+    toast.success(`Dodano tag "${tag}" do ${selectedIds.size} klientów`);
+    setSelectedIds(new Set());
+  }
+
+  function bulkExportCSV() {
+    const selected = clients.filter((c) => selectedIds.has(c.id!));
+    const headers = ["Nazwa", "Telefon", "Email", "Adres", "NIP", "Notatki", "Tagi"];
+    const rows = selected.map((c) => [c.name, c.phone, c.email || "", c.address || "", c.nip || "", c.notes || "", c.tags || ""]);
+    const csvContent = [headers.join(";"), ...rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(";"))].join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `klienci-wybrani-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Wyeksportowano ${selectedIds.size} klientów`);
+  }
+
+  // Wykrywanie duplikatów
+  const duplicateWarnings = useMemo(() => {
+    const warnings: Record<number, string[]> = {};
+    clients.forEach((c) => {
+      const dupes: string[] = [];
+      if (c.nip) {
+        const nipDupes = clients.filter((x) => x.id !== c.id && x.nip === c.nip);
+        if (nipDupes.length > 0) dupes.push(`NIP: ${nipDupes.map((x) => x.name).join(", ")}`);
+      }
+      if (c.phone) {
+        const phoneDupes = clients.filter((x) => x.id !== c.id && x.phone === c.phone);
+        if (phoneDupes.length > 0) dupes.push(`Tel: ${phoneDupes.map((x) => x.name).join(", ")}`);
+      }
+      if (c.email) {
+        const emailDupes = clients.filter((x) => x.id !== c.id && x.email && x.email.toLowerCase() === c.email!.toLowerCase());
+        if (emailDupes.length > 0) dupes.push(`Email: ${emailDupes.map((x) => x.name).join(", ")}`);
+      }
+      if (dupes.length > 0) warnings[c.id!] = dupes;
+    });
+    return warnings;
+  }, [clients]);
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -113,35 +207,73 @@ export default function KlienciPage() {
     return stats;
   }, [quotes]);
 
+  // Segmentacja klientów
+  const clientSegments = useMemo(() => {
+    const now = new Date();
+    const segments: Record<number, "vip" | "staly" | "nowy" | "nieaktywny" | "normal"> = {};
+    clients.forEach((c) => {
+      const stats = clientStats[c.id!];
+      const daysSinceCreated = Math.floor((now.getTime() - new Date(c.createdAt).getTime()) / 86400000);
+      const daysSinceLastQuote = stats?.lastQuoteDate ? Math.floor((now.getTime() - new Date(stats.lastQuoteDate).getTime()) / 86400000) : null;
+
+      if (stats?.totalRevenue > 10000) segments[c.id!] = "vip";
+      else if (stats?.quoteCount >= 3) segments[c.id!] = "staly";
+      else if (daysSinceCreated < 30) segments[c.id!] = "nowy";
+      else if (daysSinceLastQuote === null || daysSinceLastQuote > 90) segments[c.id!] = "nieaktywny";
+      else segments[c.id!] = "normal";
+    });
+    return segments;
+  }, [clients, clientStats]);
+
+  // Wszystkie tagi
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    clients.forEach((c) => {
+      if (c.tags) c.tags.split(",").map((t) => t.trim()).filter(Boolean).forEach((t) => tags.add(t));
+    });
+    return Array.from(tags);
+  }, [clients]);
+
   const filtered = useMemo(() => {
-    let result = clients.filter((c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search) ||
-      (c.email || "").toLowerCase().includes(search.toLowerCase()) ||
-      (c.nip || "").includes(search)
-    );
+    let result = clients.filter((c) => {
+      const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.phone.includes(search) ||
+        (c.email || "").toLowerCase().includes(search.toLowerCase()) ||
+        (c.nip || "").includes(search);
+
+      // Filtr po tagu
+      let matchesTag = true;
+      if (tagFilter) {
+        const clientTags = c.tags ? c.tags.split(",").map((t) => t.trim()) : [];
+        matchesTag = clientTags.includes(tagFilter);
+      }
+
+      // Filtr po segmencie
+      let matchesSegment = true;
+      if (segmentFilter !== "all") {
+        matchesSegment = clientSegments[c.id!] === segmentFilter;
+      }
+
+      return matchesSearch && matchesTag && matchesSegment;
+    });
 
     result.sort((a, b) => {
       let cmp = 0;
+      const statsA = clientStats[a.id!] || { quoteCount: 0, totalRevenue: 0 };
+      const statsB = clientStats[b.id!] || { quoteCount: 0, totalRevenue: 0 };
       switch (sortKey) {
-        case "name":
-          cmp = a.name.localeCompare(b.name);
-          break;
-        case "phone":
-          cmp = a.phone.localeCompare(b.phone);
-          break;
-        case "email":
-          cmp = (a.email || "").localeCompare(b.email || "");
-          break;
-        case "createdAt":
-          cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          break;
+        case "name": cmp = a.name.localeCompare(b.name); break;
+        case "phone": cmp = a.phone.localeCompare(b.phone); break;
+        case "email": cmp = (a.email || "").localeCompare(b.email || ""); break;
+        case "createdAt": cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); break;
+        case "revenue": cmp = statsA.totalRevenue - statsB.totalRevenue; break;
+        case "quoteCount": cmp = statsA.quoteCount - statsB.quoteCount; break;
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
 
     return result;
-  }, [clients, search, sortKey, sortDir]);
+  }, [clients, search, sortKey, sortDir, tagFilter, segmentFilter, clientStats, clientSegments]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginatedClients = useMemo(() => {
@@ -308,6 +440,27 @@ export default function KlienciPage() {
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input placeholder="Szukaj klientów..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
                 </div>
+                {/* Filtr po tagu */}
+                {allTags.length > 0 && (
+                  <Select value={tagFilter} onValueChange={(v) => setTagFilter(v === "all" ? "" : (v ?? ""))}>
+                    <SelectTrigger className="w-32 h-9 text-xs"><SelectValue placeholder="Tag" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Wszystkie tagi</SelectItem>
+                      {allTags.map((tag) => <SelectItem key={tag} value={tag}>{tag}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+                {/* Filtr po segmencie */}
+                <Select value={segmentFilter} onValueChange={(v) => setSegmentFilter((v ?? "all") as typeof segmentFilter)}>
+                  <SelectTrigger className="w-32 h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Wszyscy</SelectItem>
+                    <SelectItem value="vip">VIP</SelectItem>
+                    <SelectItem value="staly">Stały</SelectItem>
+                    <SelectItem value="nowy">Nowy</SelectItem>
+                    <SelectItem value="nieaktywny">Nieaktywny</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "table" | "grid")} className="shrink-0">
                   <TabsList>
                     <TabsTrigger value="table">Tabela</TabsTrigger>
@@ -317,6 +470,52 @@ export default function KlienciPage() {
               </div>
             </CardHeader>
             <CardContent>
+              {/* Bulk actions bar */}
+              {selectedIds.size > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-primary/5 border border-primary/20"
+                >
+                  <span className="text-sm font-medium text-primary">Zaznaczono: {selectedIds.size}</span>
+                  <Separator orientation="vertical" className="h-5" />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger>
+                      <Button variant="outline" size="sm" className="h-7 text-xs">
+                        <Tag className="h-3 w-3 mr-1" />Dodaj tag
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {["VIP", "Stały", "Priorytet", "Do kontaktu"].map((tag) => (
+                        <DropdownMenuItem key={tag} onClick={() => bulkAddTag(tag)}>{tag}</DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={bulkExportCSV}>
+                    <Download className="h-3 w-3 mr-1" />Eksportuj
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger>
+                      <Button variant="outline" size="sm" className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10">
+                        <Trash2 className="h-3 w-3 mr-1" />Usuń
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Usuń zaznaczonych klientów</AlertDialogTitle>
+                        <AlertDialogDescription>Czy na pewno chcesz usunąć {selectedIds.size} klientów? Tej operacji nie można cofnąć.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                        <AlertDialogAction onClick={bulkDelete} className="bg-destructive text-white hover:bg-destructive/90">Usuń</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto" onClick={() => setSelectedIds(new Set())}>
+                    Odznacz
+                  </Button>
+                </motion.div>
+              )}
               {loading ? (
                 <TableSkeleton rows={5} />
               ) : filtered.length === 0 ? (
@@ -336,10 +535,13 @@ export default function KlienciPage() {
                   <Table>
                     <TableHeader className="table-header-industrial">
                       <TableRow>
+                        <TableHead className="w-10">
+                          <input type="checkbox" className="rounded border-border" checked={selectedIds.size === paginatedClients.length && paginatedClients.length > 0} onChange={toggleSelectAll} />
+                        </TableHead>
                         <TableHead className="cursor-pointer select-none" onClick={() => handleSort("name")}>Klient<SortIcon column="name" /></TableHead>
+                        <TableHead>Segment</TableHead>
                         <TableHead className="cursor-pointer select-none" onClick={() => handleSort("phone")}>Telefon<SortIcon column="phone" /></TableHead>
                         <TableHead className="cursor-pointer select-none" onClick={() => handleSort("email")}>Email<SortIcon column="email" /></TableHead>
-                        <TableHead>Adres</TableHead>
                         <TableHead>NIP</TableHead>
                         <TableHead className="text-right">Wyceny</TableHead>
                         <TableHead className="text-right">Przychód</TableHead>
@@ -351,6 +553,8 @@ export default function KlienciPage() {
                         {paginatedClients.map((c, index) => {
                           const stats = clientStats[c.id!] || { quoteCount: 0, totalRevenue: 0, lastQuoteDate: null };
                           const tags = c.tags ? c.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [];
+                          const segment = clientSegments[c.id!];
+                          const dupes = duplicateWarnings[c.id!];
                           return (
                             <motion.tr
                               key={c.id}
@@ -361,15 +565,25 @@ export default function KlienciPage() {
                               className="group border-b border-border/50 hover:bg-accent/50 transition-colors"
                             >
                               <TableCell>
+                                <input type="checkbox" className="rounded border-border" checked={selectedIds.has(c.id!)} onChange={() => toggleSelect(c.id!)} />
+                              </TableCell>
+                              <TableCell>
                                 <div className="flex items-center gap-3">
                                   <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${getAvatarColor(c.name)} text-white text-xs font-bold shrink-0`}>
                                     {getInitials(c.name)}
                                   </div>
                                   <div className="min-w-0">
-                                    <Link href={`/klienci/${c.id}`} className="font-semibold hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-flex items-center gap-1">
-                                      {c.name}
-                                      <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </Link>
+                                    <div className="flex items-center gap-1.5">
+                                      <Link href={`/klienci/${c.id}`} className="font-semibold hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-flex items-center gap-1">
+                                        {c.name}
+                                        <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                      </Link>
+                                      {dupes && (
+                                        <span className="text-amber-500" title={`Duplikat: ${dupes.join("; ")}`}>
+                                          <AlertTriangle className="h-3.5 w-3.5" />
+                                        </span>
+                                      )}
+                                    </div>
                                     {tags.length > 0 && (
                                       <div className="flex gap-1 mt-0.5">
                                         {tags.map((tag: string, i: number) => (
@@ -379,6 +593,9 @@ export default function KlienciPage() {
                                     )}
                                   </div>
                                 </div>
+                              </TableCell>
+                              <TableCell>
+                                <SegmentBadge segment={segment} />
                               </TableCell>
                               <TableCell>
                                 <a href={`tel:${c.phone}`} className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
@@ -395,9 +612,6 @@ export default function KlienciPage() {
                                 ) : (
                                   <span className="text-muted-foreground">-</span>
                                 )}
-                              </TableCell>
-                              <TableCell className="max-w-48 truncate text-muted-foreground">
-                                {c.address ? <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 shrink-0" />{c.address}</span> : "-"}
                               </TableCell>
                               <TableCell className="font-mono text-sm">{c.nip || "-"}</TableCell>
                               <TableCell className="text-right">
@@ -446,6 +660,8 @@ export default function KlienciPage() {
                     {paginatedClients.map((c, index) => {
                       const stats = clientStats[c.id!] || { quoteCount: 0, totalRevenue: 0, lastQuoteDate: null };
                       const tags = c.tags ? c.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [];
+                      const segment = clientSegments[c.id!];
+                      const dupes = duplicateWarnings[c.id!];
                       return (
                         <motion.div
                           key={c.id}
@@ -462,14 +678,16 @@ export default function KlienciPage() {
                                     {getInitials(c.name)}
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <div className="font-semibold truncate">{c.name}</div>
-                                    {tags.length > 0 && (
-                                      <div className="flex gap-1 mt-1 flex-wrap">
-                                        {tags.map((tag: string, i: number) => (
-                                          <Badge key={i} className={`text-[10px] px-1.5 py-0 ${getTagColor(i)}`}>{tag}</Badge>
-                                        ))}
-                                      </div>
-                                    )}
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="font-semibold truncate">{c.name}</div>
+                                      {dupes && <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
+                                    </div>
+                                    <div className="flex gap-1 mt-1 flex-wrap">
+                                      <SegmentBadge segment={segment} />
+                                      {tags.map((tag: string, i: number) => (
+                                        <Badge key={i} className={`text-[10px] px-1.5 py-0 ${getTagColor(i)}`}>{tag}</Badge>
+                                      ))}
+                                    </div>
                                   </div>
                                 </div>
                                 <div className="space-y-2 mt-4 text-sm">

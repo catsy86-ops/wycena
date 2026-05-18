@@ -33,6 +33,8 @@ import { ShareQuoteDialog } from "@/components/quote/share-quote";
 import { QuoteProfitability } from "@/components/quote/quote-profitability";
 import { TimeComparison } from "@/components/quote/time-comparison";
 import { Share2, PenTool } from "lucide-react";
+import { QuoteAIPanel } from "@/components/quote/quote-ai-panel";
+import { VersionDiff } from "@/components/quote/version-diff";
 
 const STATUS_COLORS: Record<QuoteStatus, string> = {
   szkic: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
@@ -346,6 +348,17 @@ export default function WycenaDetailPage() {
               <Button size="sm" className="btn-primary" onClick={handleExportPDF}>
                 <FileDown className="mr-2 h-4 w-4" />PDF
               </Button>
+              <Button variant="outline" size="sm" className="btn-secondary" onClick={async () => {
+                const { generateQuoteDocx } = await import("@/lib/export-word");
+                const blob = await generateQuoteDocx(q, settings);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a"); a.href = url;
+                a.download = `wycena-${q.number.replace(/\//g, "-")}.docx`; a.click();
+                URL.revokeObjectURL(url);
+                toast.success("Word wygenerowany");
+              }}>
+                <FileDown className="mr-2 h-4 w-4" />Word
+              </Button>
               <AlertDialog>
                 <AlertDialogTrigger>
                   <Button variant="destructive" size="sm">
@@ -602,6 +615,17 @@ export default function WycenaDetailPage() {
           {/* Porównanie czasu */}
           <TimeComparison quote={q} />
         </div>
+
+        {/* AI Predykcja */}
+        <QuoteAIPanel clientId={q.clientId} quoteValue={q.totalBrutto} />
+
+        {/* Porównanie wersji */}
+        {q.versions && q.versions.length >= 2 && (
+          <VersionDiff
+            versionA={q.versions[q.versions.length - 2]}
+            versionB={q.versions[q.versions.length - 1]}
+          />
+        )}
 
         {/* Komentarze wewnętrzne */}
         <InternalComments

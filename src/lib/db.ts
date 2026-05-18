@@ -9,6 +9,8 @@ import type {
   Payment,
   QuoteTemplate,
   TimeEntry,
+  TimeTemplate,
+  RecurringTimeEntry,
   ScheduleEvent,
   RecurringQuote,
 } from "@/types";
@@ -23,6 +25,8 @@ const db = new Dexie("WycenaDB") as Dexie & {
   payments: EntityTable<Payment, "id">;
   quoteTemplates: EntityTable<QuoteTemplate, "id">;
   timeEntries: EntityTable<TimeEntry, "id">;
+  timeTemplates: EntityTable<TimeTemplate, "id">;
+  recurringTimeEntries: EntityTable<RecurringTimeEntry, "id">;
   scheduleEvents: EntityTable<ScheduleEvent, "id">;
   recurringQuotes: EntityTable<RecurringQuote, "id">;
 };
@@ -44,6 +48,22 @@ db.version(2).stores({
   payments: "++id, invoiceId, date, method",
   quoteTemplates: "++id, name, category, createdAt",
   timeEntries: "++id, quoteId, clientId, category, startTime",
+  scheduleEvents: "++id, quoteId, clientId, type, status, startTime, endTime",
+  recurringQuotes: "++id, name, clientId, frequency, isActive, nextDueDate",
+});
+
+db.version(3).stores({
+  services: "++id, name, category, createdAt",
+  clients: "++id, name, phone, email, nip, createdAt",
+  quotes: "++id, number, status, clientId, clientName, createdAt",
+  settings: "++id",
+  materials: "++id, name, category, supplier, sku, createdAt",
+  invoices: "++id, number, status, quoteId, issueDate, dueDate",
+  payments: "++id, invoiceId, date, method",
+  quoteTemplates: "++id, name, category, createdAt",
+  timeEntries: "++id, quoteId, clientId, category, startTime",
+  timeTemplates: "++id, name, clientName, category, createdAt",
+  recurringTimeEntries: "++id, templateId, isActive, nextDueDate",
   scheduleEvents: "++id, quoteId, clientId, type, status, startTime, endTime",
   recurringQuotes: "++id, name, clientId, frequency, isActive, nextDueDate",
 });

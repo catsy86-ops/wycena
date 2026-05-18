@@ -92,6 +92,22 @@ export interface Service {
   updatedAt: Date;
 }
 
+export interface ClientContactEntry {
+  id: string;
+  date: string; // ISO date
+  type: "telefon" | "email" | "wizyta" | "sms" | "inne";
+  summary: string;
+  outcome?: string;
+}
+
+export interface ClientVisitNote {
+  id: string;
+  date: string; // ISO date
+  title: string;
+  content: string;
+  photos?: string[]; // base64
+}
+
 export interface Client {
   id?: number;
   name: string;
@@ -101,6 +117,10 @@ export interface Client {
   nip?: string;
   notes?: string;
   tags?: string;
+  /** Historia kontaktów */
+  contactHistory?: ClientContactEntry[];
+  /** Notatki z wizyt */
+  visitNotes?: ClientVisitNote[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -418,9 +438,38 @@ export interface TimeEntry {
   totalCost: number;
   category: "robocizna" | "dojazd" | "inne";
   notes?: string;
+  estimatedMinutes?: number;
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface TimeTemplate {
+  id?: number;
+  name: string;
+  description?: string;
+  clientName: string;
+  category: "robocizna" | "dojazd" | "inne";
+  hourlyRate: number;
+  estimatedMinutes: number;
+  usageCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RecurringTimeEntry {
+  id?: number;
+  templateId: number;
+  frequency: "daily" | "weekly" | "biweekly" | "monthly";
+  nextDueDate: Date;
+  lastGeneratedDate?: Date;
+  isActive: boolean;
+  endDate?: Date;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type RecurrencePattern = "none" | "daily" | "weekly" | "biweekly" | "monthly" | "yearly";
 
 export interface ScheduleEvent {
   id?: number;
@@ -436,6 +485,16 @@ export interface ScheduleEvent {
   type: "wycena" | "realizacja" | "przeglad" | "awaria" | "inne";
   status: ScheduleStatus;
   color?: string;
+  /** Powtarzanie zdarzenia */
+  recurrence?: RecurrencePattern;
+  /** Data końca powtarzania (jeśli brak, powtarza się w nieskończoność) */
+  recurrenceEndDate?: Date;
+  /** ID zdarzenia głównego (jeśli to instancja powtarzającego się) */
+  parentEventId?: number;
+  /** Przypomnienia (minuty przed zdarzeniem) */
+  reminders?: number[]; // np. [30, 60] = 30 min i 1h przed
+  /** Czy przypomnienia są włączone */
+  remindersEnabled?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -452,9 +511,18 @@ export const SCHEDULE_STATUS_LABELS: Record<ScheduleStatus, string> = {
 export const SCHEDULE_TYPE_LABELS: Record<ScheduleEvent["type"], string> = {
   wycena: "Wycena",
   realizacja: "Realizacja",
-  przeglad: "PrzeglÄ…d",
+  przeglad: "Przegląd",
   awaria: "Awaria",
   inne: "Inne",
+};
+
+export const RECURRENCE_LABELS: Record<RecurrencePattern, string> = {
+  none: "Brak",
+  daily: "Codziennie",
+  weekly: "Co tydzień",
+  biweekly: "Co dwa tygodnie",
+  monthly: "Co miesiąc",
+  yearly: "Co rok",
 };
 
 export interface RecurringQuote {
