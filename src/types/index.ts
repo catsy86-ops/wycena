@@ -10,12 +10,12 @@ export type ServiceCategory =
   | "inne";
 
 export const CATEGORY_LABELS: Record<ServiceCategory, string> = {
-  montaz: "MontaĹĽ",
+  montaz: "Montaż",
   naprawa: "Naprawa",
   wymiana: "Wymiana",
   czyszczenie: "Czyszczenie",
   diagnoza: "Diagnoza",
-  materialy: "MateriaĹ‚y",
+  materialy: "Materiały",
   inne: "Inne",
 };
 
@@ -31,7 +31,7 @@ export const UNIT_LABELS: Record<Unit, string> = {
   szt: "szt.",
   kg: "kg",
   m: "m",
-  m2: "mÂ˛",
+  m2: "m²",
   godz: "godz.",
   kpl: "kpl.",
   mb: "mb",
@@ -129,7 +129,7 @@ export type QuoteStatus = "szkic" | "wyslana" | "zaakceptowana" | "odrzucona";
 
 export const STATUS_LABELS: Record<QuoteStatus, string> = {
   szkic: "Szkic",
-  wyslana: "WysĹ‚ana",
+  wyslana: "Wysłana",
   zaakceptowana: "Zaakceptowana",
   odrzucona: "Odrzucona",
 };
@@ -146,9 +146,9 @@ export interface QuoteItem {
   nettotal: number;
   vatAmount: number;
   bruttoTotal: number;
-  /** Cena z zewnÄ™trznego API (do porĂłwnania) */
+  /** Cena z zewnętrznego API (do porównania) */
   externalPrice?: number;
-  /** ĹąrĂłdĹ‚o ceny zewnÄ™trznej */
+  /** Źródło ceny zewnętrznej */
   externalPriceSource?: string;
 }
 
@@ -233,7 +233,7 @@ export interface QuotePhoto {
   createdAt: Date;
 }
 
-/** Snapshot wynikĂłw zaawansowanego modelu wyceny zapisywany razem z wycena */
+/** Snapshot wyników zaawansowanego modelu wyceny zapisywany razem z wyceną */
 export interface PricingSnapshot {
   model: PricingModelConfig;
   result: {
@@ -263,15 +263,15 @@ export interface CompanySettings {
   defaultVatRate: VatRate;
   defaultValidityDays: number;
   logoDataUrl?: string;
-  /** Konfiguracja zewnÄ™trznych API cenowych */
+  /** Konfiguracja zewnętrznych API cenowych */
   externalPricingApis?: ExternalPricingApiConfig[];
 }
 
-/** Konfiguracja jednego zewnÄ™trznego API cenowego */
+/** Konfiguracja jednego zewnętrznego API cenowego */
 export interface ExternalPricingApiConfig {
   id: string;
   name: string;
-  /** URL endpointu (moĹĽe byÄ‡ wĹ‚asny serwer lub proxy) */
+  /** URL endpointu (może być własny serwer lub proxy) */
   url: string;
   /** Klucz API (opcjonalny) */
   apiKey?: string;
@@ -281,7 +281,7 @@ export interface ExternalPricingApiConfig {
   type: "custom" | "builtin_mock" | "cennik_gus";
 }
 
-/** Wynik zapytania do zewnÄ™trznego API cenowego */
+/** Wynik zapytania do zewnętrznego API cenowego */
 export interface ExternalPricingResult {
   source: string;
   items: ExternalPricingItem[];
@@ -296,7 +296,7 @@ export interface ExternalPricingItem {
   vatRate: number;
   category?: string;
   description?: string;
-  /** Identyfikator w zewnÄ™trznym systemie */
+  /** Identyfikator w zewnętrznym systemie */
   externalId?: string;
 }
 
@@ -339,9 +339,9 @@ export interface Invoice {
 export type InvoiceStatus = "niezaplacona" | "czesciowo" | "zaplacona" | "anulowana";
 
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
-  niezaplacona: "NieopĹ‚acona",
-  czesciowo: "CzÄ™Ĺ›ciowo opĹ‚acona",
-  zaplacona: "OpĹ‚acona",
+  niezaplacona: "Nieopłacona",
+  czesciowo: "Częściowo opłacona",
+  zaplacona: "Opłacona",
   anulowana: "Anulowana",
 };
 
@@ -357,7 +357,7 @@ export interface Payment {
 
 export const PAYMENT_METHOD_LABELS: Record<Payment["method"], string> = {
   przelew: "Przelew",
-  gotowka: "GotĂłwka",
+  gotowka: "Gotówka",
   karta: "Karta",
   inny: "Inny",
 };
@@ -504,7 +504,7 @@ export type ScheduleStatus = "zaplanowane" | "w_trakcie" | "zakonczone" | "anulo
 export const SCHEDULE_STATUS_LABELS: Record<ScheduleStatus, string> = {
   zaplanowane: "Zaplanowane",
   w_trakcie: "W trakcie",
-  zakonczone: "ZakoĹ„czone",
+  zakonczone: "Zakończone",
   anulowane: "Anulowane",
 };
 
@@ -543,7 +543,7 @@ export interface RecurringQuote {
 
 export const RECURRING_FREQUENCY_LABELS: Record<RecurringQuote["frequency"], string> = {
   tygodniowo: "Tygodniowo",
-  miesiecznie: "MiesiÄ™cznie",
+  miesiecznie: "Miesięcznie",
   kwartalnie: "Kwartalnie",
   rocznie: "Rocznie",
 };
