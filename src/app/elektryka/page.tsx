@@ -156,6 +156,12 @@ export default function ElektrykaPage() {
               <p className="text-muted-foreground mt-0.5 text-sm">Wyceny, cennik i analityka usług elektrycznych</p>
             </div>
             <div className="flex items-center gap-2">
+              <Link href="/elektryka/protokoly">
+                <Button variant="outline">
+                  <FileText className="h-4 w-4" />
+                  Protokoły
+                </Button>
+              </Link>
               <Link href="/elektryka/nowa">
                 <Button className="btn-switch">
                   <Plus className="h-4 w-4" />
