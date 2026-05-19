@@ -1,5 +1,5 @@
-// Service Worker — WYCENKA PWA
-const CACHE_NAME = "wycenka-v1";
+// Service Worker — GK-System PWA
+const CACHE_NAME = "gksystem-v1";
 const STATIC_ASSETS = ["/", "/manifest.json"];
 
 // Install — cache shell

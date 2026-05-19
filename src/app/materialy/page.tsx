@@ -85,7 +85,7 @@ export default function MaterialyPage() {
   const [orderForm, setOrderForm] = useState({ materialId: 0, quantity: 0, supplier: "", notes: "" });
   const [orders, setOrders] = useState<SupplierOrder[]>(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("wycenka-supplier-orders");
+      const saved = localStorage.getItem("gksystem-supplier-orders");
       if (saved) return JSON.parse(saved);
     }
     return [];
@@ -271,7 +271,7 @@ export default function MaterialyPage() {
     };
     const updated = [...orders, newOrder];
     setOrders(updated);
-    localStorage.setItem("wycenka-supplier-orders", JSON.stringify(updated));
+    localStorage.setItem("gksystem-supplier-orders", JSON.stringify(updated));
     setOrderDialogOpen(false);
     toast.success("Zamówienie utworzone");
   }
@@ -279,7 +279,7 @@ export default function MaterialyPage() {
   function updateOrderStatus(id: string, status: SupplierOrder["status"]) {
     const updated = orders.map((o) => o.id === id ? { ...o, status } : o);
     setOrders(updated);
-    localStorage.setItem("wycenka-supplier-orders", JSON.stringify(updated));
+    localStorage.setItem("gksystem-supplier-orders", JSON.stringify(updated));
     if (status === "dostarczone") {
       const order = orders.find((o) => o.id === id);
       if (order) {
@@ -295,7 +295,7 @@ export default function MaterialyPage() {
   function deleteOrder(id: string) {
     const updated = orders.filter((o) => o.id !== id);
     setOrders(updated);
-    localStorage.setItem("wycenka-supplier-orders", JSON.stringify(updated));
+    localStorage.setItem("gksystem-supplier-orders", JSON.stringify(updated));
     toast.success("Zamówienie usunięte");
   }
 

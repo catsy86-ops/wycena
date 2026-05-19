@@ -63,7 +63,7 @@ const EMPTY_RECURRING = {
   templateId: 0, frequency: "weekly" as const, nextDueDate: "", endDate: "", notes: "",
 };
 
-const WEEKLY_GOAL_KEY = "wycenka_weekly_hours_goal";
+const WEEKLY_GOAL_KEY = "gksystem_weekly_hours_goal";
 
 export default function CzasPage() {
   const entries = useTimeStore((s) => s.entries);

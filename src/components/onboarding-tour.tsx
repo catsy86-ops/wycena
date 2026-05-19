@@ -5,12 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { X, ArrowRight, Wrench, FileText, Users, BarChart3 } from "lucide-react";
 
-const STORAGE_KEY = "wycenka_onboarding_done";
+const STORAGE_KEY = "gksystem_onboarding_done";
 
 const STEPS = [
   {
     icon: <Wrench className="h-8 w-8 text-primary" />,
-    title: "Witaj w WYCENKA!",
+    title: "Witaj w GK!",
     description: "System wycen usług hydraulicznych. Twórz profesjonalne wyceny, zarządzaj klientami i śledź czas pracy.",
   },
   {

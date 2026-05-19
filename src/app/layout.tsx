@@ -9,8 +9,8 @@ const inter = Inter({
   display: "swap",
 });
 
-const APP_URL = "https://wycenka.pl";
-const APP_NAME = "WYCENKA";
+const APP_URL = "https://gk-system.pl";
+const APP_NAME = "GK";
 const APP_DESCRIPTION = "Profesjonalny system wycen usług hydraulicznych. Twórz wyceny, zarządzaj klientami, materiałami i fakturami w jednym miejscu.";
 
 export const viewport: Viewport = {

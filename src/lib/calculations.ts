@@ -1,5 +1,6 @@
 import type { VatRate, QuoteItem, QuoteAdditionalCost, ProgressiveDiscount, PricingModelConfig } from "@/types";
 import { DEFAULT_PRICING_MODEL } from "@/types";
+import { subMonths, differenceInDays, format } from "date-fns";
 
 // ─── Precyzja ─────────────────────────────────────────────────────────────────
 
@@ -566,4 +567,464 @@ export function calcAdvancedPricing(
     profitability,
     minimumApplied,
   };
+}
+
+
+// ─── Analiza Rentowności per Usługa ────────────────────────────────────────
+
+export interface ServiceProfitability {
+  serviceId?: number;
+  serviceName: string;
+  count: number;
+  totalRevenue: number;
+  totalCost: number;
+  totalProfit: number;
+  avgMarginPercent: number;
+  avgPrice: number;
+  avgCost: number;
+  trend: number; // % zmiana vs poprzedni okres
+  recommendation: string;
+}
+
+export function analyzeServiceProfitability(
+  items: QuoteItem[],
+  services: any[],
+  previousItems?: QuoteItem[]
+): ServiceProfitability[] {
+  const current: Record<string, { count: number; revenue: number; cost: number }> = {};
+  const previous: Record<string, { count: number; revenue: number }> = {};
+
+  items.forEach((item) => {
+    const key = item.name;
+    if (!current[key]) current[key] = { count: 0, revenue: 0, cost: 0 };
+    current[key].count += item.quantity;
+    current[key].revenue += item.bruttoTotal;
+    // Szacunkowy koszt z usługi
+    const service = services.find((s) => s.id === item.serviceId);
+    current[key].cost += (service?.costPrice || 0) * item.quantity;
+  });
+
+  if (previousItems) {
+    previousItems.forEach((item) => {
+      const key = item.name;
+      if (!previous[key]) previous[key] = { count: 0, revenue: 0 };
+      previous[key].count += item.quantity;
+      previous[key].revenue += item.bruttoTotal;
+    });
+  }
+
+  return Object.entries(current)
+    .map(([name, data]) => {
+      const profit = round(data.revenue - data.cost);
+      const marginPercent = data.revenue > 0 ? round((profit / data.revenue) * 100) : 0;
+      const avgPrice = data.count > 0 ? round(data.revenue / data.count) : 0;
+      const avgCost = data.count > 0 ? round(data.cost / data.count) : 0;
+
+      const prevRevenue = previous[name]?.revenue || 0;
+      const trend = prevRevenue > 0 ? round(((data.revenue - prevRevenue) / prevRevenue) * 100) : 0;
+
+      let recommendation = "";
+      if (marginPercent >= 35) recommendation = "Utrzymaj cenę — doskonała marża";
+      else if (marginPercent >= 20) recommendation = "Dobra rentowność — monitoruj koszty";
+      else if (marginPercent >= 10) recommendation = "Rozważ podwyżkę ceny o 5-10%";
+      else if (marginPercent >= 0) recommendation = "Pilnie: podnieś cenę lub zmniejsz koszty";
+      else recommendation = "Krytyczne: usługa nierenta bilna!";
+
+      return {
+        serviceName: name,
+        count: data.count,
+        totalRevenue: round(data.revenue),
+        totalCost: round(data.cost),
+        totalProfit: profit,
+        avgMarginPercent: marginPercent,
+        avgPrice,
+        avgCost,
+        trend,
+        recommendation,
+      };
+    })
+    .sort((a, b) => b.totalRevenue - a.totalRevenue);
+}
+
+// ─── Metryki Zaawansowane ─────────────────────────────────────────────────
+
+export interface AdvancedMetrics {
+  cac: number; // Customer Acquisition Cost
+  ltv: number; // Lifetime Value
+  ltv_cac_ratio: number; // LTV/CAC ratio (powinno być > 3)
+  churnRate: number; // % klientów którzy nie wrócili
+  repeatRate: number; // % klientów którzy wrócili
+  avgClientValue: number; // Średnia wartość klienta
+  clientRetention: number; // % klientów utrzymanych
+  newClientsCount: number;
+  returningClientsCount: number;
+  churnedClientsCount: number;
+}
+
+export function calculateAdvancedMetrics(
+  quotes: any[],
+  clients: any[],
+  timeEntries: any[],
+  period: number = 12
+): AdvancedMetrics {
+  const now = new Date();
+  const periodStart = subMonths(now, period);
+
+  // Wyceny w okresie
+  const periodQuotes = quotes.filter((q) => new Date(q.createdAt) >= periodStart);
+  const acceptedQuotes = periodQuotes.filter((q) => q.status === "zaakceptowana");
+  const totalRevenue = acceptedQuotes.reduce((s, q) => s + q.totalBrutto, 0);
+
+  // Koszty pozyskania (marketing, czas sprzedaży)
+  const acquisitionCost = timeEntries
+    .filter((t) => t.category === "sprzedaż" && new Date(t.startTime) >= periodStart)
+    .reduce((s, t) => s + t.totalCost, 0);
+
+  // Nowi klienci w okresie
+  const newClients = new Set();
+  const returningClients = new Set();
+  const allClients = new Set();
+
+  periodQuotes.forEach((q) => {
+    if (q.clientId) {
+      allClients.add(q.clientId);
+      const clientQuotes = quotes.filter((qx) => qx.clientId === q.clientId);
+      if (clientQuotes.length === 1) newClients.add(q.clientId);
+      else returningClients.add(q.clientId);
+    }
+  });
+
+  // Churned clients (byli w poprzednim okresie, nie ma ich teraz)
+  const previousPeriodStart = subMonths(now, period * 2);
+  const previousPeriodEnd = subMonths(now, period);
+  const previousClients = new Set(
+    quotes
+      .filter((q) => new Date(q.createdAt) >= previousPeriodStart && new Date(q.createdAt) < previousPeriodEnd)
+      .map((q) => q.clientId)
+      .filter(Boolean)
+  );
+  const churnedClients = new Set([...previousClients].filter((c) => !allClients.has(c)));
+
+  const newClientsCount = newClients.size;
+  const returningClientsCount = returningClients.size;
+  const churnedClientsCount = churnedClients.size;
+  const totalActiveClients = allClients.size;
+
+  // CAC = Acquisition Cost / New Customers
+  const cac = newClientsCount > 0 ? round(acquisitionCost / newClientsCount) : 0;
+
+  // LTV = Average Revenue per Client * Retention Period
+  const avgClientValue = totalActiveClients > 0 ? round(totalRevenue / totalActiveClients) : 0;
+  const ltv = round(avgClientValue * (period / 12)); // Annualized
+
+  const ltv_cac_ratio = cac > 0 ? round((ltv / cac) * 100) / 100 : 0;
+
+  // Churn rate = Churned / Previous Period Clients
+  const churnRate = previousClients.size > 0 ? round((churnedClientsCount / previousClients.size) * 100) : 0;
+
+  // Repeat rate = Returning / Total Active
+  const repeatRate = totalActiveClients > 0 ? round((returningClientsCount / totalActiveClients) * 100) : 0;
+
+  // Retention = 1 - Churn
+  const clientRetention = 100 - churnRate;
+
+  return {
+    cac,
+    ltv,
+    ltv_cac_ratio,
+    churnRate,
+    repeatRate,
+    avgClientValue,
+    clientRetention,
+    newClientsCount,
+    returningClientsCount,
+    churnedClientsCount,
+  };
+}
+
+// ─── Analiza Czasu Pracy ──────────────────────────────────────────────────
+
+export interface TimeAccuracyAnalysis {
+  totalEstimated: number; // Suma szacunków (minuty)
+  totalActual: number; // Suma rzeczywistych (minuty)
+  accuracyPercent: number; // Jak blisko szacunków
+  overrunPercent: number; // % przekroczenia
+  underrunPercent: number; // % niedoestymacji
+  avgAccuracy: number; // Średnia dokładność per entry
+  productivityScore: number; // 0-100, gdzie 100 = idealna dokładność
+  recommendation: string;
+}
+
+export function analyzeTimeAccuracy(timeEntries: any[]): TimeAccuracyAnalysis {
+  const withEstimate = timeEntries.filter((t) => t.estimatedMinutes && t.estimatedMinutes > 0);
+
+  if (withEstimate.length === 0) {
+    return {
+      totalEstimated: 0,
+      totalActual: 0,
+      accuracyPercent: 0,
+      overrunPercent: 0,
+      underrunPercent: 0,
+      avgAccuracy: 0,
+      productivityScore: 0,
+      recommendation: "Brak danych — dodaj szacunki czasu do wpisów",
+    };
+  }
+
+  const totalEstimated = withEstimate.reduce((s, t) => s + (t.estimatedMinutes || 0), 0);
+  const totalActual = withEstimate.reduce((s, t) => s + t.durationMinutes, 0);
+
+  const accuracyPercent = totalEstimated > 0 ? round((totalActual / totalEstimated) * 100) : 0;
+
+  let overrunPercent = 0;
+  let underrunPercent = 0;
+  let sumAccuracy = 0;
+
+  withEstimate.forEach((t) => {
+    const ratio = t.durationMinutes / (t.estimatedMinutes || 1);
+    if (ratio > 1) overrunPercent += (ratio - 1) * 100;
+    else underrunPercent += (1 - ratio) * 100;
+    sumAccuracy += Math.min(100, (ratio <= 1 ? ratio : 1 / ratio) * 100);
+  });
+
+  overrunPercent = round(overrunPercent / withEstimate.length);
+  underrunPercent = round(underrunPercent / withEstimate.length);
+  const avgAccuracy = round(sumAccuracy / withEstimate.length);
+  const productivityScore = Math.max(0, Math.min(100, avgAccuracy));
+
+  let recommendation = "";
+  if (productivityScore >= 90) recommendation = "Doskonała dokładność szacunków — utrzymaj tempo";
+  else if (productivityScore >= 75) recommendation = "Dobra dokładność — drobne ulepszenia";
+  else if (productivityScore >= 60) recommendation = "Średnia dokładność — pracuj nad szacunkami";
+  else recommendation = "Niska dokładność — przeanalizuj przyczyny opóźnień";
+
+  return {
+    totalEstimated,
+    totalActual,
+    accuracyPercent,
+    overrunPercent,
+    underrunPercent,
+    avgAccuracy,
+    productivityScore,
+    recommendation,
+  };
+}
+
+// ─── Analiza Klientów ──────────────────────────────────────────────────────
+
+export interface ClientSegment {
+  clientId?: number;
+  clientName: string;
+  segment: "VIP" | "Regular" | "At-Risk" | "Churned";
+  totalRevenue: number;
+  quoteCount: number;
+  avgQuoteValue: number;
+  lastQuoteDate: Date;
+  daysSinceLastQuote: number;
+  frequency: number; // Wyceny per miesiąc
+  trend: number; // % zmiana vs poprzedni okres
+  churnRisk: number; // 0-100, gdzie 100 = wysoki risk
+  recommendation: string;
+}
+
+export function analyzeClientSegmentation(quotes: any[], period: number = 12): ClientSegment[] {
+  const now = new Date();
+  const periodStart = subMonths(now, period);
+  const previousStart = subMonths(now, period * 2);
+  const previousEnd = subMonths(now, period);
+
+  const clientData: Record<string, any> = {};
+
+  // Dane z bieżącego okresu
+  quotes
+    .filter((q) => new Date(q.createdAt) >= periodStart)
+    .forEach((q) => {
+      const key = q.clientId || q.clientName;
+      if (!clientData[key]) {
+        clientData[key] = {
+          clientId: q.clientId,
+          clientName: q.clientName,
+          revenue: 0,
+          count: 0,
+          lastDate: new Date(q.createdAt),
+          dates: [],
+        };
+      }
+      clientData[key].revenue += q.totalBrutto;
+      clientData[key].count += 1;
+      clientData[key].dates.push(new Date(q.createdAt));
+      if (new Date(q.createdAt) > clientData[key].lastDate) {
+        clientData[key].lastDate = new Date(q.createdAt);
+      }
+    });
+
+  // Dane z poprzedniego okresu (dla trendu)
+  const previousData: Record<string, number> = {};
+  quotes
+    .filter((q) => new Date(q.createdAt) >= previousStart && new Date(q.createdAt) < previousEnd)
+    .forEach((q) => {
+      const key = q.clientId || q.clientName;
+      previousData[key] = (previousData[key] || 0) + q.totalBrutto;
+    });
+
+  return Object.entries(clientData)
+    .map(([key, data]) => {
+      const avgQuoteValue = data.count > 0 ? round(data.revenue / data.count) : 0;
+      const daysSinceLastQuote = differenceInDays(now, data.lastDate);
+      const frequency = round((data.count / period) * 12); // Per rok
+      const prevRevenue = previousData[key] || 0;
+      const trend = prevRevenue > 0 ? round(((data.revenue - prevRevenue) / prevRevenue) * 100) : 0;
+
+      // Churn risk: wysoki jeśli nie było wyceny > 90 dni
+      let churnRisk = 0;
+      if (daysSinceLastQuote > 180) churnRisk = 90;
+      else if (daysSinceLastQuote > 120) churnRisk = 70;
+      else if (daysSinceLastQuote > 90) churnRisk = 50;
+      else if (daysSinceLastQuote > 60) churnRisk = 20;
+
+      // Segmentacja
+      let segment: ClientSegment["segment"] = "Regular";
+      if (data.revenue > 50000) segment = "VIP";
+      else if (churnRisk > 50) segment = "At-Risk";
+
+      let recommendation = "";
+      if (segment === "VIP") recommendation = "Priorytet: utrzymaj relację, oferuj specjalne warunki";
+      else if (segment === "At-Risk") recommendation = "Pilnie: skontaktuj się, zaproponuj nową usługę";
+      else if (trend > 20) recommendation = "Rosnący klient — rozważ upsell";
+      else if (trend < -20) recommendation = "Spadek zainteresowania — zbadaj przyczyny";
+      else recommendation = "Stabilny klient — utrzymuj kontakt";
+
+      return {
+        clientId: data.clientId,
+        clientName: data.clientName,
+        segment,
+        totalRevenue: round(data.revenue),
+        quoteCount: data.count,
+        avgQuoteValue,
+        lastQuoteDate: data.lastDate,
+        daysSinceLastQuote,
+        frequency,
+        trend,
+        churnRisk,
+        recommendation,
+      };
+    })
+    .sort((a, b) => b.totalRevenue - a.totalRevenue);
+}
+
+// ─── Dashboard Operacyjny ─────────────────────────────────────────────────
+
+export interface OperationalAlert {
+  id: string;
+  type: "warning" | "critical" | "info";
+  title: string;
+  description: string;
+  action?: string;
+  actionUrl?: string;
+  priority: number; // 1-10
+}
+
+export function generateOperationalAlerts(
+  quotes: any[],
+  invoices: any[],
+  timeEntries: any[],
+  getTotalPaidForInvoice: (id: number) => number
+): OperationalAlert[] {
+  const alerts: OperationalAlert[] = [];
+  const now = new Date();
+
+  // 1. Wyceny oczekujące na akcję (wysłane > 14 dni bez odpowiedzi)
+  const pendingQuotes = quotes.filter((q) => q.status === "wyslana");
+  pendingQuotes.forEach((q) => {
+    const daysPending = differenceInDays(now, new Date(q.createdAt));
+    if (daysPending > 14) {
+      alerts.push({
+        id: `pending-${q.id}`,
+        type: "warning",
+        title: `Wycena ${q.number} oczekuje ${daysPending} dni`,
+        description: `Klient: ${q.clientName}. Wysłana: ${format(new Date(q.createdAt), "dd.MM.yyyy")}`,
+        action: "Wyślij przypomnienie",
+        actionUrl: `/wyceny/${q.id}`,
+        priority: 6,
+      });
+    }
+  });
+
+  // 2. Faktury przeterminowane
+  const unpaidInvoices = invoices.filter((i) => i.status !== "zaplacona" && i.status !== "anulowana");
+  unpaidInvoices.forEach((inv) => {
+    const daysOverdue = differenceInDays(now, new Date(inv.dueDate));
+    if (daysOverdue > 0) {
+      const remaining = inv.totalBrutto - getTotalPaidForInvoice(inv.id!);
+      alerts.push({
+        id: `overdue-${inv.id}`,
+        type: daysOverdue > 30 ? "critical" : "warning",
+        title: `Faktura ${inv.number} przeterminowana o ${daysOverdue} dni`,
+        description: `Kwota: ${formatCurrency(remaining)}. Termin: ${format(new Date(inv.dueDate), "dd.MM.yyyy")}`,
+        action: "Wyślij przypomnienie",
+        actionUrl: `/faktury`,
+        priority: daysOverdue > 30 ? 10 : 8,
+      });
+    }
+  });
+
+  // 3. Projekty z niską marżą (< 10%)
+  const lowMarginQuotes = quotes.filter((q) => q.status === "zaakceptowana" && q.marginPercent !== undefined && q.marginPercent < 10);
+  if (lowMarginQuotes.length > 0) {
+    alerts.push({
+      id: "low-margin",
+      type: "warning",
+      title: `${lowMarginQuotes.length} projektów z marżą < 10%`,
+      description: `Średnia marża: ${round(lowMarginQuotes.reduce((s, q) => s + (q.marginPercent || 0), 0) / lowMarginQuotes.length)}%`,
+      action: "Przejrzyj projekty",
+      actionUrl: `/raporty?tab=profit`,
+      priority: 7,
+    });
+  }
+
+  // 4. Brak szacunków czasu
+  const noEstimate = timeEntries.filter((t) => !t.estimatedMinutes || t.estimatedMinutes === 0);
+  if (noEstimate.length > 5) {
+    alerts.push({
+      id: "no-estimates",
+      type: "info",
+      title: `${noEstimate.length} wpisów bez szacunków czasu`,
+      description: "Dodaj szacunki aby poprawić dokładność prognoz",
+      action: "Dodaj szacunki",
+      actionUrl: `/czas`,
+      priority: 3,
+    });
+  }
+
+  // 5. Klienci At-Risk
+  const clientSegments = analyzeClientSegmentation(quotes);
+  const atRiskClients = clientSegments.filter((c) => c.segment === "At-Risk");
+  if (atRiskClients.length > 0) {
+    alerts.push({
+      id: "at-risk-clients",
+      type: "warning",
+      title: `${atRiskClients.length} klientów w grupie At-Risk`,
+      description: `Brak kontaktu > 90 dni. Średni risk: ${round(atRiskClients.reduce((s, c) => s + c.churnRisk, 0) / atRiskClients.length)}%`,
+      action: "Przejrzyj klientów",
+      actionUrl: `/raporty?tab=clients`,
+      priority: 8,
+    });
+  }
+
+  // 6. Wyceny bez przypisanego czasu pracy
+  const acceptedQuotes = quotes.filter((q) => q.status === "zaakceptowana");
+  const quotesWithoutTime = acceptedQuotes.filter((q) => !timeEntries.some((t) => t.quoteId === q.id));
+  if (quotesWithoutTime.length > 3) {
+    alerts.push({
+      id: "no-time-entries",
+      type: "info",
+      title: `${quotesWithoutTime.length} wycen bez czasu pracy`,
+      description: "Przypisz czas pracy aby poprawić analizę rentowności",
+      action: "Dodaj czas",
+      actionUrl: `/czas`,
+      priority: 4,
+    });
+  }
+
+  return alerts.sort((a, b) => b.priority - a.priority);
 }

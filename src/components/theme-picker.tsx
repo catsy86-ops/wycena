@@ -14,7 +14,7 @@ const THEMES = [
   { id: "pink", label: "Różowy", hue: 330, chroma: 0.20 },
 ] as const;
 
-const STORAGE_KEY = "wycenka_accent_theme";
+const STORAGE_KEY = "gksystem_accent_theme";
 
 export function ThemePicker() {
   const [activeTheme, setActiveTheme] = useState("blue");

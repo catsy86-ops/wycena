@@ -252,7 +252,7 @@ let currentLocale: Locale = "pl";
 
 export function getLocale(): Locale {
   if (typeof window !== "undefined") {
-    const saved = localStorage.getItem("wycenka_locale") as Locale | null;
+    const saved = localStorage.getItem("gksystem_locale") as Locale | null;
     if (saved && saved in translations) {
       currentLocale = saved;
     }
@@ -263,7 +263,7 @@ export function getLocale(): Locale {
 export function setLocale(locale: Locale): void {
   currentLocale = locale;
   if (typeof window !== "undefined") {
-    localStorage.setItem("wycenka_locale", locale);
+    localStorage.setItem("gksystem_locale", locale);
   }
 }
 

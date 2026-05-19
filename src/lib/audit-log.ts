@@ -15,7 +15,7 @@ export interface AuditEntry {
   user?: string;
 }
 
-const STORAGE_KEY = "wycenka_audit_log";
+const STORAGE_KEY = "gksystem_audit_log";
 const MAX_ENTRIES = 500;
 
 function generateId(): string {

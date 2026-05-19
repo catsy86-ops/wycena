@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Minimize2, Maximize2 } from "lucide-react";
 
-const STORAGE_KEY = "wycenka_compact_mode";
+const STORAGE_KEY = "gksystem_compact_mode";
 
 /**
  * Przełącznik trybu kompaktowego.

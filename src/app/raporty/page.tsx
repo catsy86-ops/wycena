@@ -8,7 +8,20 @@ import { useInvoiceStore } from "@/store/invoice-store";
 import { useTimeStore } from "@/store/time-store";
 import { useMaterialStore } from "@/store/material-store";
 import { useSettingsStore } from "@/store/settings-store";
-import { formatCurrency, round } from "@/lib/calculations";
+import {
+  formatCurrency,
+  round,
+  analyzeServiceProfitability,
+  calculateAdvancedMetrics,
+  analyzeTimeAccuracy,
+  analyzeClientSegmentation,
+  generateOperationalAlerts,
+  type ServiceProfitability,
+  type AdvancedMetrics,
+  type TimeAccuracyAnalysis,
+  type ClientSegment,
+  type OperationalAlert,
+} from "@/lib/calculations";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,7 +77,7 @@ export default function RaportyPage() {
   // KPI Targets state
   const [targets, setTargets] = useState(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("wycenka-kpi-targets");
+      const saved = localStorage.getItem("gksystem-kpi-targets");
       if (saved) return JSON.parse(saved);
     }
     return { quotesTarget: 10, revenueTarget: 50000, conversionTarget: 60, hoursTarget: 160 };
@@ -357,7 +370,7 @@ export default function RaportyPage() {
   }, [quotes, timeEntries, targets]);
 
   function saveTargets() {
-    localStorage.setItem("wycenka-kpi-targets", JSON.stringify(targets));
+    localStorage.setItem("gksystem-kpi-targets", JSON.stringify(targets));
     setEditingTargets(false);
     toast.success("Cele zapisane");
   }
@@ -441,6 +454,44 @@ export default function RaportyPage() {
     return { heatmap, dayLabels, monthLabels, monthlyTotals, dayTotals };
   }, [quotes]);
 
+  // ─── 8. Analiza Rentowności per Usługa ──────────────────────────────────
+  const serviceProfitability = useMemo(() => {
+    const now = new Date();
+    const periodStart = subMonths(now, periodMonths);
+    const previousStart = subMonths(now, periodMonths * 2);
+    const previousEnd = subMonths(now, periodMonths);
+
+    const currentItems = quotes
+      .filter((q) => q.status === "zaakceptowana" && new Date(q.createdAt) >= periodStart)
+      .flatMap((q) => q.items);
+
+    const previousItems = quotes
+      .filter((q) => q.status === "zaakceptowana" && new Date(q.createdAt) >= previousStart && new Date(q.createdAt) < previousEnd)
+      .flatMap((q) => q.items);
+
+    return analyzeServiceProfitability(currentItems, services, previousItems);
+  }, [quotes, services, periodMonths]);
+
+  // ─── 9. Metryki Zaawansowane ────────────────────────────────────────────
+  const advancedMetrics = useMemo(() => {
+    return calculateAdvancedMetrics(quotes, clients, timeEntries, periodMonths);
+  }, [quotes, clients, timeEntries, periodMonths]);
+
+  // ─── 10. Analiza Czasu Pracy ────────────────────────────────────────────
+  const timeAccuracy = useMemo(() => {
+    return analyzeTimeAccuracy(timeEntries);
+  }, [timeEntries]);
+
+  // ─── 11. Analiza Klientów ───────────────────────────────────────────────
+  const clientSegments = useMemo(() => {
+    return analyzeClientSegmentation(quotes, periodMonths);
+  }, [quotes, periodMonths]);
+
+  // ─── 12. Dashboard Operacyjny ───────────────────────────────────────────
+  const operationalAlerts = useMemo(() => {
+    return generateOperationalAlerts(quotes, invoices, timeEntries, getTotalPaidForInvoice);
+  }, [quotes, invoices, timeEntries, getTotalPaidForInvoice]);
+
   // ─── 8. Eksport PDF ─────────────────────────────────────────────────────
   function handleExportPDF() {
     const doc = new jsPDF();
@@ -448,7 +499,7 @@ export default function RaportyPage() {
 
     // Header
     doc.setFontSize(18);
-    doc.text("RAPORT WYCENKA", pw / 2, 15, { align: "center" });
+    doc.text("RAPORT GK", pw / 2, 15, { align: "center" });
     doc.setFontSize(10);
     if (settings?.name) doc.text(settings.name, pw / 2, 22, { align: "center" });
     doc.text(`Wygenerowano: ${format(new Date(), "dd.MM.yyyy HH:mm", { locale: pl })}`, pw / 2, 28, { align: "center" });
@@ -536,7 +587,7 @@ export default function RaportyPage() {
     doc.setFontSize(9);
     doc.text(`DSO: ${cashflowData.dso} dni | Ściągalność: ${cashflowData.collectionRate}% | Należności: ${formatCurrency(cashflowData.totalReceivables)}`, 14, y + 7);
 
-    doc.save(`raport-wycenka-${format(new Date(), "yyyy-MM-dd")}.pdf`);
+    doc.save(`raport-gksystem-${format(new Date(), "yyyy-MM-dd")}.pdf`);
     toast.success("Raport PDF wyeksportowany");
   }
 
@@ -546,7 +597,7 @@ export default function RaportyPage() {
     const wb = XLSX.utils.book_new();
 
     const summaryData = [
-      ["Raport WYCENKA", "", "", format(new Date(), "dd.MM.yyyy HH:mm", { locale: pl })],
+      ["Raport GK", "", "", format(new Date(), "dd.MM.yyyy HH:mm", { locale: pl })],
       [],
       ["Metryka", "Wartość"],
       ["Wyceny łącznie", stats.totalQuotes],
@@ -586,7 +637,7 @@ export default function RaportyPage() {
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(allRows), "Wszystkie wyceny");
 
-    XLSX.writeFile(wb, `raport-wycenka-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    XLSX.writeFile(wb, `raport-gksystem-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
     toast.success("Raport XLSX wyeksportowany");
   }
 
@@ -694,12 +745,16 @@ export default function RaportyPage() {
         </StaggerItem>
         <StaggerItem>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-12">
               <TabsTrigger value="overview">Przegląd</TabsTrigger>
               <TabsTrigger value="profit">Rentowność</TabsTrigger>
+              <TabsTrigger value="services">Usługi</TabsTrigger>
               <TabsTrigger value="periods">Okresy</TabsTrigger>
               <TabsTrigger value="time">Czas</TabsTrigger>
+              <TabsTrigger value="clients">Klienci</TabsTrigger>
+              <TabsTrigger value="metrics">Metryki</TabsTrigger>
               <TabsTrigger value="cashflow">Cashflow</TabsTrigger>
+              <TabsTrigger value="alerts">Alerty</TabsTrigger>
               <TabsTrigger value="targets">Cele</TabsTrigger>
               <TabsTrigger value="forecast">Prognoza</TabsTrigger>
               <TabsTrigger value="seasonal">Sezonowość</TabsTrigger>
@@ -1420,6 +1475,375 @@ export default function RaportyPage() {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* ── 3. Analiza Usług ── */}
+            <TabsContent value="services" className="space-y-4 mt-4">
+              <Card className="card-modern">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Rentowność per Usługa</CardTitle>
+                  <CardDescription>Segmentacja przychodu, kosztów i marż</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {serviceProfitability.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">Brak danych</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-muted-foreground">
+                            <th className="text-left py-2 font-medium">Usługa</th>
+                            <th className="text-right py-2 font-medium">Ilość</th>
+                            <th className="text-right py-2 font-medium">Przychód</th>
+                            <th className="text-right py-2 font-medium">Koszt</th>
+                            <th className="text-right py-2 font-medium">Zysk</th>
+                            <th className="text-right py-2 font-medium">Marża</th>
+                            <th className="text-right py-2 font-medium">Trend</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {serviceProfitability.map((s) => (
+                            <tr key={s.serviceName} className="border-b border-border/50 hover:bg-accent/50">
+                              <td className="py-2 font-semibold">{s.serviceName}</td>
+                              <td className="py-2 text-right">{s.count}</td>
+                              <td className="py-2 text-right">{formatCurrency(s.totalRevenue)}</td>
+                              <td className="py-2 text-right text-red-600">{formatCurrency(s.totalCost)}</td>
+                              <td className="py-2 text-right font-bold text-green-600">{formatCurrency(s.totalProfit)}</td>
+                              <td className="py-2 text-right">
+                                <Badge className={s.avgMarginPercent >= 30 ? "bg-green-100 text-green-700" : s.avgMarginPercent >= 15 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}>
+                                  {s.avgMarginPercent}%
+                                </Badge>
+                              </td>
+                              <td className="py-2 text-right">
+                                <TrendBadge value={s.trend} />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Rekomendacje */}
+              <Card className="card-modern">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Rekomendacje Cenowe</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {serviceProfitability.map((s) => (
+                      <div key={s.serviceName} className="p-3 rounded-lg bg-accent/50 border border-border">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-semibold text-sm">{s.serviceName}</div>
+                            <div className="text-xs text-muted-foreground mt-1">{s.recommendation}</div>
+                          </div>
+                          <Badge variant="outline" className="shrink-0">
+                            {s.avgMarginPercent}%
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── 6. Analiza Klientów ── */}
+            <TabsContent value="clients" className="space-y-4 mt-4">
+              {/* Segmentacja */}
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-4">
+                {["VIP", "Regular", "At-Risk", "Churned"].map((segment) => {
+                  const count = clientSegments.filter((c) => c.segment === segment).length;
+                  const revenue = clientSegments.filter((c) => c.segment === segment).reduce((s, c) => s + c.totalRevenue, 0);
+                  const colors: Record<string, string> = {
+                    VIP: "from-purple-500 to-pink-600",
+                    Regular: "from-blue-500 to-indigo-600",
+                    "At-Risk": "from-amber-500 to-orange-600",
+                    Churned: "from-red-500 to-rose-600",
+                  };
+                  return (
+                    <Card key={segment} className="card-modern">
+                      <CardContent className="pt-5 p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-2xl font-black">{count}</div>
+                            <div className="text-xs text-muted-foreground">{segment}</div>
+                            <div className="text-sm font-semibold text-primary mt-1">{formatCurrency(revenue)}</div>
+                          </div>
+                          <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${colors[segment]} shadow-lg`}>
+                            <Users className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Tabela klientów */}
+              <Card className="card-modern">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Segmentacja Klientów</CardTitle>
+                  <CardDescription>Analiza ryzyka churn i potencjału wzrostu</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {clientSegments.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">Brak danych</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-muted-foreground">
+                            <th className="text-left py-2 font-medium">Klient</th>
+                            <th className="text-center py-2 font-medium">Segment</th>
+                            <th className="text-right py-2 font-medium">Przychód</th>
+                            <th className="text-right py-2 font-medium">Wyceny</th>
+                            <th className="text-right py-2 font-medium">Trend</th>
+                            <th className="text-right py-2 font-medium">Risk</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {clientSegments.slice(0, 15).map((c) => (
+                            <tr key={c.clientName} className="border-b border-border/50 hover:bg-accent/50">
+                              <td className="py-2 font-semibold">{c.clientName}</td>
+                              <td className="py-2 text-center">
+                                <Badge variant={c.segment === "VIP" ? "default" : c.segment === "At-Risk" ? "destructive" : "secondary"}>
+                                  {c.segment}
+                                </Badge>
+                              </td>
+                              <td className="py-2 text-right">{formatCurrency(c.totalRevenue)}</td>
+                              <td className="py-2 text-right">{c.quoteCount}</td>
+                              <td className="py-2 text-right">
+                                <TrendBadge value={c.trend} />
+                              </td>
+                              <td className="py-2 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Progress value={c.churnRisk} className="w-12 h-1.5" />
+                                  <span className="text-xs font-semibold w-6 text-right">{c.churnRisk}%</span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Rekomendacje */}
+              <Card className="card-modern">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Akcje Rekomendowane</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {clientSegments.slice(0, 8).map((c) => (
+                      <div key={c.clientName} className="p-2 rounded-lg bg-accent/50 border border-border text-sm">
+                        <div className="font-semibold">{c.clientName}</div>
+                        <div className="text-xs text-muted-foreground">{c.recommendation}</div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── 7. Metryki Zaawansowane ── */}
+            <TabsContent value="metrics" className="space-y-4 mt-4">
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+                <Card className="card-modern">
+                  <CardContent className="pt-5 p-4">
+                    <div className="text-xs text-muted-foreground">CAC (Koszt Pozyskania)</div>
+                    <div className="text-2xl font-black text-primary mt-1">{formatCurrency(advancedMetrics.cac)}</div>
+                    <div className="text-xs text-muted-foreground mt-2">Nowych klientów: {advancedMetrics.newClientsCount}</div>
+                  </CardContent>
+                </Card>
+                <Card className="card-modern">
+                  <CardContent className="pt-5 p-4">
+                    <div className="text-xs text-muted-foreground">LTV (Wartość Klienta)</div>
+                    <div className="text-2xl font-black text-primary mt-1">{formatCurrency(advancedMetrics.ltv)}</div>
+                    <div className="text-xs text-muted-foreground mt-2">Średnia: {formatCurrency(advancedMetrics.avgClientValue)}</div>
+                  </CardContent>
+                </Card>
+                <Card className="card-modern">
+                  <CardContent className="pt-5 p-4">
+                    <div className="text-xs text-muted-foreground">LTV/CAC Ratio</div>
+                    <div className={`text-2xl font-black mt-1 ${advancedMetrics.ltv_cac_ratio >= 3 ? "text-green-600" : "text-amber-600"}`}>
+                      {advancedMetrics.ltv_cac_ratio}x
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-2">{advancedMetrics.ltv_cac_ratio >= 3 ? "✓ Zdrowy" : "⚠ Poniżej normy"}</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+                <Card className="card-modern">
+                  <CardContent className="pt-5 p-4">
+                    <div className="text-xs text-muted-foreground">Churn Rate</div>
+                    <div className="text-2xl font-black text-red-600 mt-1">{advancedMetrics.churnRate}%</div>
+                    <div className="text-xs text-muted-foreground mt-2">Utraceni: {advancedMetrics.churnedClientsCount}</div>
+                  </CardContent>
+                </Card>
+                <Card className="card-modern">
+                  <CardContent className="pt-5 p-4">
+                    <div className="text-xs text-muted-foreground">Retention Rate</div>
+                    <div className="text-2xl font-black text-green-600 mt-1">{advancedMetrics.clientRetention}%</div>
+                    <div className="text-xs text-muted-foreground mt-2">Powracający: {advancedMetrics.returningClientsCount}</div>
+                  </CardContent>
+                </Card>
+                <Card className="card-modern">
+                  <CardContent className="pt-5 p-4">
+                    <div className="text-xs text-muted-foreground">Repeat Rate</div>
+                    <div className="text-2xl font-black text-blue-600 mt-1">{advancedMetrics.repeatRate}%</div>
+                    <div className="text-xs text-muted-foreground mt-2">Klienci powracający</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Interpretacja */}
+              <Card className="card-modern">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Interpretacja Metryk</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+                    <div className="font-semibold text-blue-900 dark:text-blue-100">CAC (Customer Acquisition Cost)</div>
+                    <div className="text-blue-800 dark:text-blue-200 text-xs mt-1">Średni koszt pozyskania jednego nowego klienta. Niższy = lepiej.</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
+                    <div className="font-semibold text-green-900 dark:text-green-100">LTV/CAC Ratio</div>
+                    <div className="text-green-800 dark:text-green-200 text-xs mt-1">Powinno być &gt; 3. Wskazuje na zdrowość modelu biznesu.</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
+                    <div className="font-semibold text-red-900 dark:text-red-100">Churn Rate</div>
+                    <div className="text-red-800 dark:text-red-200 text-xs mt-1">% klientów którzy nie wrócili. Niższy = lepiej. Cel: &lt; 5%.</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── 4. Analiza Czasu Pracy (rozszerzona) ── */}
+            <TabsContent value="time" className="space-y-4 mt-4">
+              {/* Dokładność szacunków */}
+              <Card className="card-modern">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Dokładność Szacunków Czasu</CardTitle>
+                  <CardDescription>Porównanie szacunków vs rzeczywistego czasu</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Szacunki (h)</div>
+                      <div className="text-2xl font-black">{round(timeAccuracy.totalEstimated / 60)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Rzeczywisty (h)</div>
+                      <div className="text-2xl font-black">{round(timeAccuracy.totalActual / 60)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Dokładność</div>
+                      <div className="text-2xl font-black">{timeAccuracy.accuracyPercent}%</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Produktywność</div>
+                      <div className={`text-2xl font-black ${timeAccuracy.productivityScore >= 80 ? "text-green-600" : timeAccuracy.productivityScore >= 60 ? "text-amber-600" : "text-red-600"}`}>
+                        {timeAccuracy.productivityScore}/100
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span>Przekroczenia czasu</span>
+                        <span className="font-semibold">{timeAccuracy.overrunPercent}%</span>
+                      </div>
+                      <Progress value={Math.min(100, timeAccuracy.overrunPercent)} className="h-2" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span>Niedoestymacja</span>
+                        <span className="font-semibold">{timeAccuracy.underrunPercent}%</span>
+                      </div>
+                      <Progress value={Math.min(100, timeAccuracy.underrunPercent)} className="h-2" />
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-accent/50 border border-border">
+                    <div className="font-semibold text-sm">{timeAccuracy.recommendation}</div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Produktywność */}
+              <Card className="card-modern">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Produktywność</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span>Średnia dokładność per wpis</span>
+                        <span className="font-bold">{timeAccuracy.avgAccuracy}%</span>
+                      </div>
+                      <Progress value={timeAccuracy.avgAccuracy} className="h-2" />
+                    </div>
+                    <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-sm">
+                      <div className="font-semibold text-blue-900 dark:text-blue-100">Wskazówka</div>
+                      <div className="text-blue-800 dark:text-blue-200 text-xs mt-1">
+                        {timeAccuracy.productivityScore >= 90
+                          ? "Doskonała dokładność! Utrzymuj ten poziom."
+                          : timeAccuracy.productivityScore >= 75
+                          ? "Dobra dokładność. Pracuj nad szacunkami dla projektów z dużymi odchyleniami."
+                          : "Rozważ przeanalizowanie projektów z największymi opóźnieniami."}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── 9. Dashboard Operacyjny (Alerty) ── */}
+            <TabsContent value="alerts" className="space-y-4 mt-4">
+              {operationalAlerts.length === 0 ? (
+                <Card className="card-modern">
+                  <CardContent className="py-12 text-center">
+                    <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-3" />
+                    <div className="text-lg font-semibold">Wszystko w porządku!</div>
+                    <div className="text-sm text-muted-foreground">Brak alertów — system działa sprawnie.</div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {operationalAlerts.map((alert) => (
+                    <Card key={alert.id} className={`card-modern border-l-4 ${alert.type === "critical" ? "border-l-red-500" : alert.type === "warning" ? "border-l-amber-500" : "border-l-blue-500"}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className={`h-2 w-2 rounded-full ${alert.type === "critical" ? "bg-red-500" : alert.type === "warning" ? "bg-amber-500" : "bg-blue-500"}`} />
+                              <div className="font-semibold text-sm">{alert.title}</div>
+                            </div>
+                            <div className="text-xs text-muted-foreground">{alert.description}</div>
+                          </div>
+                          {alert.action && (
+                            <Link href={alert.actionUrl || "#"}>
+                              <Button size="sm" variant="outline" className="shrink-0">
+                                {alert.action}
+                              </Button>
+                            </Link>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </TabsContent>
 
           </Tabs>

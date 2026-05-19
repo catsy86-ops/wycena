@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     const msg = {
       to: clientEmail,
-      from: process.env.SENDER_EMAIL || "noreply@wycenka.pl",
+      from: process.env.SENDER_EMAIL || "noreply@gk-system.pl",
       subject: `Przypomnienie: ${title}`,
       html: `
         <h2>Przypomnienie o zdarzeniu</h2>

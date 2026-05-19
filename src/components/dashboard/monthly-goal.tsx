@@ -16,7 +16,7 @@ export function MonthlyGoal() {
 
   // Load goal from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem("wycenka_monthly_goal");
+    const saved = localStorage.getItem("gksystem_monthly_goal");
     if (saved) setGoal(parseInt(saved) || DEFAULT_GOAL);
   }, []);
 

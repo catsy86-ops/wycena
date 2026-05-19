@@ -110,14 +110,8 @@ function Logo({ size = "default" }: { size?: "default" | "sm" }) {
           }}
           whileHover={{ scale: 1.02 }}
         >
-          WYCENKA
+          GK
         </motion.div>
-        <div
-          className="text-[9px] font-semibold tracking-[0.2em] uppercase -mt-0.5"
-          style={{ color: "oklch(0.62 0.17 195 / 0.7)" }}
-        >
-          System wycen
-        </div>
       </div>
     </div>
   );

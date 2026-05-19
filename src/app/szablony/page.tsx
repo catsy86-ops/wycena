@@ -155,7 +155,7 @@ export default function SzablonyPage() {
     const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url;
-    a.download = `szablony-wycenka-${format(new Date(), "yyyy-MM-dd")}.json`; a.click();
+    a.download = `szablony-gksystem-${format(new Date(), "yyyy-MM-dd")}.json`; a.click();
     URL.revokeObjectURL(url);
     toast.success(`Wyeksportowano ${templates.length} szablonów`);
   }

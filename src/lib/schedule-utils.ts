@@ -159,10 +159,10 @@ export function exportToICalendar(events: ScheduleEvent[]): string {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//WYCENKA//Schedule//PL",
+    "PRODID:-//GK-System//Schedule//PL",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:Harmonogram WYCENKA",
+    "X-WR-CALNAME:Harmonogram GK-System",
     "X-WR-TIMEZONE:Europe/Warsaw",
   ];
 
@@ -171,7 +171,7 @@ export function exportToICalendar(events: ScheduleEvent[]): string {
     const endTime = new Date(e.endTime);
     const dtStart = formatICalDate(startTime);
     const dtEnd = formatICalDate(endTime);
-    const uid = `${e.id}-${e.clientName.replace(/\s/g, "-")}@wycenka.local`;
+    const uid = `${e.id}-${e.clientName.replace(/\s/g, "-")}@gk-system.local`;
 
     lines.push("BEGIN:VEVENT");
     lines.push(`UID:${uid}`);

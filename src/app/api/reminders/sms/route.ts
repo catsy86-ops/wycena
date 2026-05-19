@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     const formattedTime = format(eventTime, "HH:mm", { locale: pl });
 
     const message = await client.messages.create({
-      body: `Przypomnienie WYCENKA: ${title} o ${formattedTime} u ${clientName}`,
+      body: `Przypomnienie GK-System: ${title} o ${formattedTime} u ${clientName}`,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: clientPhone,
     });

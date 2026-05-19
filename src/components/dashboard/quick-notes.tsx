@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
 import { StickyNote, Save, X, Plus } from "lucide-react";
 
-const STORAGE_KEY = "wycenka_quick_notes";
+const STORAGE_KEY = "gksystem_quick_notes";
 
 interface QuickNote {
   id: string;

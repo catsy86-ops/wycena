@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Cloud, CloudOff, Check, Loader2 } from "lucide-react";
 
-const AUTOSAVE_KEY_PREFIX = "wycenka_autosave_";
+const AUTOSAVE_KEY_PREFIX = "gksystem_autosave_";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
