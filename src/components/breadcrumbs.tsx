@@ -12,6 +12,7 @@ const ROUTE_LABELS: Record<string, string> = {
   uslugi: "Usługi",
   materialy: "Materiały",
   szablony: "Szablony",
+  elektryka: "Elektryka",
   harmonogram: "Harmonogram",
   czas: "Czas pracy",
   faktury: "Faktury",

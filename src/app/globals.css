@@ -1399,3 +1399,284 @@ html.compact .w-10 {
   background: linear-gradient(135deg, oklch(1 0 0 / 0.1) 0%, transparent 50%);
   pointer-events: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ELECTRICAL THEME — Dział Elektryczny
+   Kolory: amber/żółty (hue ~60) zamiast niebieskiego (hue ~220)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Circuit grid (siatka obwodów) ── */
+.circuit-grid {
+  background-image:
+    linear-gradient(oklch(0.72 0.18 60 / 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.72 0.18 60 / 0.06) 1px, transparent 1px),
+    linear-gradient(oklch(0.72 0.18 60 / 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.72 0.18 60 / 0.025) 1px, transparent 1px);
+  background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
+}
+.dark .circuit-grid {
+  background-image:
+    linear-gradient(oklch(0.82 0.18 60 / 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.82 0.18 60 / 0.10) 1px, transparent 1px),
+    linear-gradient(oklch(0.82 0.18 60 / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.82 0.18 60 / 0.04) 1px, transparent 1px);
+  background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
+}
+
+/* ── Electrical background gradient ── */
+.electrical-bg-gradient {
+  background:
+    radial-gradient(ellipse 80% 60% at 85% 40%, oklch(0.72 0.18 60 / 0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 15% 20%, oklch(0.82 0.16 85 / 0.04) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 70% at 50% 90%, oklch(0.75 0.17 50 / 0.03) 0%, transparent 50%);
+  animation: bg-breathe 18s ease-in-out infinite;
+}
+.dark .electrical-bg-gradient {
+  background:
+    radial-gradient(ellipse 80% 60% at 85% 40%, oklch(0.82 0.18 60 / 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 15% 20%, oklch(0.82 0.16 85 / 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 70% at 50% 90%, oklch(0.75 0.17 50 / 0.05) 0%, transparent 50%);
+}
+
+/* ── Cable separator (separator kablowy) ── */
+.cable-separator {
+  @apply flex items-center gap-2 my-4;
+}
+.cable-separator::before,
+.cable-separator::after {
+  content: "";
+  @apply flex-1 h-0.5 rounded-full;
+  background: linear-gradient(90deg, transparent, oklch(0.72 0.18 60 / 0.3), transparent);
+}
+.cable-separator .cable-icon {
+  @apply flex h-5 w-5 items-center justify-center rounded-full shrink-0;
+  background: oklch(0.72 0.18 60 / 0.1);
+  border: 1px solid oklch(0.72 0.18 60 / 0.2);
+}
+
+/* ── Electrical card (karta w stylu panelu elektrycznego) ── */
+.card-electrical {
+  @apply relative rounded-xl border overflow-hidden;
+  background: oklch(0.99 0.005 60 / 0.9);
+  border-color: oklch(0.72 0.18 60 / 0.15);
+}
+.dark .card-electrical {
+  background: oklch(0.15 0.02 50 / 0.9);
+  border-color: oklch(0.72 0.18 60 / 0.2);
+}
+.card-electrical::before {
+  content: "";
+  @apply absolute top-0 left-0 right-0 h-1;
+  background: linear-gradient(90deg,
+    oklch(0.72 0.18 60),
+    oklch(0.82 0.16 85),
+    oklch(0.72 0.18 60)
+  );
+  background-size: 200% 100%;
+  animation: shimmer-electrical 3s linear infinite;
+}
+
+/* ── Screw row (rząd śrub) ── */
+.screw-row {
+  @apply flex items-center gap-3 py-1;
+}
+.screw-row::before,
+.screw-row::after {
+  content: "";
+  @apply flex-1 h-px;
+  background: oklch(0.72 0.18 60 / 0.15);
+}
+
+/* ── Voltage indicator (wskaźnik napięcia) ── */
+.voltage-indicator {
+  @apply relative inline-flex items-center gap-1.5;
+}
+.voltage-indicator::before {
+  content: "";
+  @apply w-2 h-2 rounded-full;
+  background: oklch(0.55 0.18 155);
+  box-shadow: 0 0 4px oklch(0.55 0.18 155 / 0.5);
+  animation: voltage-pulse 2s ease-in-out infinite;
+}
+.voltage-indicator.warning::before {
+  background: oklch(0.82 0.18 60);
+  box-shadow: 0 0 4px oklch(0.82 0.18 60 / 0.5);
+}
+.voltage-indicator.danger::before {
+  background: oklch(0.60 0.20 25);
+  box-shadow: 0 0 4px oklch(0.60 0.20 25 / 0.5);
+  animation: voltage-pulse 0.8s ease-in-out infinite;
+}
+
+/* ── Multimeter display ── */
+.multimeter-display {
+  @apply inline-flex items-center justify-center rounded-lg px-3 py-1.5;
+  background: oklch(0.08 0.02 50 / 0.9);
+  border: 1px solid oklch(0.72 0.18 60 / 0.3);
+  box-shadow: inset 0 2px 4px oklch(0 0 0 / 0.4), 0 1px 0 oklch(1 0 0 / 0.05);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+.multimeter-display .value {
+  @apply text-lg font-black;
+  color: oklch(0.82 0.18 60);
+  text-shadow: 0 0 8px oklch(0.72 0.18 60 / 0.5);
+}
+
+/* ── Wire progress bar (pasek postępu w stylu kabla) ── */
+.progress-wire {
+  @apply relative h-3 rounded-full overflow-hidden;
+  background: oklch(0.72 0.18 60 / 0.08);
+  box-shadow: inset 0 1px 3px oklch(0 0 0 / 0.1);
+}
+.progress-wire-fill {
+  @apply absolute inset-y-0 left-0 rounded-full;
+  background: linear-gradient(90deg,
+    oklch(0.72 0.18 60),
+    oklch(0.82 0.16 85),
+    oklch(0.72 0.18 60)
+  );
+  background-size: 200% 100%;
+  animation: shimmer-electrical 2s linear infinite;
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.2);
+}
+.progress-wire-fill::after {
+  content: "";
+  @apply absolute top-0.5 right-1 w-1.5 h-1.5 rounded-full;
+  background: oklch(1 0 0 / 0.4);
+  animation: spark-flash 2s ease-in-out infinite;
+}
+
+/* ── Electrical badge (tabliczka znamionowa) ── */
+.badge-electrical {
+  @apply inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider;
+  background: oklch(0.72 0.18 60 / 0.1);
+  border: 1px solid oklch(0.72 0.18 60 / 0.2);
+  color: oklch(0.72 0.18 60);
+}
+.dark .badge-electrical {
+  background: oklch(0.82 0.18 60 / 0.15);
+  border-color: oklch(0.82 0.18 60 / 0.3);
+  color: oklch(0.82 0.18 60);
+}
+
+/* ── Section electrical (sekcja z lewą krawędzią) ── */
+.section-electrical {
+  @apply relative pl-4 py-2;
+}
+.section-electrical::before {
+  content: "";
+  @apply absolute left-0 top-0 bottom-0 w-1 rounded-full;
+  background: linear-gradient(to bottom, oklch(0.72 0.18 60), oklch(0.82 0.16 85));
+  box-shadow: 0 0 6px oklch(0.72 0.18 60 / 0.3);
+}
+
+/* ── Electrical button (przycisk w stylu wyłącznika) ── */
+.btn-switch {
+  @apply relative inline-flex items-center justify-center gap-2 rounded-full
+         px-5 py-2.5 text-sm font-bold text-white overflow-hidden;
+  background: linear-gradient(135deg, oklch(0.72 0.18 60), oklch(0.62 0.20 50));
+  box-shadow:
+    0 4px 16px oklch(0.72 0.18 60 / 0.35),
+    inset 0 1px 0 oklch(1 0 0 / 0.15),
+    inset 0 -2px 0 oklch(0 0 0 / 0.15);
+  transition: all 0.2s ease;
+}
+.btn-switch:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 24px oklch(0.72 0.18 60 / 0.45),
+    inset 0 1px 0 oklch(1 0 0 / 0.2),
+    inset 0 -2px 0 oklch(0 0 0 / 0.15);
+}
+.btn-switch:active {
+  transform: translateY(0);
+  box-shadow:
+    0 2px 8px oklch(0.72 0.18 60 / 0.3),
+    inset 0 2px 4px oklch(0 0 0 / 0.2);
+}
+
+/* ── Electrical input ── */
+.input-electrical {
+  @apply rounded-lg border transition-all duration-200;
+  border-color: oklch(0.72 0.18 60 / 0.15);
+  box-shadow: inset 0 1px 3px oklch(0 0 0 / 0.04);
+}
+.input-electrical:focus {
+  border-color: oklch(0.72 0.18 60 / 0.5);
+  box-shadow:
+    inset 0 1px 3px oklch(0 0 0 / 0.04),
+    0 0 0 3px oklch(0.72 0.18 60 / 0.1),
+    0 0 12px oklch(0.72 0.18 60 / 0.08);
+}
+
+/* ── Electrical text effect ── */
+.text-electrical {
+  background: linear-gradient(135deg, oklch(0.92 0.01 60), oklch(0.82 0.18 60), oklch(0.92 0.01 60));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: text-weld 5s ease-in-out infinite;
+}
+
+/* ── Card panel (styl panelu rozdzielczego) ── */
+.card-panel {
+  @apply rounded-xl border relative overflow-hidden;
+  background: linear-gradient(145deg, oklch(0.97 0.008 60) 0%, oklch(0.94 0.01 55) 100%);
+  border-color: oklch(0.72 0.18 60 / 0.12);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.5),
+    inset 0 -1px 0 oklch(0 0 0 / 0.05),
+    0 2px 8px oklch(0 0 0 / 0.06);
+}
+.dark .card-panel {
+  background: linear-gradient(145deg, oklch(0.16 0.02 50) 0%, oklch(0.13 0.018 52) 100%);
+  border-color: oklch(1 0 0 / 0.08);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.06),
+    inset 0 -1px 0 oklch(0 0 0 / 0.3),
+    0 2px 12px oklch(0 0 0 / 0.3);
+}
+
+/* ── Electrical animations ── */
+@keyframes circuit-pulse {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+@keyframes spark-flash {
+  0%, 100% { opacity: 0; transform: scale(0.5); }
+  50%      { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes voltage-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50%       { transform: scale(1.2); opacity: 1; }
+}
+
+@keyframes shimmer-electrical {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes wire-flow {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+/* ── Warning stripe (electrical) ── */
+.tape-electrical {
+  @apply relative overflow-hidden;
+}
+.tape-electrical::before {
+  content: "";
+  @apply absolute top-0 left-0 right-0 h-0.5;
+  background: repeating-linear-gradient(
+    -45deg,
+    oklch(0.82 0.18 60 / 0.6),
+    oklch(0.82 0.18 60 / 0.6) 4px,
+    oklch(0.15 0.01 0 / 0.4) 4px,
+    oklch(0.15 0.01 0 / 0.4) 8px
+  );
+}

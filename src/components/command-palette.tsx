@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, FileText, Users, Package, Settings, Calendar, Clock, FileCheck, ArrowRight, X } from "lucide-react";
+import { Search, FileText, Users, Package, Settings, Calendar, Clock, FileCheck, ArrowRight, X, Zap } from "lucide-react";
 import { useServiceStore } from "@/store/service-store";
 import { useClientStore } from "@/store/client-store";
 import { useQuoteStore } from "@/store/quote-store";
@@ -100,6 +100,13 @@ export function CommandPalette() {
       label: "Materiały",
       icon: <Package className="h-4 w-4" />,
       action: () => router.push("/materialy"),
+      category: "Nawigacja",
+    },
+    {
+      id: "nav-elektryka",
+      label: "Elektryka",
+      icon: <Zap className="h-4 w-4" />,
+      action: () => router.push("/elektryka"),
       category: "Nawigacja",
     },
     {

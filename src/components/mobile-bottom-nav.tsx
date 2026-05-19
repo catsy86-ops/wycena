@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
-  Package, Calendar, FileCheck, BarChart3, ClipboardList, Settings, Wrench,
+  Package, Calendar, FileCheck, BarChart3, ClipboardList, Settings, Wrench, Zap,
 } from "lucide-react";
 
 const MAIN_ITEMS = [
@@ -22,6 +22,7 @@ const MORE_ITEMS = [
   { href: "/uslugi", icon: Wrench, label: "Usługi" },
   { href: "/materialy", icon: Package, label: "Materiały" },
   { href: "/szablony", icon: ClipboardList, label: "Szablony" },
+  { href: "/elektryka", icon: Zap, label: "Elektryka" },
   { href: "/harmonogram", icon: Calendar, label: "Harmonogram" },
   { href: "/faktury", icon: FileCheck, label: "Faktury" },
   { href: "/raporty", icon: BarChart3, label: "Raporty" },

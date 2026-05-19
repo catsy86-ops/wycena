@@ -18,6 +18,7 @@ import {
   Wrench,
   Gauge,
   X,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ const NAV_ITEMS = [
   { href: "/uslugi",       label: "Usługi",        icon: Wrench,          group: "catalog" },
   { href: "/materialy",    label: "Materiały",     icon: Package,         group: "catalog" },
   { href: "/szablony",     label: "Szablony",      icon: ClipboardList,   group: "catalog" },
+  { href: "/elektryka",    label: "Elektryka",     icon: Zap,             group: "catalog" },
   { href: "/harmonogram",  label: "Harmonogram",   icon: Calendar,        group: "ops" },
   { href: "/czas",         label: "Czas pracy",    icon: Clock,           group: "ops" },
   { href: "/faktury",      label: "Faktury",       icon: FileCheck,       group: "ops" },
