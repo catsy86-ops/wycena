@@ -10,7 +10,7 @@ import type { QuoteItem, VatRate, Unit, QuoteAdditionalCost } from "@/types";
 import { VAT_RATE_LABELS, UNIT_LABELS } from "@/types";
 import {
   calcQuoteItem, calcTotalNetto, calcTotalVat, calcTotalBrutto,
-  calcAdditionalCostsTotal, formatCurrency, round,
+  calcAdditionalCostsTotal, calcQuoteTotals, formatCurrency, round,
 } from "@/lib/calculations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -196,12 +196,7 @@ export default function EdytujWycenePage() {
     try {
       const recalcItems = validItems.map(calcQuoteItem);
       const validCosts = additionalCosts.filter((c) => c.name.trim() !== "");
-      const totalNetto = calcTotalNetto(recalcItems);
-      const totalVat = calcTotalVat(recalcItems);
-      const totalBruttoBase = calcTotalBrutto(recalcItems);
-      const costsBrutto = calcAdditionalCostsTotal(validCosts).brutto;
-      const combined = totalBruttoBase + costsBrutto;
-      const totalBrutto = globalDiscount > 0 ? round(combined * (1 - globalDiscount / 100)) : combined;
+      const totals = calcQuoteTotals(recalcItems, validCosts, globalDiscount);
 
       await updateQuote(id, {
         clientId: selectedClientId ?? undefined,
@@ -215,9 +210,9 @@ export default function EdytujWycenePage() {
         globalDiscountPercent: globalDiscount,
         notes: notes || undefined,
         validUntil: validUntil ? new Date(validUntil) : undefined,
-        totalNetto,
-        totalVat,
-        totalBrutto,
+        totalNetto: totals.totalNetto,
+        totalVat: totals.totalVat,
+        totalBrutto: totals.totalBrutto,
       });
       toast.success("Wycena zaktualizowana");
       router.push(`/wyceny/${id}`);
@@ -228,13 +223,15 @@ export default function EdytujWycenePage() {
     }
   }
 
-  const totalNetto = calcTotalNetto(items);
-  const totalVat = calcTotalVat(items);
+  // Live preview — spójne z handleSave
+  const liveTotals = calcQuoteTotals(items, additionalCosts, globalDiscount);
+  const totalNetto = liveTotals.totalNetto;
+  const totalVat = liveTotals.totalVat;
   const totalBruttoBase = calcTotalBrutto(items);
   const costsTotal = calcAdditionalCostsTotal(additionalCosts);
-  const combined = totalBruttoBase + costsTotal.brutto;
-  const discountAmount = globalDiscount > 0 ? round(combined * globalDiscount / 100) : 0;
-  const finalBrutto = globalDiscount > 0 ? round(combined - discountAmount) : combined;
+  const combined = round(totalBruttoBase + costsTotal.brutto);
+  const discountAmount = liveTotals.discountAmount;
+  const finalBrutto = liveTotals.totalBrutto;
 
   return (
     <PageTransition>

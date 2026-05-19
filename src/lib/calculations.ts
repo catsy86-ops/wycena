@@ -1,23 +1,59 @@
 import type { VatRate, QuoteItem, QuoteAdditionalCost, ProgressiveDiscount, PricingModelConfig } from "@/types";
 import { DEFAULT_PRICING_MODEL } from "@/types";
 
-// ─── Podstawowe kalkulacje pozycji ───────────────────────────────────────────
+// ─── Precyzja ─────────────────────────────────────────────────────────────────
 
+/**
+ * Zaokrągla do 2 miejsc po przecinku (groszy).
+ * Używa metody "round half away from zero" — poprawna dla kwot finansowych.
+ */
+export function round(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Zaokrągla do N miejsc po przecinku.
+ */
+export function roundTo(value: number, decimals: number): number {
+  const factor = Math.pow(10, decimals);
+  return Math.round((value + Number.EPSILON) * factor) / factor;
+}
+
+// ─── Kalkulacje pozycji ───────────────────────────────────────────────────────
+
+/**
+ * Oblicza wartość netto pozycji z rabatem.
+ * Rabat jest clampowany do [0, 100].
+ */
 export function calcItemNetto(price: number, quantity: number, discountPercent: number): number {
+  if (price < 0 || quantity <= 0) return 0;
   const raw = price * quantity;
   const safeDiscount = Math.min(100, Math.max(0, discountPercent));
   if (safeDiscount <= 0) return round(raw);
+  // Mnożnik zamiast odejmowania — unika błędów groszowych
   return round(raw * (1 - safeDiscount / 100));
 }
 
+/**
+ * Oblicza kwotę VAT od wartości netto.
+ * Zaokrąglenie na końcu — nie na pośrednich krokach.
+ */
 export function calcItemVat(netto: number, vatRate: VatRate): number {
+  if (vatRate === 0) return 0;
   return round(netto * (vatRate / 100));
 }
 
+/**
+ * Oblicza wartość brutto = netto + VAT.
+ */
 export function calcItemBrutto(netto: number, vatAmount: number): number {
   return round(netto + vatAmount);
 }
 
+/**
+ * Przelicza wszystkie pola pozycji wyceny.
+ * Jedyne miejsce gdzie pozycja jest przeliczana — zapewnia spójność.
+ */
 export function calcQuoteItem(item: QuoteItem): QuoteItem {
   const nettotal = calcItemNetto(item.priceNettoPerUnit, item.quantity, item.discountPercent);
   const vatAmount = calcItemVat(nettotal, item.vatRate);
@@ -25,43 +61,131 @@ export function calcQuoteItem(item: QuoteItem): QuoteItem {
   return { ...item, nettotal, vatAmount, bruttoTotal };
 }
 
+// ─── Sumy wyceny ─────────────────────────────────────────────────────────────
+
+/**
+ * Suma netto wszystkich pozycji.
+ * Sumuje bez pośrednich zaokrągleń, zaokrągla tylko wynik końcowy.
+ */
 export function calcTotalNetto(items: QuoteItem[]): number {
   return round(items.reduce((sum, item) => sum + item.nettotal, 0));
 }
 
+/**
+ * Suma VAT wszystkich pozycji.
+ * Każda pozycja ma już zaokrąglony VAT — sumujemy i zaokrąglamy wynik.
+ */
 export function calcTotalVat(items: QuoteItem[]): number {
   return round(items.reduce((sum, item) => sum + item.vatAmount, 0));
 }
 
+/**
+ * Suma brutto wszystkich pozycji.
+ */
 export function calcTotalBrutto(items: QuoteItem[]): number {
   return round(items.reduce((sum, item) => sum + item.bruttoTotal, 0));
 }
 
+/**
+ * Oblicza sumy kosztów dodatkowych (netto, VAT, brutto).
+ * Każdy koszt ma własną stawkę VAT.
+ */
 export function calcAdditionalCostsTotal(
   additionalCosts: QuoteAdditionalCost[]
 ): { netto: number; vat: number; brutto: number } {
-  const netto = additionalCosts.reduce((sum, c) => sum + c.amount, 0);
-  const vat = additionalCosts.reduce((sum, c) => sum + calcItemVat(c.amount, c.vatRate), 0);
-  return { netto: round(netto), vat: round(vat), brutto: round(netto + vat) };
+  let netto = 0;
+  let vat = 0;
+  for (const c of additionalCosts) {
+    const costNetto = c.amount;
+    const costVat = calcItemVat(costNetto, c.vatRate);
+    netto += costNetto;
+    vat += costVat;
+  }
+  const roundedNetto = round(netto);
+  const roundedVat = round(vat);
+  return {
+    netto: roundedNetto,
+    vat: roundedVat,
+    brutto: round(roundedNetto + roundedVat),
+  };
 }
 
+/**
+ * Oblicza kwotę rabatu globalnego od wartości brutto.
+ */
 export function calcGlobalDiscount(totalBrutto: number, discountPercent: number): number {
   if (discountPercent <= 0) return 0;
-  return round(totalBrutto * (discountPercent / 100));
+  const safeDiscount = Math.min(100, Math.max(0, discountPercent));
+  return round(totalBrutto * (safeDiscount / 100));
 }
 
+/**
+ * Oblicza końcową wartość brutto po rabacie globalnym.
+ */
 export function calcFinalBrutto(totalBrutto: number, globalDiscountPercent: number): number {
   if (globalDiscountPercent <= 0) return totalBrutto;
-  return round(totalBrutto * (1 - globalDiscountPercent / 100));
+  const safeDiscount = Math.min(100, Math.max(0, globalDiscountPercent));
+  return round(totalBrutto * (1 - safeDiscount / 100));
 }
 
+/**
+ * Oblicza pełne sumy wyceny (netto + VAT + brutto) z uwzględnieniem:
+ * - kosztów dodatkowych
+ * - rabatu globalnego
+ *
+ * To jest JEDYNE miejsce gdzie liczymy końcowe sumy wyceny.
+ * Używaj tej funkcji w handleSave zamiast osobnych calcTotalNetto/Vat/Brutto.
+ */
+export function calcQuoteTotals(
+  items: QuoteItem[],
+  additionalCosts: QuoteAdditionalCost[],
+  globalDiscountPercent: number
+): { totalNetto: number; totalVat: number; totalBrutto: number; discountAmount: number } {
+  const itemsNetto = calcTotalNetto(items);
+  const itemsVat = calcTotalVat(items);
+  const itemsBrutto = calcTotalBrutto(items);
+
+  const costs = calcAdditionalCostsTotal(additionalCosts);
+
+  const combinedNetto = round(itemsNetto + costs.netto);
+  const combinedVat = round(itemsVat + costs.vat);
+  const combinedBrutto = round(itemsBrutto + costs.brutto);
+
+  const discountAmount = calcGlobalDiscount(combinedBrutto, globalDiscountPercent);
+  const finalBrutto = round(combinedBrutto - discountAmount);
+
+  // Proporcjonalne zmniejszenie netto i VAT przy rabacie
+  let finalNetto = combinedNetto;
+  let finalVat = combinedVat;
+  if (discountAmount > 0 && combinedBrutto > 0) {
+    const discountRatio = 1 - discountAmount / combinedBrutto;
+    finalNetto = round(combinedNetto * discountRatio);
+    finalVat = round(finalBrutto - finalNetto);
+  }
+
+  return {
+    totalNetto: finalNetto,
+    totalVat: finalVat,
+    totalBrutto: finalBrutto,
+    discountAmount,
+  };
+}
+
+/**
+ * Oblicza rabat progresywny (ilościowy) dla danej ilości.
+ * Zwraca najwyższy pasujący próg.
+ */
 export function calcProgressiveDiscount(quantity: number, discounts: ProgressiveDiscount[]): number {
+  if (!discounts || discounts.length === 0) return 0;
   const applicable = discounts
     .filter((d) => quantity >= d.minQuantity)
     .sort((a, b) => b.minQuantity - a.minQuantity);
   return applicable.length > 0 ? applicable[0].discountPercent : 0;
 }
 
+/**
+ * Oblicza marżę i zysk.
+ */
 export function calcMargin(
   salePrice: number,
   purchasePrice: number,
@@ -74,12 +198,15 @@ export function calcMargin(
   return { marginPercent, profitAmount };
 }
 
+/**
+ * Grupuje pozycje wyceny wg kategorii (usługi vs materiały).
+ */
 export function calcCategoryTotals(
   items: QuoteItem[]
 ): Record<string, { netto: number; brutto: number }> {
   const totals: Record<string, { netto: number; brutto: number }> = {};
   items.forEach((item) => {
-    const category = item.serviceId ? "uslugi" : "materialy";
+    const category = item.serviceId !== undefined ? "uslugi" : "materialy";
     if (!totals[category]) totals[category] = { netto: 0, brutto: 0 };
     totals[category].netto += item.nettotal;
     totals[category].brutto += item.bruttoTotal;
@@ -91,22 +218,21 @@ export function calcCategoryTotals(
   return totals;
 }
 
+/**
+ * Oblicza koszt wpisu czasu pracy.
+ */
 export function calcTimeEntryCost(
   startTime: Date,
   endTime: Date,
   hourlyRate: number
 ): { durationMinutes: number; totalCost: number } {
-  const durationMs = endTime.getTime() - startTime.getTime();
+  const durationMs = Math.max(0, endTime.getTime() - startTime.getTime());
   const durationMinutes = Math.round(durationMs / (1000 * 60));
   const totalCost = round((durationMinutes / 60) * hourlyRate);
   return { durationMinutes, totalCost };
 }
 
-// ─── Narzędzia ────────────────────────────────────────────────────────────────
-
-export function round(value: number): number {
-  return Math.round(value * 100) / 100;
-}
+// ─── Formatowanie ─────────────────────────────────────────────────────────────
 
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("pl-PL", {
@@ -121,26 +247,8 @@ export function formatPercent(value: number, decimals = 1): string {
   return `${value.toFixed(decimals)}%`;
 }
 
-export function generateQuoteNumber(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const random = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
-  return `WYC/${year}/${month}/${random}`;
-}
+// ─── Numeracja ────────────────────────────────────────────────────────────────
 
-export function generateInvoiceNumber(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const random = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
-  return `FV/${year}/${month}/${random}`;
-}
-
-/**
- * Generuje sekwencyjny numer wyceny na podstawie istniejących numerów.
- * Format: WYC/YYYY/MM/NNNN — NNNN to kolejny numer w danym miesiącu.
- */
 export function generateSequentialQuoteNumber(existingNumbers: string[]): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -156,10 +264,6 @@ export function generateSequentialQuoteNumber(existingNumbers: string[]): string
   return `${prefix}${String(maxSeq + 1).padStart(4, "0")}`;
 }
 
-/**
- * Generuje sekwencyjny numer faktury na podstawie istniejących numerów.
- * Format: FV/YYYY/MM/NNNN
- */
 export function generateSequentialInvoiceNumber(existingNumbers: string[]): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -175,38 +279,28 @@ export function generateSequentialInvoiceNumber(existingNumbers: string[]): stri
   return `${prefix}${String(maxSeq + 1).padStart(4, "0")}`;
 }
 
+// ─── Pomocnicze ───────────────────────────────────────────────────────────────
+
+export function clampDiscount(discountPercent: number): number {
+  return Math.min(100, Math.max(0, discountPercent));
+}
+
 /**
- * Naprawia błąd groszowy VAT — liczy VAT od sumy netto (metoda "od sumy"),
- * a nie sumuje VAT z poszczególnych pozycji.
- * Zwraca skorygowaną kwotę VAT.
+ * Naprawia błąd groszowy VAT — liczy VAT od sumy netto.
  */
 export function calcVatFromSum(totalNetto: number, vatRate: VatRate): number {
   return round(totalNetto * (vatRate / 100));
 }
 
-/**
- * Clamp wartości do zakresu — zapobiega ujemnym cenom przy rabacie > 100%.
- */
-export function clampDiscount(discountPercent: number): number {
-  return Math.min(100, Math.max(0, discountPercent));
-}
-
 // ─── Analiza rentowności ──────────────────────────────────────────────────────
 
 export interface ProfitabilityAnalysis {
-  /** Całkowity koszt własny (materiały + robocizna bez narzutów) */
   totalCost: number;
-  /** Przychód netto */
   revenue: number;
-  /** Zysk brutto */
   grossProfit: number;
-  /** Marża brutto % */
   grossMarginPercent: number;
-  /** Próg rentowności (break-even) */
   breakEvenAmount: number;
-  /** Ocena rentowności */
   rating: "excellent" | "good" | "acceptable" | "poor" | "loss";
-  /** Sugestia */
   suggestion: string;
 }
 
@@ -247,59 +341,54 @@ export function analyzeProfitability(
 // ─── Zaawansowany model wyceny ────────────────────────────────────────────────
 
 export interface AdvancedPricingResult {
-  // Baza
   baseNetto: number;
   baseVat: number;
   baseBrutto: number;
   additionalCostsNetto: number;
-  // Korekty robocizny i materiałów
   laborAdjustment: number;
   materialWasteCost: number;
   materialMarkupAmount: number;
-  // Koszty operacyjne
   equipmentCost: number;
   travelCost: number;
   permitCost: number;
   overheadCost: number;
-  // Korekty ryzyka i złożoności
   riskMarginAmount: number;
   complexityAdjustment: number;
   urgencyAdjustment: number;
-  // Korekty zewnętrzne
   inflationAdjustment: number;
   seasonalAdjustment: number;
-  // Zabezpieczenia
   insuranceCost: number;
   warrantyReserve: number;
-  // Marża
   profitMarginAmount: number;
-  // Rabaty
   subtotalBeforeDiscount: number;
   volumeDiscountAmount: number;
   globalDiscountAmount: number;
-  // Wynik końcowy
   finalNetto: number;
   finalVat: number;
   finalBrutto: number;
-  // Analityka
   marginPercent: number;
   effectiveMarkupPercent: number;
   breakdown: Record<string, number>;
   profitability: ProfitabilityAnalysis;
-  /** Czy zastosowano minimum kwotowe */
   minimumApplied: boolean;
 }
 
 /**
- * Ulepszona kalkulacja zaawansowanego modelu wyceny.
+ * Zaawansowany model wyceny.
  *
- * Naprawione błędy względem poprzedniej wersji:
- * - laborItems filtrował po serviceId (błędna logika) — teraz rozróżnia usługi od materiałów
- * - materialMarkup nie był uwzględniany
- * - seasonalAdjustment nie był uwzględniany
- * - minimumQuoteAmount nie był stosowany do finalBrutto
- * - marginPercent był liczony od kosztu bazowego bez kosztów dodatkowych
- * - VAT był zawsze 23% — teraz używa ważonej stawki VAT z pozycji
+ * Kolejność operacji (każdy krok buduje na poprzednim):
+ * 1. Baza (pozycje + koszty dodatkowe)
+ * 2. Korekty robocizny i materiałów
+ * 3. Koszty operacyjne (sprzęt, dojazd, pozwolenia)
+ * 4. Koszty pośrednie (overhead)
+ * 5. Ryzyko i złożoność
+ * 6. Pilność
+ * 7. Inflacja i sezonowość
+ * 8. Zabezpieczenia (ubezpieczenie, gwarancja)
+ * 9. Marża zysku
+ * 10. Rabaty (ilościowy, globalny)
+ * 11. Minimum marży i minimum kwotowe
+ * 12. VAT (ważona stawka z pozycji)
  */
 export function calcAdvancedPricing(
   items: QuoteItem[],
@@ -315,19 +404,11 @@ export function calcAdvancedPricing(
 
   // ── 2. Robocizna vs materiały ─────────────────────────────────────────────
   // Pozycje z serviceId = usługi/robocizna; bez serviceId = materiały
-  const laborItems = items.filter((i) => i.serviceId !== undefined);
-  const materialItems = items.filter((i) => i.serviceId === undefined);
+  const laborBase = round(items.filter((i) => i.serviceId !== undefined).reduce((s, i) => s + i.nettotal, 0));
+  const materialBase = round(items.filter((i) => i.serviceId === undefined).reduce((s, i) => s + i.nettotal, 0));
 
-  const laborBase = round(laborItems.reduce((s, i) => s + i.nettotal, 0));
-  const materialBase = round(materialItems.reduce((s, i) => s + i.nettotal, 0));
-
-  // Mnożnik robocizny (np. 1.2 = +20% na robociznę)
   const laborAdjustment = round(laborBase * (model.laborCostMultiplier - 1));
-
-  // Straty materiałowe (np. 5% odpadów)
   const materialWasteCost = round(materialBase * (model.materialWastePercent / 100));
-
-  // Narzut na materiały (marża handlowa na materiałach)
   const materialMarkupAmount = round(materialBase * (model.materialMarkupPercent / 100));
 
   // ── 3. Koszty operacyjne ──────────────────────────────────────────────────
@@ -335,7 +416,7 @@ export function calcAdvancedPricing(
   const travelCost = round(model.travelCostPerKm * model.estimatedDistanceKm);
   const permitCost = round(model.permitCosts);
 
-  // Podstawa do kosztów pośrednich
+  // ── 4. Koszty pośrednie ───────────────────────────────────────────────────
   const subtotalForOverhead = round(
     baseNetto + additionalCostsNetto +
     laborAdjustment + materialWasteCost + materialMarkupAmount +
@@ -343,58 +424,60 @@ export function calcAdvancedPricing(
   );
   const overheadCost = round(subtotalForOverhead * (model.overheadPercent / 100));
 
-  // ── 4. Ryzyko i złożoność ─────────────────────────────────────────────────
+  // ── 5. Ryzyko i złożoność ─────────────────────────────────────────────────
   const subtotalForRisk = round(subtotalForOverhead + overheadCost);
   const riskMarginAmount = round(subtotalForRisk * (model.riskMargin / 100));
-
-  // Złożoność: factor 1.0 = brak, 1.5 = +50%
+  // complexityFactor: 1.0 = brak korekty, 1.5 = +50%
   const complexityAdjustment = round(subtotalForRisk * (model.complexityFactor - 1));
 
-  // ── 5. Pilność ────────────────────────────────────────────────────────────
+  // ── 6. Pilność ────────────────────────────────────────────────────────────
   const subtotalBeforeUrgency = round(subtotalForRisk + riskMarginAmount + complexityAdjustment);
+  // urgencyMultiplier: 1.0 = brak, 2.0 = +100%
   const urgencyAdjustment = round(subtotalBeforeUrgency * (model.urgencyMultiplier - 1));
 
-  // ── 6. Korekty zewnętrzne ─────────────────────────────────────────────────
+  // ── 7. Inflacja i sezonowość ──────────────────────────────────────────────
   const subtotalBeforeInflation = round(subtotalBeforeUrgency + urgencyAdjustment);
   const inflationAdjustmentAmount = round(subtotalBeforeInflation * (model.inflationAdjustment / 100));
 
-  // Korekta sezonowa (może być ujemna — rabat poza sezonem)
   const subtotalBeforeSeasonal = round(subtotalBeforeInflation + inflationAdjustmentAmount);
+  // seasonalAdjustmentPercent może być ujemny (rabat poza sezonem)
   const seasonalAdjustment = round(subtotalBeforeSeasonal * (model.seasonalAdjustmentPercent / 100));
 
-  // ── 7. Zabezpieczenia ─────────────────────────────────────────────────────
+  // ── 8. Zabezpieczenia ─────────────────────────────────────────────────────
   const subtotalBeforeInsurance = round(subtotalBeforeSeasonal + seasonalAdjustment);
   const insuranceCost = round(subtotalBeforeInsurance * (model.insuranceCostPercent / 100));
 
   const subtotalBeforeWarranty = round(subtotalBeforeInsurance + insuranceCost);
   const warrantyReserve = round(subtotalBeforeWarranty * (model.warrantyReservePercent / 100));
 
-  // ── 8. Marża zysku ────────────────────────────────────────────────────────
+  // ── 9. Marża zysku ────────────────────────────────────────────────────────
   const subtotalBeforeProfit = round(subtotalBeforeWarranty + warrantyReserve);
   const profitMarginAmount = round(subtotalBeforeProfit * (model.profitMarginPercent / 100));
-
   const subtotalBeforeDiscount = round(subtotalBeforeProfit + profitMarginAmount);
 
-  // ── 9. Rabaty ─────────────────────────────────────────────────────────────
+  // ── 10. Rabaty ────────────────────────────────────────────────────────────
+  // Rabat ilościowy — od łącznej ilości wszystkich pozycji
   const totalQuantity = items.reduce((s, i) => s + i.quantity, 0);
   const volumeDiscountPercent = calcProgressiveDiscount(totalQuantity, model.volumeDiscounts);
   const volumeDiscountAmount = round(subtotalBeforeDiscount * (volumeDiscountPercent / 100));
 
   let finalNetto = round(subtotalBeforeDiscount - volumeDiscountAmount);
 
-  const globalDiscountAmount = round(finalNetto * (globalDiscountPercent / 100));
+  const safeGlobalDiscount = clampDiscount(globalDiscountPercent);
+  const globalDiscountAmount = round(finalNetto * (safeGlobalDiscount / 100));
   finalNetto = round(finalNetto - globalDiscountAmount);
 
-  // ── 10. Minimum marży ─────────────────────────────────────────────────────
+  // ── 11. Minimum marży ─────────────────────────────────────────────────────
   const totalCostBase = round(baseNetto + additionalCostsNetto);
   if (model.minimumMarginPercent > 0 && totalCostBase > 0) {
-    const requiredNetto = round(totalCostBase / (1 - model.minimumMarginPercent / 100));
+    // Wymagane netto = koszt / (1 - marża%)
+    const requiredNetto = round(totalCostBase / (1 - clampDiscount(model.minimumMarginPercent) / 100));
     if (finalNetto < requiredNetto) {
       finalNetto = requiredNetto;
     }
   }
 
-  // ── 11. Minimum kwotowe ───────────────────────────────────────────────────
+  // ── 11b. Minimum kwotowe ──────────────────────────────────────────────────
   let minimumApplied = false;
   if (model.minimumQuoteAmount > 0 && finalNetto < model.minimumQuoteAmount) {
     finalNetto = round(model.minimumQuoteAmount);
@@ -402,15 +485,21 @@ export function calcAdvancedPricing(
   }
 
   // ── 12. VAT — ważona stawka z pozycji ────────────────────────────────────
-  // Zamiast zawsze 23%, używamy proporcji VAT z pozycji bazowych
-  const weightedVatRate = baseNetto > 0
-    ? round((baseVat / baseNetto) * 100)
-    : 23;
-  const effectiveVatRate = (Math.round(weightedVatRate / 8) * 8) as VatRate; // zaokrąglenie do 0/8/23
-  const safeVatRate: VatRate = [0, 8, 23].includes(effectiveVatRate) ? effectiveVatRate : 23;
+  // Obliczamy efektywną stawkę VAT jako stosunek sumy VAT do sumy netto
+  // Nie snapujemy do 0/8/23 — używamy rzeczywistej proporcji
+  let finalVat: number;
+  let finalBrutto: number;
 
-  const finalVat = calcItemVat(finalNetto, safeVatRate);
-  const finalBrutto = calcItemBrutto(finalNetto, finalVat);
+  if (baseNetto > 0) {
+    // Efektywna stawka VAT z pozycji (może być mieszana np. 8% + 23%)
+    const effectiveVatRatio = baseVat / baseNetto;
+    finalVat = round(finalNetto * effectiveVatRatio);
+    finalBrutto = round(finalNetto + finalVat);
+  } else {
+    // Brak pozycji — użyj domyślnej stawki 23%
+    finalVat = round(finalNetto * 0.23);
+    finalBrutto = round(finalNetto + finalVat);
+  }
 
   // ── 13. Analityka ─────────────────────────────────────────────────────────
   const marginPercent = finalNetto > 0
@@ -425,26 +514,25 @@ export function calcAdvancedPricing(
 
   // ── 14. Breakdown ─────────────────────────────────────────────────────────
   const breakdown: Record<string, number> = {};
-
-  if (baseNetto > 0)              breakdown["Pozycje bazowe (netto)"] = baseNetto;
-  if (additionalCostsNetto > 0)   breakdown["Koszty dodatkowe"] = additionalCostsNetto;
-  if (laborAdjustment !== 0)      breakdown["Korekta robocizny"] = laborAdjustment;
-  if (materialWasteCost > 0)      breakdown["Straty materiałowe"] = materialWasteCost;
-  if (materialMarkupAmount > 0)   breakdown["Narzut na materiały"] = materialMarkupAmount;
-  if (equipmentCost > 0)          breakdown["Koszt sprzętu"] = equipmentCost;
-  if (travelCost > 0)             breakdown["Dojazdy"] = travelCost;
-  if (permitCost > 0)             breakdown["Pozwolenia"] = permitCost;
-  if (overheadCost > 0)           breakdown["Koszty pośrednie"] = overheadCost;
-  if (riskMarginAmount > 0)       breakdown["Margines ryzyka"] = riskMarginAmount;
-  if (complexityAdjustment !== 0) breakdown["Złożoność projektu"] = complexityAdjustment;
-  if (urgencyAdjustment !== 0)    breakdown["Pilność zlecenia"] = urgencyAdjustment;
+  if (baseNetto > 0)                breakdown["Pozycje bazowe (netto)"] = baseNetto;
+  if (additionalCostsNetto > 0)     breakdown["Koszty dodatkowe"] = additionalCostsNetto;
+  if (laborAdjustment !== 0)        breakdown["Korekta robocizny"] = laborAdjustment;
+  if (materialWasteCost > 0)        breakdown["Straty materiałowe"] = materialWasteCost;
+  if (materialMarkupAmount > 0)     breakdown["Narzut na materiały"] = materialMarkupAmount;
+  if (equipmentCost > 0)            breakdown["Koszt sprzętu"] = equipmentCost;
+  if (travelCost > 0)               breakdown["Dojazdy"] = travelCost;
+  if (permitCost > 0)               breakdown["Pozwolenia"] = permitCost;
+  if (overheadCost > 0)             breakdown["Koszty pośrednie"] = overheadCost;
+  if (riskMarginAmount > 0)         breakdown["Margines ryzyka"] = riskMarginAmount;
+  if (complexityAdjustment !== 0)   breakdown["Złożoność projektu"] = complexityAdjustment;
+  if (urgencyAdjustment !== 0)      breakdown["Pilność zlecenia"] = urgencyAdjustment;
   if (inflationAdjustmentAmount !== 0) breakdown["Waloryzacja"] = inflationAdjustmentAmount;
-  if (seasonalAdjustment !== 0)   breakdown["Korekta sezonowa"] = seasonalAdjustment;
-  if (insuranceCost > 0)          breakdown["Ubezpieczenie"] = insuranceCost;
-  if (warrantyReserve > 0)        breakdown["Rezerwa gwarancyjna"] = warrantyReserve;
-  if (profitMarginAmount > 0)     breakdown["Marża zysku"] = profitMarginAmount;
-  if (volumeDiscountAmount > 0)   breakdown["Rabat ilościowy"] = -volumeDiscountAmount;
-  if (globalDiscountAmount > 0)   breakdown["Rabat globalny"] = -globalDiscountAmount;
+  if (seasonalAdjustment !== 0)     breakdown["Korekta sezonowa"] = seasonalAdjustment;
+  if (insuranceCost > 0)            breakdown["Ubezpieczenie"] = insuranceCost;
+  if (warrantyReserve > 0)          breakdown["Rezerwa gwarancyjna"] = warrantyReserve;
+  if (profitMarginAmount > 0)       breakdown["Marża zysku"] = profitMarginAmount;
+  if (volumeDiscountAmount > 0)     breakdown["Rabat ilościowy"] = -volumeDiscountAmount;
+  if (globalDiscountAmount > 0)     breakdown["Rabat globalny"] = -globalDiscountAmount;
 
   return {
     baseNetto,

@@ -9,7 +9,7 @@ import { useTemplateStore } from "@/store/template-store";
 import { useSettingsStore } from "@/store/settings-store";
 import type { QuoteItem, VatRate, Unit, QuoteStatus, QuoteAdditionalCost, PricingModelConfig } from "@/types";
 import { VAT_RATE_LABELS, UNIT_LABELS, STATUS_LABELS, DEFAULT_PRICING_MODEL } from "@/types";
-import { calcQuoteItem, calcTotalNetto, calcTotalVat, calcTotalBrutto, calcAdditionalCostsTotal, formatCurrency, round, calcAdvancedPricing, type AdvancedPricingResult } from "@/lib/calculations";
+import { calcQuoteItem, calcTotalNetto, calcTotalVat, calcTotalBrutto, calcAdditionalCostsTotal, calcQuoteTotals, formatCurrency, round, calcAdvancedPricing, type AdvancedPricingResult } from "@/lib/calculations";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -312,14 +312,11 @@ export default function NowaWycenaPage() {
       totalVat = advanced.finalVat;
       totalBrutto = advanced.finalBrutto;
     } else {
-      totalNetto = calcTotalNetto(recalcItems);
-      totalVat = calcTotalVat(recalcItems);
-      const totalBruttoBeforeDiscount = calcTotalBrutto(recalcItems);
-      const costsBrutto = calcAdditionalCostsTotal(validCosts).brutto;
-      const combinedBrutto = totalBruttoBeforeDiscount + costsBrutto;
-      totalBrutto = globalDiscount > 0
-        ? round(combinedBrutto * (1 - globalDiscount / 100))
-        : combinedBrutto;
+      // Używamy calcQuoteTotals — uwzględnia koszty dodatkowe i rabat globalny poprawnie
+      const totals = calcQuoteTotals(recalcItems, validCosts, globalDiscount);
+      totalNetto = totals.totalNetto;
+      totalVat = totals.totalVat;
+      totalBrutto = totals.totalBrutto;
     }
 
     addQuote({
@@ -346,13 +343,15 @@ export default function NowaWycenaPage() {
     });
   }
 
-  const totalNetto = calcTotalNetto(items);
-  const totalVat = calcTotalVat(items);
+  // Live preview totals — używamy calcQuoteTotals dla spójności z handleSave
+  const liveStandardTotals = calcQuoteTotals(items, additionalCosts, globalDiscount);
+  const totalNetto = liveStandardTotals.totalNetto;
+  const totalVat = liveStandardTotals.totalVat;
   const totalBruttoBeforeDiscount = calcTotalBrutto(items);
   const costsTotal = calcAdditionalCostsTotal(additionalCosts);
-  const combinedBrutto = totalBruttoBeforeDiscount + costsTotal.brutto;
-  const globalDiscountAmount = globalDiscount > 0 ? round(combinedBrutto * globalDiscount / 100) : 0;
-  const finalBrutto = globalDiscount > 0 ? round(combinedBrutto - globalDiscountAmount) : combinedBrutto;
+  const combinedBrutto = round(totalBruttoBeforeDiscount + costsTotal.brutto);
+  const globalDiscountAmount = liveStandardTotals.discountAmount;
+  const finalBrutto = liveStandardTotals.totalBrutto;
 
   const advancedPricing = useAdvancedPricing ? calcAdvancedPricing(items, additionalCosts, globalDiscount, pricingModel) : null;
 

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { db } from "@/lib/db";
 import type { Quote, QuoteItem, QuoteStatus, QuoteVersion } from "@/types";
-import { calcQuoteItem, generateSequentialQuoteNumber } from "@/lib/calculations";
+import { calcQuoteItem, calcQuoteTotals, generateSequentialQuoteNumber } from "@/lib/calculations";
 
 interface QuoteState {
   quotes: Quote[];
@@ -36,19 +36,28 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
     const now = new Date();
     const existingNumbers = get().quotes.map((q) => q.number);
     const number = generateSequentialQuoteNumber(existingNumbers);
+    // Recalculate items to ensure consistency
     const items = quoteData.items.map(calcQuoteItem);
-    const totalNetto = items.reduce((s, i) => s + i.nettotal, 0);
-    const totalVat = items.reduce((s, i) => s + i.vatAmount, 0);
-    let totalBrutto = items.reduce((s, i) => s + i.bruttoTotal, 0);
-    if (quoteData.globalDiscountPercent > 0) {
-      totalBrutto = totalBrutto * (1 - quoteData.globalDiscountPercent / 100);
-      totalBrutto = Math.round(totalBrutto * 100) / 100;
-    }
+    const additionalCosts = quoteData.additionalCosts || [];
+
+    // Use calcQuoteTotals for correct totals (includes additional costs + discount)
+    // If the caller already computed totals (e.g. advanced pricing), trust those values
+    // by checking if they differ significantly from the standard calculation
+    const standardTotals = calcQuoteTotals(items, additionalCosts, quoteData.globalDiscountPercent);
+
+    // If caller passed non-zero totals that differ from standard (advanced pricing), use caller's
+    const useCallerTotals = quoteData.totalBrutto > 0 &&
+      Math.abs(quoteData.totalBrutto - standardTotals.totalBrutto) > 0.01;
+
+    const totalNetto = useCallerTotals ? quoteData.totalNetto : standardTotals.totalNetto;
+    const totalVat = useCallerTotals ? quoteData.totalVat : standardTotals.totalVat;
+    const totalBrutto = useCallerTotals ? quoteData.totalBrutto : standardTotals.totalBrutto;
+
     const quote: Quote = {
       ...quoteData,
       number,
       items,
-      additionalCosts: quoteData.additionalCosts || [],
+      additionalCosts,
       progressiveDiscounts: quoteData.progressiveDiscounts || [],
       totalNetto,
       totalVat,
@@ -68,11 +77,14 @@ export const useQuoteStore = create<QuoteState>((set, get) => ({
     const updated = { ...existing, ...quoteData, updatedAt: new Date() };
     if (quoteData.items) {
       updated.items = quoteData.items.map(calcQuoteItem);
-      updated.totalNetto = updated.items.reduce((s, i) => s + i.nettotal, 0);
-      updated.totalVat = updated.items.reduce((s, i) => s + i.vatAmount, 0);
-      updated.totalBrutto = updated.items.reduce((s, i) => s + i.bruttoTotal, 0);
-      if (updated.globalDiscountPercent > 0) {
-        updated.totalBrutto = Math.round(updated.totalBrutto * (1 - updated.globalDiscountPercent / 100) * 100) / 100;
+      // If caller passed explicit totals (e.g. from advanced pricing), trust them
+      // Otherwise recalculate using calcQuoteTotals for correctness
+      const callerHasTotals = quoteData.totalBrutto !== undefined && quoteData.totalBrutto > 0;
+      if (!callerHasTotals) {
+        const totals = calcQuoteTotals(updated.items, updated.additionalCosts || [], updated.globalDiscountPercent || 0);
+        updated.totalNetto = totals.totalNetto;
+        updated.totalVat = totals.totalVat;
+        updated.totalBrutto = totals.totalBrutto;
       }
     }
     await db.quotes.update(id, updated);
