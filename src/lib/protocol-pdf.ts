@@ -160,12 +160,12 @@ export function generateProtocolPDF(protocol: MeasurementProtocol, options: PDFO
     alternateRowStyles: {
       fillColor: [245, 245, 245],
     },
-    didDrawPage: (data) => {
-      yPos = data.lastAutoTable.finalY + 6;
+    didDrawPage: () => {
+      yPos = (doc as any).lastAutoTable?.finalY ?? yPos + 6;
     },
   });
 
-  yPos = (doc as any).lastAutoTable.finalY + 6;
+  yPos = (doc as any).lastAutoTable?.finalY ?? yPos + 6;
 
   // ─── Normy ────────────────────────────────────────────────────────────────
 

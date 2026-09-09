@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
+import { sanitizeCsvCell } from "@/lib/utils";
 import { AnimatedEmptyState } from "@/components/animated-empty-state";
 import { TableSkeleton } from "@/components/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
@@ -167,13 +168,24 @@ export default function WycenyPage() {
 
   function exportToCSV() {
     const headers = ["Numer", "Klient", "Data", "Status", "Netto", "VAT", "Brutto"];
-    const rows = filtered.map((q) => [q.number, q.clientName, format(new Date(q.createdAt), "dd.MM.yyyy"), STATUS_LABELS[q.status], q.totalNetto.toFixed(2), q.totalVat.toFixed(2), q.totalBrutto.toFixed(2)]);
-    const csv = [headers.join(";"), ...rows.map((r) => r.map((c) => `"${c}"`).join(";"))].join("\n");
+    const rows = filtered.map((q) => [
+      q.number,
+      q.clientName,
+      format(new Date(q.createdAt), "dd.MM.yyyy"),
+      STATUS_LABELS[q.status],
+      q.totalNetto.toFixed(2),
+      q.totalVat.toFixed(2),
+      q.totalBrutto.toFixed(2),
+    ]);
+    const csv = [
+      headers.map(sanitizeCsvCell).join(";"),
+      ...rows.map((r) => r.map(sanitizeCsvCell).join(";")),
+    ].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `wyceny-${format(new Date(), "yyyy-MM-dd")}.csv`; a.click();
     URL.revokeObjectURL(url);
-    toast.success("CSV wyeksportowany");
+    toast.success("CSV wyeksportowany bezpiecznie");
   }
 
   const deleteQuote = deleteId ? quotes.find((q) => q.id === deleteId) : null;

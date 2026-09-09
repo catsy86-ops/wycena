@@ -98,9 +98,9 @@ export async function generateMeasurementProtocolPdf(
   // ─── Dane firmy ────────────────────────────────────────────────────────────
   if (settings?.name) {
     doc.setFontSize(9);
-    doc.setFont(undefined, "bold");
+    doc.setFont("helvetica", "bold");
     doc.text("Wykonawca:", 15, yPosition);
-    doc.setFont(undefined, "normal");
+    doc.setFont("helvetica", "normal");
     doc.text(settings.name, 50, yPosition);
     yPosition += 5;
 
@@ -122,11 +122,11 @@ export async function generateMeasurementProtocolPdf(
 
   // ─── Dane instalacji ──────────────────────────────────────────────────────
   doc.setFontSize(9);
-  doc.setFont(undefined, "bold");
+  doc.setFont("helvetica", "bold");
   doc.text("DANE INSTALACJI", 15, yPosition);
   yPosition += 6;
 
-  doc.setFont(undefined, "normal");
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
 
   const installationInfo = [
@@ -142,9 +142,9 @@ export async function generateMeasurementProtocolPdf(
   ];
 
   installationInfo.forEach(([label, value]) => {
-    doc.setFont(undefined, "bold");
+    doc.setFont("helvetica", "bold");
     doc.text(label, 15, yPosition);
-    doc.setFont(undefined, "normal");
+    doc.setFont("helvetica", "normal");
     doc.text(String(value), 50, yPosition);
     yPosition += 4;
   });
@@ -152,11 +152,11 @@ export async function generateMeasurementProtocolPdf(
   yPosition += 3;
 
   // ─── Dane elektryka ───────────────────────────────────────────────────────
-  doc.setFont(undefined, "bold");
+  doc.setFont("helvetica", "bold");
   doc.text("DANE ELEKTRYKA", 15, yPosition);
   yPosition += 6;
 
-  doc.setFont(undefined, "normal");
+  doc.setFont("helvetica", "normal");
   doc.text(`Imię i nazwisko: ${data.electricianName}`, 15, yPosition);
   yPosition += 4;
 
@@ -174,7 +174,7 @@ export async function generateMeasurementProtocolPdf(
 
   // ─── Pomiary rezystancji izolacji ─────────────────────────────────────────
   if (data.insulationResistance.length > 0) {
-    doc.setFont(undefined, "bold");
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.text("POMIARY REZYSTANCJI IZOLACJI", 15, yPosition);
     yPosition += 5;
@@ -205,7 +205,7 @@ export async function generateMeasurementProtocolPdf(
 
   // ─── Pomiary skuteczności ochrony ─────────────────────────────────────────
   if (data.protectionEffectiveness.length > 0) {
-    doc.setFont(undefined, "bold");
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.text("POMIARY SKUTECZNOŚCI OCHRONY (ZEROWANIE)", 15, yPosition);
     yPosition += 5;
@@ -235,7 +235,7 @@ export async function generateMeasurementProtocolPdf(
 
   // ─── Pomiary napięcia, prądu, mocy ─────────────────────────────────────────
   if (data.measurements.length > 0) {
-    doc.setFont(undefined, "bold");
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.text("POMIARY NAPIĘCIA, PRĄDU, MOCY", 15, yPosition);
     yPosition += 5;
@@ -263,11 +263,11 @@ export async function generateMeasurementProtocolPdf(
 
   // ─── Wynik odbioru ────────────────────────────────────────────────────────
   yPosition += 3;
-  doc.setFont(undefined, "bold");
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   
-  const resultColor = data.installationPassed ? [34, 197, 94] : [239, 68, 68]; // green or red
-  doc.setTextColor(...resultColor);
+  const [r, g, b] = data.installationPassed ? [34, 197, 94] : [239, 68, 68];
+  doc.setTextColor(r, g, b);
   const resultText = data.installationPassed ? "✓ INSTALACJA PRZESZŁA ODBIÓR" : "✗ INSTALACJA NIE PRZESZŁA ODBIORU";
   doc.text(resultText, pageWidth / 2, yPosition, { align: "center" });
   doc.setTextColor(0, 0, 0);
@@ -276,12 +276,12 @@ export async function generateMeasurementProtocolPdf(
 
   // ─── Rekomendacje ─────────────────────────────────────────────────────────
   if (data.recommendations && data.recommendations.length > 0) {
-    doc.setFont(undefined, "bold");
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.text("REKOMENDACJE:", 15, yPosition);
     yPosition += 4;
 
-    doc.setFont(undefined, "normal");
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     data.recommendations.forEach((rec) => {
       const lines = doc.splitTextToSize(`• ${rec}`, pageWidth - 30);
@@ -294,12 +294,12 @@ export async function generateMeasurementProtocolPdf(
 
   // ─── Uwagi ────────────────────────────────────────────────────────────────
   if (data.notes) {
-    doc.setFont(undefined, "bold");
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.text("UWAGI:", 15, yPosition);
     yPosition += 4;
 
-    doc.setFont(undefined, "normal");
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     const noteLines = doc.splitTextToSize(data.notes, pageWidth - 30);
     doc.text(noteLines, 15, yPosition);
@@ -324,7 +324,7 @@ export async function generateMeasurementProtocolPdf(
   yPosition += 8;
 
   // Podpisy
-  doc.setFont(undefined, "bold");
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.text("Podpis elektryka:", 15, yPosition);
   doc.line(15, yPosition + 2, 50, yPosition + 2);

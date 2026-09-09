@@ -192,6 +192,10 @@ export default function EdytujWycenePage() {
       toast.error("Dodaj przynajmniej jedną pozycję");
       return;
     }
+    if (!clientName.trim()) {
+      toast.error("Podaj nazwę klienta lub wybierz klienta z listy");
+      return;
+    }
     setSaving(true);
     try {
       const recalcItems = validItems.map(calcQuoteItem);

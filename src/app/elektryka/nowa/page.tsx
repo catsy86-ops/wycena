@@ -1129,7 +1129,8 @@ export default function NowaWycenaElektrycznaPage() {
   // ── Zapis ─────────────────────────────────────────────────────────────────
   async function handleSave(status: QuoteStatus = "szkic") {
     const validItems = items.filter((i) => i.name.trim() && i.quantity > 0);
-    if (validItems.length === 0) { toast.error("Dodaj przynajmniej jedną pozycję"); return; }
+    if (validItems.length === 0) { toast.error("Dodaj przynajmniej jedną pozycję do wyceny"); return; }
+    if (!clientName.trim()) { toast.error("Wprowadź nazwę klienta lub wybierz go z listy"); return; }
     const recalc = validItems.map(calcQuoteItem);
     const validCosts = additionalCosts.filter((c) => c.name.trim());
     const t = calcQuoteTotals(recalc, validCosts, globalDiscount);
@@ -1149,7 +1150,7 @@ export default function NowaWycenaElektrycznaPage() {
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <PageTransition>
-      <StaggerContainer className="space-y-5 max-w-5xl mx-auto">
+      <StaggerContainer className="space-y-5 max-w-5xl mx-auto pb-24 lg:pb-6">
 
         {/* Header */}
         <StaggerItem>
@@ -1574,6 +1575,24 @@ export default function NowaWycenaElektrycznaPage() {
 
         <StaggerItem><CurrentIndicator active /></StaggerItem>
       </StaggerContainer>
+
+      {/* Sticky Bottom Bar na telefonach (elektryk widzi sumę na bieżąco podczas dodawania punktów) */}
+      <div className="lg:hidden fixed bottom-16 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-amber-500/20 p-3 shadow-xl flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[11px] text-muted-foreground">Razem brutto:</div>
+          <div className="text-base font-black text-amber-600 dark:text-amber-400 leading-tight">
+            {formatCurrency(totals.totalBrutto)}
+          </div>
+        </div>
+        <Button
+          className="bg-amber-600 hover:bg-amber-700 text-white font-bold gap-2 h-11 px-5 shadow-sm active:scale-95 transition-transform"
+          onClick={() => handleSave("wyslana")}
+          disabled={totals.totalNetto === 0}
+        >
+          <Zap className="h-4 w-4" />
+          Utwórz wycenę
+        </Button>
+      </div>
     </PageTransition>
   );
 }

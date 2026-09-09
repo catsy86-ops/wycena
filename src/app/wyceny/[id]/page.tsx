@@ -16,9 +16,16 @@ import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   ArrowLeft, Printer, FileDown, Trash2, Copy, FileText, Users,
   Calendar, Tag, Pencil, FileCheck, ExternalLink, ClipboardCopy,
-  AlertCircle, History, CheckCircle2,
+  AlertCircle, History, CheckCircle2, MoreVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, isPast, differenceInDays } from "date-fns";
@@ -194,10 +201,12 @@ export default function WycenaDetailPage() {
       columnStyles: { 0: { cellWidth: 40 }, 3: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right" } },
     });
 
+    const pageHeight = doc.internal.pageSize.getHeight();
     y = (doc as any).lastAutoTable.finalY + 8;
 
-    // Koszty dodatkowe w PDF (punkt 15)
+    // Koszty dodatkowe w PDF
     if (q.additionalCosts && q.additionalCosts.length > 0) {
+      if (y > pageHeight - 50) { doc.addPage(); y = 20; }
       doc.setFont("helvetica", "bold"); doc.setFontSize(9);
       doc.text("Koszty dodatkowe:", margin, y); y += 5;
       doc.setFont("helvetica", "normal");
@@ -207,34 +216,32 @@ export default function WycenaDetailPage() {
       y += 3;
     }
 
-    const totalNetto = q.items.reduce((s, i) => s + i.nettotal, 0);
-    const totalVat = q.items.reduce((s, i) => s + i.vatAmount, 0);
-    const totalBruttoBefore = q.items.reduce((s, i) => s + i.bruttoTotal, 0);
+    if (y > pageHeight - 55) { doc.addPage(); y = 20; }
 
     doc.setFontSize(10); doc.setFont("helvetica", "normal");
-    doc.text(`Suma netto: ${formatCurrency(totalNetto)}`, pageWidth - margin, y, { align: "right" }); y += 6;
-    doc.text(`Suma VAT: ${formatCurrency(totalVat)}`, pageWidth - margin, y, { align: "right" }); y += 6;
-    doc.text(`Suma brutto: ${formatCurrency(totalBruttoBefore)}`, pageWidth - margin, y, { align: "right" });
+    doc.text(`Suma netto: ${formatCurrency(q.totalNetto)}`, pageWidth - margin, y, { align: "right" }); y += 6;
+    doc.text(`Suma VAT: ${formatCurrency(q.totalVat)}`, pageWidth - margin, y, { align: "right" }); y += 6;
 
     if (q.globalDiscountPercent > 0) {
-      y += 6;
-      const discountAmt = round(totalBruttoBefore * q.globalDiscountPercent / 100);
-      doc.text(`Rabat (${q.globalDiscountPercent}%): -${formatCurrency(discountAmt)}`, pageWidth - margin, y, { align: "right" });
+      doc.text(`Rabat globalny: ${q.globalDiscountPercent}%`, pageWidth - margin, y, { align: "right" }); y += 6;
     }
 
-    y += 8;
+    y += 4;
     doc.setFont("helvetica", "bold"); doc.setFontSize(14);
     doc.text(`DO ZAPŁATY: ${formatCurrency(q.totalBrutto)}`, pageWidth - margin, y, { align: "right" });
 
     if (q.notes) {
-      y += 12; doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+      if (y > pageHeight - 45) { doc.addPage(); y = 20; }
+      y += 10; doc.setFont("helvetica", "bold"); doc.setFontSize(10);
       doc.text("Uwagi:", margin, y); doc.setFont("helvetica", "normal"); y += 5;
       const lines = doc.splitTextToSize(q.notes, pageWidth - margin * 2);
       doc.text(lines, margin, y);
+      y += lines.length * 5;
     }
 
     if (settings?.bankAccount) {
-      y += 15; doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+      if (y > pageHeight - 30) { doc.addPage(); y = 20; }
+      y += 10; doc.setFont("helvetica", "normal"); doc.setFontSize(9);
       doc.text(`Konto bankowe: ${settings.bankName || ""} ${settings.bankAccount}`, margin, y);
     }
 
@@ -298,84 +305,81 @@ export default function WycenaDetailPage() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Status wyceny */}
               <Select value={q.status} onValueChange={(v) => handleStatus((v ?? "szkic") as QuoteStatus)}>
-                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-36 h-10 font-medium"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(STATUS_LABELS).map(([k, v]) => (
                     <SelectItem key={k} value={k}>{v}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {/* Przycisk Edytuj (punkt 1) */}
-              <Button variant="outline" size="sm" className="btn-secondary" onClick={() => router.push(`/wyceny/${id}/edytuj`)}>
-                <Pencil className="mr-2 h-4 w-4" />Edytuj
+
+              {/* GŁÓWNA AKCJA: Wyślij ofertę (WhatsApp / SMS / Mail) */}
+              <Button
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 h-10 px-4 shadow-sm active:scale-95 transition-transform"
+                onClick={() => setShareOpen(true)}
+              >
+                <Share2 className="h-4 w-4" />
+                <span>Wyślij ofertę</span>
               </Button>
-              <Button variant="outline" size="sm" className="btn-secondary" onClick={handleDuplicate}>
-                <Copy className="mr-2 h-4 w-4" />Duplikuj
+
+              {/* PDF */}
+              <Button variant="outline" className="btn-secondary h-10 gap-2 font-medium" onClick={handleExportPDF}>
+                <FileDown className="h-4 w-4 text-primary" />
+                <span>Pobierz PDF</span>
               </Button>
-              {/* Konwersja na fakturę (punkt 3) */}
-              <AlertDialog>
-                <AlertDialogTrigger>
-                  <Button size="sm" className="btn-secondary border-emerald-400 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30" disabled={convertingInvoice}>
-                    <FileCheck className="mr-2 h-4 w-4" />Faktura
+
+              {/* Edytuj */}
+              <Button variant="outline" className="btn-secondary h-10 gap-2 font-medium" onClick={() => router.push(`/wyceny/${id}/edytuj`)}>
+                <Pencil className="h-4 w-4" />
+                <span>Edytuj</span>
+              </Button>
+
+              {/* Menu więcej opcji */}
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <Button variant="outline" size="icon" className="h-10 w-10 btn-secondary" title="Więcej opcji">
+                    <MoreVertical className="h-4 w-4" />
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Utwórz fakturę</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Zostanie utworzona faktura na podstawie wyceny {q.number}. Status wyceny zmieni się na &ldquo;Zaakceptowana&rdquo;.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConvertToInvoice}>Utwórz fakturę</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <Button variant="outline" size="sm" className="btn-secondary" onClick={handlePrint}>
-                <Printer className="mr-2 h-4 w-4" />Drukuj
-              </Button>
-              <Button variant="outline" size="sm" className="btn-secondary" onClick={() => setShareOpen(true)}>
-                <Share2 className="mr-2 h-4 w-4" />Udostępnij
-              </Button>
-              {q.status === "wyslana" && (
-                <Button variant="outline" size="sm" className="btn-secondary border-violet-300 text-violet-700 dark:text-violet-400" onClick={() => setShowSignature(true)}>
-                  <PenTool className="mr-2 h-4 w-4" />Podpis
-                </Button>
-              )}
-              <Button size="sm" className="btn-primary" onClick={handleExportPDF}>
-                <FileDown className="mr-2 h-4 w-4" />PDF
-              </Button>
-              <Button variant="outline" size="sm" className="btn-secondary" onClick={async () => {
-                const { generateQuoteDocx } = await import("@/lib/export-word");
-                const blob = await generateQuoteDocx(q, settings);
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a"); a.href = url;
-                a.download = `wycena-${q.number.replace(/\//g, "-")}.docx`; a.click();
-                URL.revokeObjectURL(url);
-                toast.success("Word wygenerowany");
-              }}>
-                <FileDown className="mr-2 h-4 w-4" />Word
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger>
-                  <Button variant="destructive" size="sm">
-                    <Trash2 className="mr-2 h-4 w-4" />Usuń
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Usuń wycenę</AlertDialogTitle>
-                    <AlertDialogDescription>Czy na pewno chcesz usunąć wycenę {q.number}?</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete}>Usuń</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem onClick={handleDuplicate}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Duplikuj wycenę
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleConvertToInvoice} disabled={convertingInvoice}>
+                    <FileCheck className="mr-2 h-4 w-4 text-emerald-600" />
+                    Wystaw fakturę
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowSignature(true)}>
+                    <PenTool className="mr-2 h-4 w-4 text-violet-600" />
+                    Podpis klienta
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handlePrint}>
+                    <Printer className="mr-2 h-4 w-4" />
+                    Drukuj
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={async () => {
+                    const { generateQuoteDocx } = await import("@/lib/export-word");
+                    const blob = await generateQuoteDocx(q, settings);
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a"); a.href = url;
+                    a.download = `wycena-${q.number.replace(/\//g, "-")}.docx`; a.click();
+                    URL.revokeObjectURL(url);
+                    toast.success("Word wygenerowany");
+                  }}>
+                    <FileDown className="mr-2 h-4 w-4" />
+                    Eksportuj Word (.docx)
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={handleDelete}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Usuń wycenę
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </StaggerItem>

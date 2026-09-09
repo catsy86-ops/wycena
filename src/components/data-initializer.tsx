@@ -11,6 +11,7 @@ import { useInvoiceStore } from "@/store/invoice-store";
 import { useTemplateStore } from "@/store/template-store";
 import { useTimeStore } from "@/store/time-store";
 import { useScheduleStore } from "@/store/schedule-store";
+import { useProtocolStore } from "@/store/protocol-store";
 
 /**
  * Optymalizowany DataInitializer:
@@ -22,6 +23,10 @@ export function DataInitializer({ children }: { children: React.ReactNode }) {
   const [phase, setPhase] = useState<"loading" | "ready">("loading");
 
   const loadCritical = useCallback(async () => {
+    // Zabezpieczenie IndexedDB przed automatycznym czyszczeniem pamięci przez przeglądarki mobilne
+    if (typeof window !== "undefined" && typeof navigator !== "undefined" && navigator.storage?.persist) {
+      navigator.storage.persist().catch(() => {});
+    }
     await seedDatabase();
     // Faza 1: krytyczne dane (potrzebne do pulpitu)
     await Promise.all([
@@ -42,6 +47,7 @@ export function DataInitializer({ children }: { children: React.ReactNode }) {
       useTemplateStore.getState().load(),
       useTimeStore.getState().load(),
       useScheduleStore.getState().load(),
+      useProtocolStore.getState().load(),
     ]);
   }, []);
 

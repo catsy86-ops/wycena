@@ -99,13 +99,15 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
   bulkDuplicate: async (ids) => {
     const invoices = ids.map((id) => get().getById(id)).filter(Boolean) as Invoice[];
     const now = new Date();
+    const newInvoices: Invoice[] = [];
     const existingNumbers = get().invoices.map((i) => i.number);
-    let counter = 0;
-    
-    const newInvoices = invoices.map((inv) => {
-      const number = generateSequentialInvoiceNumber([...existingNumbers, ...newInvoices.slice(0, counter).map((i) => i.number)]);
-      counter++;
-      return {
+    const generatedNumbers = [...existingNumbers];
+
+    for (const inv of invoices) {
+      const number = generateSequentialInvoiceNumber(generatedNumbers);
+      generatedNumbers.push(number);
+
+      newInvoices.push({
         ...inv,
         id: undefined,
         number,
@@ -114,9 +116,9 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
         dueDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
         createdAt: now,
         updatedAt: now,
-      };
-    });
-    
+      });
+    }
+
     await db.invoices.bulkAdd(newInvoices);
     await get().load();
   },

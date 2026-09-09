@@ -16,11 +16,19 @@ import {
   analyzeTimeAccuracy,
   analyzeClientSegmentation,
   generateOperationalAlerts,
+  analyzeEmployeeProfitability,
+  analyzeMaterialUsage,
+  analyzeFunnel,
+  analyzeMarginHeatmap,
   type ServiceProfitability,
   type AdvancedMetrics,
   type TimeAccuracyAnalysis,
   type ClientSegment,
   type OperationalAlert,
+  type EmployeeProfitability,
+  type MaterialReport,
+  type FunnelStage,
+  type MarginHeatmapCell,
 } from "@/lib/calculations";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,7 +44,7 @@ import {
   BarChart3, Download, ArrowUpRight, ArrowDownRight, Minus,
   FileSpreadsheet, GitCompare, DollarSign, Target, Brain,
   CalendarDays, FileDown, Timer, Wallet, AlertTriangle,
-  TrendingDown, Percent, Activity,
+  TrendingDown, Percent, Activity, User, Boxes, Funnel, Grid3x3,
 } from "lucide-react";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
 import { AnimatedCounter } from "@/components/animated-counter";
@@ -492,6 +500,46 @@ export default function RaportyPage() {
     return generateOperationalAlerts(quotes, invoices, timeEntries, getTotalPaidForInvoice);
   }, [quotes, invoices, timeEntries, getTotalPaidForInvoice]);
 
+  // ─── 13. Raport Rentowności per Pracownik ─────────────────────────────────
+  const employeeProfitability = useMemo(() => {
+    const now = new Date();
+    const periodStart = subMonths(now, periodMonths);
+    const previousStart = subMonths(now, periodMonths * 2);
+    const previousEnd = subMonths(now, periodMonths);
+
+    const currentEntries = timeEntries.filter((t) => new Date(t.startTime) >= periodStart);
+    const previousEntries = timeEntries.filter(
+      (t) => new Date(t.startTime) >= previousStart && new Date(t.startTime) < previousEnd
+    );
+
+    return analyzeEmployeeProfitability(currentEntries, quotes, previousEntries);
+  }, [timeEntries, quotes, periodMonths]);
+
+  // ─── 14. Raport Materiałów ────────────────────────────────────────────────
+  const materialReport = useMemo(() => {
+    const now = new Date();
+    const periodStart = subMonths(now, periodMonths);
+    const previousStart = subMonths(now, periodMonths * 2);
+    const previousEnd = subMonths(now, periodMonths);
+
+    const currentQuotes = quotes.filter((q) => new Date(q.createdAt) >= periodStart);
+    const previousQuotes = quotes.filter(
+      (q) => new Date(q.createdAt) >= previousStart && new Date(q.createdAt) < previousEnd
+    );
+
+    return analyzeMaterialUsage(currentQuotes, materials, previousQuotes);
+  }, [quotes, materials, periodMonths]);
+
+  // ─── 15. Funnel Analysis ──────────────────────────────────────────────────
+  const funnelData = useMemo(() => {
+    return analyzeFunnel(quotes);
+  }, [quotes]);
+
+  // ─── 16. Heatmap Marż ─────────────────────────────────────────────────────
+  const marginHeatmap = useMemo(() => {
+    return analyzeMarginHeatmap(quotes, services);
+  }, [quotes, services]);
+
   // ─── 8. Eksport PDF ─────────────────────────────────────────────────────
   function handleExportPDF() {
     const doc = new jsPDF();
@@ -758,6 +806,9 @@ export default function RaportyPage() {
               <TabsTrigger value="targets">Cele</TabsTrigger>
               <TabsTrigger value="forecast">Prognoza</TabsTrigger>
               <TabsTrigger value="seasonal">Sezonowość</TabsTrigger>
+              <TabsTrigger value="employees">Pracownicy</TabsTrigger>
+              <TabsTrigger value="materials">Materiały</TabsTrigger>
+              <TabsTrigger value="funnel">Konwersja</TabsTrigger>
             </TabsList>
 
             {/* ── Przegląd ── */}
@@ -1844,6 +1895,241 @@ export default function RaportyPage() {
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            {/* ── 13. Raport Pracowników ── */}
+            <TabsContent value="employees" className="space-y-4 mt-4">
+              <Card className="card-modern">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Rentowność per Pracownik
+                  </CardTitle>
+                  <CardDescription>Analiza przychodu, kosztów i marż dla każdego pracownika</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {employeeProfitability.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">Brak danych</div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                        {employeeProfitability.slice(0, 4).map((emp, idx) => (
+                          <Card key={idx} className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 border-slate-200 dark:border-slate-700">
+                            <CardContent className="pt-4 p-4">
+                              <div className="text-xs font-semibold text-muted-foreground uppercase">{emp.employeeName}</div>
+                              <div className="text-2xl font-black mt-2" style={{ color: emp.marginPercent >= 30 ? "#10b981" : emp.marginPercent >= 20 ? "#f59e0b" : "#ef4444" }}>
+                                {emp.marginPercent}%
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">Marża</div>
+                              <div className="text-sm font-semibold mt-3">{formatCurrency(emp.revenuePerHour)}/h</div>
+                              <div className="text-xs text-muted-foreground">Przychód/godzinę</div>
+                              <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                                <div className="text-xs text-muted-foreground">{emp.recommendation}</div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b text-muted-foreground">
+                              <th className="text-left py-2 font-medium">Pracownik</th>
+                              <th className="text-right py-2 font-medium">Godziny</th>
+                              <th className="text-right py-2 font-medium">Przychód</th>
+                              <th className="text-right py-2 font-medium">Koszt</th>
+                              <th className="text-right py-2 font-medium">Zysk</th>
+                              <th className="text-right py-2 font-medium">Marża</th>
+                              <th className="text-right py-2 font-medium">Trend</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {employeeProfitability.map((emp, idx) => (
+                              <tr key={idx} className="border-b hover:bg-muted/50">
+                                <td className="py-2 font-medium">{emp.employeeName}</td>
+                                <td className="text-right py-2">{emp.totalHours}</td>
+                                <td className="text-right py-2 font-semibold">{formatCurrency(emp.totalRevenue)}</td>
+                                <td className="text-right py-2">{formatCurrency(emp.totalCost)}</td>
+                                <td className="text-right py-2 font-semibold" style={{ color: emp.totalProfit > 0 ? "#10b981" : "#ef4444" }}>
+                                  {formatCurrency(emp.totalProfit)}
+                                </td>
+                                <td className="text-right py-2 font-semibold" style={{ color: emp.marginPercent >= 30 ? "#10b981" : emp.marginPercent >= 20 ? "#f59e0b" : "#ef4444" }}>
+                                  {emp.marginPercent}%
+                                </td>
+                                <td className="text-right py-2">
+                                  <div className="flex items-center justify-end gap-1">
+                                    {emp.trend > 0 ? <ArrowUpRight className="w-4 h-4 text-green-600" /> : emp.trend < 0 ? <ArrowDownRight className="w-4 h-4 text-red-600" /> : <Minus className="w-4 h-4 text-muted-foreground" />}
+                                    <span>{emp.trend > 0 ? "+" : ""}{emp.trend}%</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── 14. Raport Materiałów ── */}
+            <TabsContent value="materials" className="space-y-4 mt-4">
+              <Card className="card-modern">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Boxes className="w-4 h-4" />
+                    Analiza Materiałów
+                  </CardTitle>
+                  <CardDescription>Zużycie, koszty i trendy cen materiałów</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {materialReport.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">Brak danych</div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                        {materialReport.slice(0, 4).map((mat, idx) => (
+                          <Card key={idx} className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900 dark:to-amber-800 border-amber-200 dark:border-amber-700">
+                            <CardContent className="pt-4 p-4">
+                              <div className="text-xs font-semibold text-muted-foreground uppercase truncate">{mat.materialName}</div>
+                              <div className="text-2xl font-black mt-2">{formatCurrency(mat.totalCost)}</div>
+                              <div className="text-xs text-muted-foreground mt-1">Koszt łączny</div>
+                              <div className="text-sm font-semibold mt-3">{mat.quantity} szt.</div>
+                              <div className="text-xs text-muted-foreground">Ilość zużyta</div>
+                              <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-700">
+                                <div className="text-xs text-muted-foreground">{mat.recommendation}</div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b text-muted-foreground">
+                              <th className="text-left py-2 font-medium">Materiał</th>
+                              <th className="text-right py-2 font-medium">Ilość</th>
+                              <th className="text-right py-2 font-medium">Cena/j.</th>
+                              <th className="text-right py-2 font-medium">Koszt łączny</th>
+                              <th className="text-right py-2 font-medium">Użycia</th>
+                              <th className="text-right py-2 font-medium">Trend</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {materialReport.map((mat, idx) => (
+                              <tr key={idx} className="border-b hover:bg-muted/50">
+                                <td className="py-2 font-medium">{mat.materialName}</td>
+                                <td className="text-right py-2">{mat.quantity}</td>
+                                <td className="text-right py-2">{formatCurrency(mat.unitPrice)}</td>
+                                <td className="text-right py-2 font-semibold">{formatCurrency(mat.totalCost)}</td>
+                                <td className="text-right py-2">{mat.usageCount}</td>
+                                <td className="text-right py-2">
+                                  <div className="flex items-center justify-end gap-1">
+                                    {mat.trend > 0 ? <ArrowUpRight className="w-4 h-4 text-red-600" /> : mat.trend < 0 ? <ArrowDownRight className="w-4 h-4 text-green-600" /> : <Minus className="w-4 h-4 text-muted-foreground" />}
+                                    <span>{mat.trend > 0 ? "+" : ""}{mat.trend}%</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── 15. Funnel Analysis ── */}
+            <TabsContent value="funnel" className="space-y-4 mt-4">
+              <Card className="card-modern">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Funnel className="w-4 h-4" />
+                    Analiza Lejka Sprzedaży
+                  </CardTitle>
+                  <CardDescription>Konwersja na każdym etapie procesu sprzedaży</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {funnelData.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">Brak danych</div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Funnel visualization */}
+                      <div className="space-y-3">
+                        {funnelData.map((stage, idx) => (
+                          <div key={idx} className="space-y-1">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium">{stage.stage}</span>
+                              <span className="text-muted-foreground">{stage.count} wycen ({stage.percentage}%)</span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-8 overflow-hidden">
+                              <motion.div
+                                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-end pr-3"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${stage.percentage}%` }}
+                                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                              >
+                                <span className="text-xs font-semibold text-white">{stage.percentage}%</span>
+                              </motion.div>
+                            </div>
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>Konwersja: {stage.conversionRate}%</span>
+                              <span>Średnio: {stage.avgDays} dni</span>
+                              {stage.revenue > 0 && <span>Przychód: {formatCurrency(stage.revenue)}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Summary cards */}
+                      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                        {funnelData.map((stage, idx) => (
+                          <Card key={idx} className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+                            <CardContent className="pt-4 p-4">
+                              <div className="text-xs font-semibold text-muted-foreground uppercase">{stage.stage}</div>
+                              <div className="text-2xl font-black mt-2">{stage.count}</div>
+                              <div className="text-xs text-muted-foreground mt-1">Wycen</div>
+                              <div className="text-sm font-semibold mt-3">{stage.conversionRate}%</div>
+                              <div className="text-xs text-muted-foreground">Konwersja</div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      {/* Insights */}
+                      <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base">Insights</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                          {funnelData[1] && funnelData[1].conversionRate < 50 && (
+                            <div className="flex gap-2">
+                              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                              <span>Niska konwersja ze Szkicu na Wysłaną ({funnelData[1].conversionRate}%) — przeanalizuj przyczyny</span>
+                            </div>
+                          )}
+                          {funnelData[2] && funnelData[2].conversionRate < 40 && (
+                            <div className="flex gap-2">
+                              <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                              <span>Krytycznie niska konwersja na Zaakceptowaną ({funnelData[2].conversionRate}%) — pilnie popraw ofertę</span>
+                            </div>
+                          )}
+                          {funnelData[0] && funnelData[0].avgDays > 7 && (
+                            <div className="flex gap-2">
+                              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                              <span>Długi czas w Szkicu ({funnelData[0].avgDays} dni) — przyspieszaj proces tworzenia</span>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
 
           </Tabs>

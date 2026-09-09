@@ -34,10 +34,8 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
   load: async () => {
     set({ loading: true });
     try {
-      // W rzeczywistości byłoby z bazy danych
-      // const protocols = await db.protocols.toArray();
-      // set({ protocols, loading: false });
-      set({ loading: false });
+      const protocols = await db.protocols.toArray();
+      set({ protocols, loading: false });
     } catch (error) {
       console.error("Error loading protocols:", error);
       set({ loading: false });
@@ -46,9 +44,9 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
 
   add: async (protocol) => {
     try {
-      // await db.protocols.add(protocol);
+      await db.protocols.put(protocol);
       set((state) => ({
-        protocols: [...state.protocols, protocol],
+        protocols: [protocol, ...state.protocols.filter((p) => p.id !== protocol.id)],
       }));
     } catch (error) {
       console.error("Error adding protocol:", error);
@@ -57,7 +55,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
 
   update: async (id, updates) => {
     try {
-      // await db.protocols.update(id, updates);
+      await db.protocols.update(id, updates);
       set((state) => ({
         protocols: state.protocols.map((p) =>
           p.id === id ? { ...p, ...updates } : p
@@ -70,7 +68,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
 
   remove: async (id) => {
     try {
-      // await db.protocols.delete(id);
+      await db.protocols.delete(id);
       set((state) => ({
         protocols: state.protocols.filter((p) => p.id !== id),
       }));

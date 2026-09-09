@@ -143,6 +143,28 @@ export default function NowaWycenaPage() {
         toast.success(`Wczytano szablon: ${template.name}`);
       }
     }
+
+    // Obsługa wczytywania szybkiej wyceny z kalkulatora hydrauliki
+    const source = searchParams?.get("source");
+    if (source === "hydraulika") {
+      const saved = localStorage.getItem("gksystem_quick_plumbing_quote");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setItems(parsed.map((it) => calcQuoteItem({
+              ...createEmptyItem(8),
+              ...it,
+              id: generateItemId(),
+            })));
+            toast.success("Wczytano pozycje z kalkulatora hydraulicznego");
+            localStorage.removeItem("gksystem_quick_plumbing_quote");
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
   }, [searchParams, templates]);
 
   function handleClientSelect(clientId: string) {
@@ -297,6 +319,10 @@ export default function NowaWycenaPage() {
     const validItems = items.filter((i) => i.name.trim() !== "" && i.quantity > 0);
     if (validItems.length === 0) {
       toast.error("Dodaj przynajmniej jedną pozycję do wyceny");
+      return;
+    }
+    if (!clientName.trim()) {
+      toast.error("Podaj nazwę klienta lub wybierz klienta z listy");
       return;
     }
     const recalcItems = validItems.map(calcQuoteItem);

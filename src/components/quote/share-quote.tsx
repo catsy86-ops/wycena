@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Share2, Mail, Link2, Copy, Check, ExternalLink } from "lucide-react";
+import { Share2, Mail, Copy, Check, MessageSquare, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { Quote } from "@/types";
@@ -18,29 +16,57 @@ interface ShareQuoteProps {
 }
 
 /**
- * Dialog udostępniania wyceny — email + link publiczny.
+ * Dialog udostępniania wyceny — WhatsApp + SMS + Email + kopiowanie oferty.
  */
 export function ShareQuoteDialog({ quote, open, onOpenChange }: ShareQuoteProps) {
   const [copied, setCopied] = useState(false);
 
-  // Generuj link publiczny (w produkcji: prawdziwy URL z tokenem)
-  const publicLink = `${typeof window !== "undefined" ? window.location.origin : ""}/wyceny/${quote.id}`;
+  // Generowanie pełnego podsumowania tekstowego oferty (samowystarczalne, bez konieczności wspólnej bazy)
+  const itemsSummary = quote.items
+    .slice(0, 5)
+    .map((item) => `• ${item.name} (${item.quantity} ${item.unit}) — ${formatCurrency(item.bruttoTotal)}`)
+    .join("\n");
+  const moreItemsCount = Math.max(0, quote.items.length - 5);
+  const itemsText = moreItemsCount > 0 ? `${itemsSummary}\n  ...oraz ${moreItemsCount} innych pozycji` : itemsSummary;
 
-  function copyLink() {
-    navigator.clipboard.writeText(publicLink);
+  const validUntilText = quote.validUntil
+    ? new Date(quote.validUntil).toLocaleDateString("pl-PL")
+    : "14 dni od wystawienia";
+
+  const fullQuoteText = `Dzień dobry!\nPrzesyłam ofertę nr ${quote.number} dla: ${quote.clientName || "Klienta"}\n\nPozycje wyceny:\n${itemsText}\n\nŁĄCZNA KWOTA: ${formatCurrency(quote.totalBrutto)} brutto\nOferta ważna do: ${validUntilText}\n\nProszę o informację zwrotną i potwierdzenie terminu realizacji.\nPozdrawiam!`;
+
+  function copyText() {
+    navigator.clipboard.writeText(fullQuoteText);
     setCopied(true);
-    toast.success("Link skopiowany");
+    toast.success("Treść oferty skopiowana do schowka");
     setTimeout(() => setCopied(false), 2000);
   }
 
   function sendEmail() {
     const subject = encodeURIComponent(`Wycena ${quote.number} — ${formatCurrency(quote.totalBrutto)}`);
-    const body = encodeURIComponent(
-      `Dzień dobry,\n\nPrzesyłam wycenę nr ${quote.number} na kwotę ${formatCurrency(quote.totalBrutto)} brutto.\n\nLink do wyceny: ${publicLink}\n\nWycena ważna do: ${quote.validUntil ? new Date(quote.validUntil).toLocaleDateString("pl-PL") : "bezterminowo"}.\n\nZ poważaniem`
-    );
+    const body = encodeURIComponent(fullQuoteText);
     const mailto = `mailto:${quote.clientEmail || ""}?subject=${subject}&body=${body}`;
     window.open(mailto, "_blank");
     toast.success("Otwarto klienta email");
+  }
+
+  function sendWhatsApp() {
+    const text = encodeURIComponent(fullQuoteText);
+    const phone = quote.clientPhone ? quote.clientPhone.replace(/\D/g, "") : "";
+    const url = phone
+      ? `https://wa.me/48${phone.startsWith("48") ? phone.slice(2) : phone}?text=${text}`
+      : `https://wa.me/?text=${text}`;
+    window.open(url, "_blank");
+    toast.success("Otwarto WhatsApp z gotową ofertą");
+  }
+
+  function sendSms() {
+    const shortText = encodeURIComponent(
+      `Oferta ${quote.number} dla ${quote.clientName || "Klienta"}: ${formatCurrency(quote.totalBrutto)} brutto. Pozycje: ${quote.items.length}, ważna do ${validUntilText}. Proszę o potwierdzenie.`
+    );
+    const phone = quote.clientPhone || "";
+    window.open(`sms:${phone}?body=${shortText}`, "_blank");
+    toast.success("Otwarto wiadomość SMS");
   }
 
   return (
@@ -54,19 +80,50 @@ export function ShareQuoteDialog({ quote, open, onOpenChange }: ShareQuoteProps)
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Link publiczny */}
+          {/* Gotowy tekst oferty do schowka */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold flex items-center gap-1.5">
+                <Copy className="h-3.5 w-3.5 text-primary" />
+                Gotowa oferta (Messenger, OLX, SMS)
+              </label>
+            </div>
+            <div className="rounded-md border bg-muted/40 p-2.5 text-xs text-muted-foreground whitespace-pre-line max-h-28 overflow-y-auto font-sans leading-relaxed">
+              {fullQuoteText}
+            </div>
+            <Button variant="outline" className="w-full flex items-center justify-center gap-2 text-xs h-9" onClick={copyText}>
+              {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+              {copied ? "Skopiowano ofertę do schowka!" : "Kopiuj gotową treść oferty do schowka"}
+            </Button>
+          </div>
+
+          {/* Szybka wysyłka WhatsApp / SMS */}
           <div className="space-y-2">
             <label className="text-sm font-semibold flex items-center gap-1.5">
-              <Link2 className="h-3.5 w-3.5 text-primary" />
-              Link do wyceny
+              <MessageSquare className="h-3.5 w-3.5 text-emerald-500" />
+              Szybka wiadomość do klienta
             </label>
-            <div className="flex gap-2">
-              <Input value={publicLink} readOnly className="text-xs font-mono" />
-              <Button variant="outline" size="icon" className="shrink-0 h-9 w-9" onClick={copyLink}>
-                {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                onClick={sendWhatsApp}
+              >
+                <MessageSquare className="h-4 w-4 text-emerald-600" />
+                WhatsApp
+              </Button>
+              <Button
+                variant="outline"
+                className="bg-blue-50 hover:bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
+                onClick={sendSms}
+              >
+                <Smartphone className="h-4 w-4 text-blue-600" />
+                Wiadomość SMS
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground">Klient może otworzyć ten link i zobaczyć wycenę bez logowania.</p>
+            {quote.clientPhone && (
+              <p className="text-[10px] text-muted-foreground">Nr klienta: {quote.clientPhone}</p>
+            )}
           </div>
 
           {/* Wyślij emailem */}
@@ -82,7 +139,7 @@ export function ShareQuoteDialog({ quote, open, onOpenChange }: ShareQuoteProps)
                 Wyślij
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground">Otworzy domyślny klient email z przygotowaną wiadomością i linkiem.</p>
+            <p className="text-[10px] text-muted-foreground">Otworzy klienta email z przygotowaną wiadomością i ofertą.</p>
           </div>
 
           {/* Info */}

@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useMemo, lazy, Suspense } from "react";
 import {
   FileText, Plus, TrendingUp, Clock,
-  CheckCircle2, BarChart3, AlertCircle, ArrowUpRight,
+  CheckCircle2, ArrowUpRight, Droplets, Zap, ShieldCheck,
+  ChevronRight, Users, Wrench, AlertCircle
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useServiceStore } from "@/store/service-store";
 import { useClientStore } from "@/store/client-store";
 import { useQuoteStore } from "@/store/quote-store";
@@ -17,29 +19,15 @@ import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page
 import { AnimatedCounter } from "@/components/animated-counter";
 import { motion } from "framer-motion";
 import { Greeting } from "@/components/dashboard/greeting";
-import { WorkStreak } from "@/components/dashboard/work-streak";
-import { MonthlyGoal } from "@/components/dashboard/monthly-goal";
-import { ActiveTimerBar } from "@/components/dashboard/active-timer-bar";
 import { QuickActions } from "@/components/dashboard/quick-actions";
-import { WeatherWidget } from "@/components/dashboard/weather-widget";
-import { QuickNotes } from "@/components/dashboard/quick-notes";
-import { WorkloadIndicator } from "@/components/dashboard/workload-indicator";
 import { Sparkline } from "@/components/dashboard/sparkline";
-import { PipeSeparator, BoltRow, FlowIndicator, HydraulicBadge, PressureStatus } from "@/components/hydraulic-decorations";
-import { CashFlow } from "@/components/dashboard/cash-flow";
-import { RevenueForecast } from "@/components/dashboard/revenue-forecast";
-import { TopServicesMonth } from "@/components/dashboard/top-services-month";
-import { AIInsight } from "@/components/dashboard/ai-insight";
-import { QuickTimer } from "@/components/dashboard/quick-timer";
 import { subMonths, subDays, startOfDay, isSameDay } from "date-fns";
 
-// Lazy load heavy dashboard widgets (recharts, etc.)
-const NotificationsCenter = lazy(() => import("@/components/dashboard/notifications-center").then((m) => ({ default: m.NotificationsCenter })));
+// Lazy load widżety wspierające
 const TodaySchedule = lazy(() => import("@/components/dashboard/today-schedule").then((m) => ({ default: m.TodaySchedule })));
 const RecentActivity = lazy(() => import("@/components/dashboard/recent-activity").then((m) => ({ default: m.RecentActivity })));
-const QuoteStatusBar = lazy(() => import("@/components/dashboard/quote-status-bar").then((m) => ({ default: m.QuoteStatusBar })));
-const RevenueChart = lazy(() => import("@/components/dashboard/revenue-chart").then((m) => ({ default: m.RevenueChart })));
-
+const NotificationsCenter = lazy(() => import("@/components/dashboard/notifications-center").then((m) => ({ default: m.NotificationsCenter })));
+const AIInsight = lazy(() => import("@/components/dashboard/ai-insight").then((m) => ({ default: m.AIInsight })));
 
 export default function DashboardPage() {
   const serviceCount = useServiceStore((s) => s.services.length);
@@ -68,7 +56,6 @@ export default function DashboardPage() {
       (q.status === "wyslana" || q.status === "szkic") && q.validUntil && new Date(q.validUntil) < now
     ).slice(0, 5);
 
-    // Trend przychodu vs poprzedni miesiąc
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonth = subMonths(thisMonth, 1);
     const thisMonthRev = quotes.filter((q) => q.status === "zaakceptowana" && new Date(q.createdAt) >= thisMonth).reduce((s, q) => s + q.totalBrutto, 0);
@@ -77,7 +64,6 @@ export default function DashboardPage() {
 
     const recentQuotes = quotes.slice(0, 5);
 
-    // Sparkline data — wyceny per dzień (7 dni)
     const sparklineQuotes: number[] = [];
     const sparklineRevenue: number[] = [];
     for (let i = 6; i >= 0; i--) {
@@ -92,293 +78,244 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-      <StaggerContainer className="space-y-4 md:space-y-5">
+      <StaggerContainer className="space-y-5 max-w-6xl mx-auto pb-10">
 
-        {/* ── Header: Powitanie + Streak + Nowa wycena ── */}
+        {/* ── 1. Czysty, przejrzysty Hero Header ── */}
         <StaggerItem>
-          <div className="card-gauge rounded-xl p-4 sm:p-5">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <Greeting />
-                <WorkStreak />
-              </div>
-              <Link href="/wyceny/nowa">
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button className="btn-valve">
-                    <Plus className="h-4 w-4" />
-                    Nowa wycena
-                  </Button>
-                </motion.div>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-md">
+            <div>
+              <Greeting />
+              <p className="text-xs sm:text-sm text-slate-300 mt-1">
+                System szybkich wycen i protokołów dla instalatorów
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+              <Link href="/hydraulika" className="flex-1 sm:flex-initial">
+                <Button className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold gap-1.5 shadow-sm text-xs sm:text-sm h-10 px-4">
+                  <Droplets className="h-4 w-4" />
+                  Hydraulika
+                </Button>
+              </Link>
+
+              <Link href="/elektryka" className="flex-1 sm:flex-initial">
+                <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold gap-1.5 shadow-sm text-xs sm:text-sm h-10 px-4">
+                  <Zap className="h-4 w-4" />
+                  Elektryka
+                </Button>
+              </Link>
+
+              <Link href="/wyceny/nowa" className="flex-1 sm:flex-initial">
+                <Button className="w-full bg-primary hover:bg-primary/90 text-white font-bold gap-1.5 shadow-sm text-xs sm:text-sm h-10 px-4">
+                  <Plus className="h-4 w-4" />
+                  Nowa wycena
+                </Button>
               </Link>
             </div>
           </div>
         </StaggerItem>
 
-        {/* ── Active timer ── */}
+        {/* ── 2. Skróty najważniejszych operacji ── */}
         <StaggerItem>
-          <ActiveTimerBar />
+          <QuickActions />
         </StaggerItem>
 
-        {/* ── Separator hydrauliczny ── */}
+        {/* ── 3. Kluczowe wskaźniki (Zredukowane do 4 czytelnych kart) ── */}
         <StaggerItem>
-          <PipeSeparator />
-        </StaggerItem>
+          <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+            <Link href="/wyceny">
+              <Card className="hover:border-primary/50 transition-all cursor-pointer h-full">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between text-muted-foreground mb-2">
+                    <span className="text-xs font-semibold">Wszystkie wyceny</span>
+                    <FileText className="h-4 w-4 text-blue-500" />
+                  </div>
+                  <div className="text-2xl font-black">{quoteCount}</div>
+                  <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">{acceptedCount}</span> zaakceptowane
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
 
-        {/* ── Pogoda + Notatki + Obciążenie ── */}
-        <StaggerItem>
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-            <div className="glow-hover"><WeatherWidget /></div>
-            <div className="glow-hover"><WorkloadIndicator /></div>
-            <div className="glow-hover"><QuickNotes /></div>
-          </div>
-        </StaggerItem>
+            <Link href="/wyceny?status=wyslana">
+              <Card className="hover:border-primary/50 transition-all cursor-pointer h-full">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between text-muted-foreground mb-2">
+                    <span className="text-xs font-semibold">Oczekujące na decyzję</span>
+                    <Clock className="h-4 w-4 text-amber-500" />
+                  </div>
+                  <div className="text-2xl font-black text-amber-600 dark:text-amber-400">{pendingCount}</div>
+                  <div className="text-[11px] text-muted-foreground mt-1">
+                    Wysłane do klienta
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
 
-        {/* ── AI Insight + Quick Timer ── */}
-        <StaggerItem>
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-            <AIInsight />
-            <QuickTimer />
-          </div>
-        </StaggerItem>
-
-        {/* ── Cel miesięczny + Quick actions ── */}
-        <StaggerItem>
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
-            <MonthlyGoal />
-            <QuickActions />
-          </div>
-        </StaggerItem>
-
-        {/* ── KPI Cards ── */}
-        <StaggerItem>
-          <BoltRow>Statystyki</BoltRow>
-        </StaggerItem>
-        <StaggerItem>
-          <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-            {[
-              { title: "Wyceny", value: quoteCount, icon: FileText, color: "from-blue-500 to-indigo-600", href: "/wyceny", sparkline: sparklineQuotes },
-              { title: "Zaakceptowane", value: acceptedCount, icon: CheckCircle2, color: "from-green-500 to-emerald-600", href: "/wyceny", sparkline: undefined },
-              { title: "Oczekujące", value: pendingCount, icon: Clock, color: "from-amber-500 to-orange-600", href: "/wyceny", sparkline: undefined },
-              { title: "Konwersja", value: conversionRate, icon: TrendingUp, color: "from-violet-500 to-purple-600", href: "/raporty", suffix: "%", sparkline: undefined },
-            ].map((stat, i) => {
-              const Icon = stat.icon;
-              return (
-                <motion.div
-                  key={stat.title}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.08 }}
-                  whileHover={{ y: -4, scale: 1.02 }}
-                >
-                  <Link href={stat.href}>
-                    <Card className="card-steel cursor-pointer group hover:-translate-y-0.5 transition-transform duration-200 glow-hover">
-                      <CardContent className="pt-4 p-3 sm:p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-xl sm:text-2xl font-black">
-                              <AnimatedCounter value={stat.value} duration={1.2} />{stat.suffix || ""}
-                            </div>
-                            <div className="text-[10px] sm:text-xs text-muted-foreground">{stat.title}</div>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${stat.color} shadow-lg opacity-80 group-hover:opacity-100 transition-opacity`}>
-                              <Icon className="h-4 w-4 text-white" />
-                            </div>
-                            {stat.sparkline && <Sparkline data={stat.sparkline} height={18} width={48} />}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                </motion.div>
-              );
-            })}
-          </div>
-        </StaggerItem>
-
-        {/* ── Przychód + Średnia + Trend ── */}
-        <StaggerItem>
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-            <Card className="card-gauge">
-              <CardContent className="pt-4 p-3 sm:p-4">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <span className="pressure-indicator" />
-                    Przychód łączny
-                  </span>
-                  <Sparkline data={sparklineRevenue} height={20} width={56} />
+            <Card className="h-full">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between text-muted-foreground mb-2">
+                  <span className="text-xs font-semibold">Przychód (zaakceptowane)</span>
+                  <TrendingUp className="h-4 w-4 text-emerald-500" />
                 </div>
-                <div className="text-lg sm:text-xl font-black text-primary tabular-nums">{formatCurrency(totalRevenue)}</div>
+                <div className="text-xl sm:text-2xl font-black text-primary tabular-nums">
+                  {formatCurrency(totalRevenue)}
+                </div>
                 {revenueTrend !== 0 && (
-                  <div className={`flex items-center gap-0.5 text-xs font-semibold mt-1 ${revenueTrend > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                  <div className={`text-[11px] font-semibold mt-1 flex items-center gap-0.5 ${revenueTrend > 0 ? "text-emerald-600" : "text-red-500"}`}>
                     <ArrowUpRight className={`h-3 w-3 ${revenueTrend < 0 ? "rotate-90" : ""}`} />
-                    {revenueTrend > 0 ? "+" : ""}{revenueTrend}% vs poprzedni miesiąc
+                    {revenueTrend > 0 ? "+" : ""}{revenueTrend}% vs ub. miesiąc
                   </div>
                 )}
               </CardContent>
             </Card>
-            <Card className="card-steel">
-              <CardContent className="pt-4 p-3 sm:p-4">
-                <div className="text-xs text-muted-foreground mb-1">Średnia wartość</div>
-                <div className="text-lg sm:text-xl font-black tabular-nums">{formatCurrency(avgQuoteValue)}</div>
-                <div className="text-[10px] text-muted-foreground mt-1">zaakceptowanych wycen</div>
-              </CardContent>
-            </Card>
-            <Card className="card-steel">
-              <CardContent className="pt-4 p-3 sm:p-4">
-                <div className="text-xs text-muted-foreground mb-1">Baza</div>
-                <div className="flex items-center gap-4">
-                  <div>
-                    <div className="text-lg font-black">{clientCount}</div>
-                    <div className="text-[10px] text-muted-foreground">klientów</div>
+
+            <Link href="/faktury">
+              <Card className="hover:border-primary/50 transition-all cursor-pointer h-full">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between text-muted-foreground mb-2">
+                    <span className="text-xs font-semibold">Do rozliczenia</span>
+                    <CheckCircle2 className="h-4 w-4 text-purple-500" />
                   </div>
-                  <div>
-                    <div className="text-lg font-black">{serviceCount}</div>
-                    <div className="text-[10px] text-muted-foreground">usług</div>
+                  <div className={`text-xl sm:text-2xl font-black tabular-nums ${unpaidAmount > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
+                    {formatCurrency(unpaidAmount)}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="text-[11px] text-muted-foreground mt-1">
+                    {unpaidCount > 0 ? `${unpaidCount} nieopłaconych faktur` : "Wszystko opłacone"}
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </StaggerItem>
 
-        {/* ── Cash flow + Prognoza + Top usługi ── */}
-        <StaggerItem>
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-            <div className="glow-hover"><CashFlow /></div>
-            <div className="glow-hover"><RevenueForecast /></div>
-            <div className="glow-hover"><TopServicesMonth /></div>
-          </div>
-        </StaggerItem>
-
-        {/* ── Alerty: nieopłacone + wygasłe ── */}
+        {/* ── 4. Alerty (Tylko jeśli są istotne) ── */}
         {(unpaidAmount > 0 || expiredQuotes.length > 0) && (
           <StaggerItem>
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
               {unpaidAmount > 0 && (
                 <Link href="/faktury">
-                  <motion.div whileHover={{ y: -2 }}>
-                    <Card className="card-modern border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 cursor-pointer">
-                      <CardContent className="pt-4 p-3 sm:p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/25 shrink-0">
-                            <FileText className="h-4 w-4 text-white" />
-                          </div>
-                          <div>
-                            <div className="text-lg font-black text-amber-700 dark:text-amber-300">{formatCurrency(unpaidAmount)}</div>
-                            <div className="text-[10px] text-amber-600 dark:text-amber-400">Nieopłacone faktury ({unpaidCount})</div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
+                  <div className="flex items-center gap-3 p-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 text-amber-900 dark:text-amber-200 hover:bg-amber-100/50 transition-colors">
+                    <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+                    <div className="text-xs">
+                      <span className="font-bold">Nieopłacone faktury:</span> {formatCurrency(unpaidAmount)} ({unpaidCount} dokumentów). Kliknij, aby przejść do windykacji.
+                    </div>
+                  </div>
                 </Link>
               )}
               {expiredQuotes.length > 0 && (
                 <Link href="/wyceny">
-                  <motion.div whileHover={{ y: -2 }}>
-                    <Card className="card-modern border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20 cursor-pointer">
-                      <CardContent className="pt-4 p-3 sm:p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/25 shrink-0">
-                            <AlertCircle className="h-4 w-4 text-white" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-red-700 dark:text-red-300">Wygasłe wyceny ({expiredQuotes.length})</div>
-                            <div className="text-xs text-red-600 dark:text-red-400 truncate">{expiredQuotes.map((q) => q.number).join(", ")}</div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
+                  <div className="flex items-center gap-3 p-3 rounded-xl border border-red-300 bg-red-50 dark:bg-red-950/20 dark:border-red-800 text-red-900 dark:text-red-200 hover:bg-red-100/50 transition-colors">
+                    <Clock className="h-5 w-5 text-red-600 shrink-0" />
+                    <div className="text-xs">
+                      <span className="font-bold">Wygasłe oferty ({expiredQuotes.length}):</span> {expiredQuotes.map(q => q.number).join(", ")}. Skontaktuj się z klientem.
+                    </div>
+                  </div>
                 </Link>
               )}
             </div>
           </StaggerItem>
         )}
 
-        {/* ── Powiadomienia + Dzisiejszy harmonogram ── */}
+        {/* ── 5. Główna sekcja: Ostatnie wyceny + Podpowiedzi / Harmonogram ── */}
         <StaggerItem>
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
-            <Suspense fallback={<div className="h-48 rounded-xl bg-muted/30 animate-pulse" />}>
-              <NotificationsCenter />
-            </Suspense>
-            <Suspense fallback={<div className="h-48 rounded-xl bg-muted/30 animate-pulse" />}>
-              <TodaySchedule />
-            </Suspense>
-          </div>
-        </StaggerItem>
+          <div className="grid gap-5 grid-cols-1 lg:grid-cols-3">
+            {/* Lewa kolumna (2/3): Ostatnie wyceny z szybkimi akcjami */}
+            <div className="lg:col-span-2 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Ostatnie wyceny
+                </h2>
+                <Link href="/wyceny" className="text-xs text-primary font-medium hover:underline flex items-center gap-1">
+                  Zobacz wszystkie ({quoteCount})
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
 
-        {/* ── Wykresy ── */}
-        <StaggerItem>
-          <BoltRow>Analityka</BoltRow>
-        </StaggerItem>
-        <StaggerItem>
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
-            <Suspense fallback={<div className="h-64 rounded-xl bg-muted/30 animate-pulse" />}>
-              <QuoteStatusBar />
-            </Suspense>
-            <Suspense fallback={<div className="h-64 rounded-xl bg-muted/30 animate-pulse" />}>
-              <RevenueChart />
-            </Suspense>
-          </div>
-        </StaggerItem>
-
-        {/* ── Ostatnia aktywność + Ostatnie wyceny ── */}
-        <StaggerItem>
-          <BoltRow>Aktywność</BoltRow>
-        </StaggerItem>
-        <StaggerItem>
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
-            <Suspense fallback={<div className="h-48 rounded-xl bg-muted/30 animate-pulse" />}>
-              <RecentActivity />
-            </Suspense>
-
-            {/* Ostatnie wyceny — kompaktowa lista */}
-            {recentQuotes.length > 0 && (
-              <Card className="card-modern">
-                <CardHeader className="pb-2 p-3 sm:p-4">
-                  <CardTitle className="text-sm flex items-center justify-between">
-                    <span className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" />Ostatnie wyceny</span>
-                    <Link href="/wyceny" className="text-xs text-primary hover:underline">Wszystkie →</Link>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 sm:p-4 pt-0">
-                  <div className="space-y-1.5">
-                    {recentQuotes.map((q, i) => (
-                      <motion.div
-                        key={q.id}
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                      >
-                        <Link
-                          href={`/wyceny/${q.id}`}
-                          className="flex items-center justify-between rounded-lg px-2 py-2 hover:bg-accent/50 transition-colors group"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className={`w-2 h-2 rounded-full shrink-0 ${
-                              q.status === "zaakceptowana" ? "bg-emerald-500" :
-                              q.status === "wyslana" ? "bg-blue-500" :
-                              q.status === "odrzucona" ? "bg-red-500" : "bg-amber-500"
-                            }`} />
-                            <span className="text-sm font-medium truncate group-hover:text-primary transition-colors">{q.number}</span>
-                            <span className="text-xs text-muted-foreground truncate hidden sm:inline">{q.clientName}</span>
+              {recentQuotes.length === 0 ? (
+                <Card className="p-8 text-center text-muted-foreground text-sm">
+                  Brak utworzonych wycen. Kliknij "Nowa wycena" powyżej, aby zacząć!
+                </Card>
+              ) : (
+                <div className="grid gap-2">
+                  {recentQuotes.map((q) => (
+                    <Card key={q.id} className="hover:border-primary/40 transition-colors">
+                      <CardContent className="p-3 sm:p-4 flex items-center justify-between gap-3">
+                        <Link href={`/wyceny/${q.id}`} className="min-w-0 flex-1 group">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-sm font-bold group-hover:text-primary transition-colors">
+                              {q.number}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] ${
+                                q.status === "zaakceptowana" ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40" :
+                                q.status === "wyslana" ? "border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-950/40" :
+                                q.status === "odrzucona" ? "border-red-500 text-red-600 bg-red-50 dark:bg-red-950/40" :
+                                "border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/40"
+                              }`}
+                            >
+                              {q.status}
+                            </Badge>
                           </div>
-                          <span className="text-sm font-bold shrink-0 ml-2">{formatCurrency(q.totalBrutto)}</span>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {q.clientName || "Brak klienta"} · {q.items.length} pozycji
+                          </div>
                         </Link>
-                      </motion.div>
-                    ))}
+
+                        <div className="text-right shrink-0">
+                          <div className="text-sm font-black text-foreground tabular-nums">
+                            {formatCurrency(q.totalBrutto)}
+                          </div>
+                          <Link href={`/wyceny/${q.id}`} className="text-[11px] text-primary hover:underline">
+                            Szczegóły →
+                          </Link>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Prawa kolumna (1/3): Asystent zadań / Szybki harmonogram ── */}
+            <div className="space-y-4">
+              <Suspense fallback={<div className="h-40 rounded-xl bg-muted/30 animate-pulse" />}>
+                <AIInsight />
+              </Suspense>
+
+              <Suspense fallback={<div className="h-48 rounded-xl bg-muted/30 animate-pulse" />}>
+                <TodaySchedule />
+              </Suspense>
+
+              {/* Box narzędziowy */}
+              <Card className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/60 dark:to-slate-800/60 border-dashed">
+                <CardContent className="p-4 text-xs space-y-2">
+                  <div className="font-bold text-foreground flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-cyan-600" />
+                    Protokoły odbiorcze w terenie
+                  </div>
+                  <p className="text-muted-foreground">
+                    Twórz na bieżąco protokoły prób ciśnieniowych (hydraulika) oraz pomiarów rezystancji izolacji (elektryka) bezpośrednio ze smartfona.
+                  </p>
+                  <div className="flex gap-2 pt-1">
+                    <Link href="/hydraulika" className="flex-1">
+                      <Button variant="outline" size="sm" className="w-full text-[11px] h-7 border-cyan-300">
+                        Próba szczelności
+                      </Button>
+                    </Link>
+                    <Link href="/elektryka/protokoly" className="flex-1">
+                      <Button variant="outline" size="sm" className="w-full text-[11px] h-7 border-amber-300">
+                        Protokół SEP
+                      </Button>
+                    </Link>
                   </div>
                 </CardContent>
               </Card>
-            )}
+            </div>
           </div>
-        </StaggerItem>
-
-        {/* ── Flow indicator na dole ── */}
-        <StaggerItem>
-          <FlowIndicator active />
         </StaggerItem>
 
       </StaggerContainer>

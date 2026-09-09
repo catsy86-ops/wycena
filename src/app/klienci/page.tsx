@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { toast } from "sonner";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
+import { sanitizeCsvCell } from "@/lib/utils";
 import { AnimatedEmptyState } from "@/components/animated-empty-state";
 import { TableSkeleton } from "@/components/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
@@ -145,7 +146,7 @@ export default function KlienciPage() {
     const selected = clients.filter((c) => selectedIds.has(c.id!));
     const headers = ["Nazwa", "Telefon", "Email", "Adres", "NIP", "Notatki", "Tagi"];
     const rows = selected.map((c) => [c.name, c.phone, c.email || "", c.address || "", c.nip || "", c.notes || "", c.tags || ""]);
-    const csvContent = [headers.join(";"), ...rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(";"))].join("\n");
+    const csvContent = [headers.map(sanitizeCsvCell).join(";"), ...rows.map((r) => r.map(sanitizeCsvCell).join(";"))].join("\n");
     const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -345,7 +346,7 @@ export default function KlienciPage() {
   function exportToCSV() {
     const headers = ["Nazwa", "Telefon", "Email", "Adres", "NIP", "Notatki", "Tagi"];
     const rows = filtered.map((c) => [c.name, c.phone, c.email || "", c.address || "", c.nip || "", c.notes || "", c.tags || ""]);
-    const csvContent = [headers.join(";"), ...rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(";"))].join("\n");
+    const csvContent = [headers.map(sanitizeCsvCell).join(";"), ...rows.map((r) => r.map(sanitizeCsvCell).join(";"))].join("\n");
     const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -353,7 +354,7 @@ export default function KlienciPage() {
     link.download = `klienci-${format(new Date(), "yyyy-MM-dd")}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    toast.success("Klienci wyeksportowani do CSV");
+    toast.success("Klienci wyeksportowani bezpiecznie do CSV");
   }
 
   function importFromCSV(file: File) {

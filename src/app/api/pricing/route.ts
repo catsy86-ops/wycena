@@ -138,6 +138,34 @@ export async function GET(request: NextRequest): Promise<Response> {
       if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
         throw new Error("Niedozwolony protokół");
       }
+      
+      const host = parsedUrl.hostname.toLowerCase();
+      // Ochrona przed SSRF (loopback, sieć lokalna, cloud metadata)
+      if (
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host === "::1" ||
+        host === "0.0.0.0" ||
+        host.endsWith(".local") ||
+        host.endsWith(".internal") ||
+        host.endsWith(".localhost")
+      ) {
+        return jsonResponse({ source: "custom", items: [], fetchedAt, error: "Niedozwolony adres docelowy (host lokalny)." });
+      }
+
+      const parts = host.split(".").map(Number);
+      if (parts.length === 4 && parts.every((p) => !isNaN(p) && p >= 0 && p <= 255)) {
+        if (
+          parts[0] === 10 ||
+          parts[0] === 127 ||
+          parts[0] === 0 ||
+          (parts[0] === 169 && parts[1] === 254) ||
+          (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+          (parts[0] === 192 && parts[1] === 168)
+        ) {
+          return jsonResponse({ source: "custom", items: [], fetchedAt, error: "Niedozwolony prywatny adres IP." });
+        }
+      }
     } catch {
       return jsonResponse({ source: "custom", items: [], fetchedAt, error: "Nieprawidłowy URL. Dozwolone protokoły: http, https." });
     }

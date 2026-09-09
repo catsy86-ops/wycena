@@ -344,7 +344,7 @@ export function MeasurementProtocolForm() {
 
                 <div>
                   <label className="text-sm font-medium">Liczba faz</label>
-                  <Select value={String(phases)} onValueChange={(v) => setPhases(parseInt(v) as 1 | 3)}>
+                  <Select value={String(phases)} onValueChange={(v) => { if (v) setPhases(parseInt(v, 10) as 1 | 3); }}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

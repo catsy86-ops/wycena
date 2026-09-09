@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, Users, FileCheck, Calendar, Package, BarChart3 } from "lucide-react";
+import { FileText, Users, Droplets, Zap, FileCheck, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 
 const actions = [
-  { label: "Nowa wycena", href: "/wyceny/nowa", icon: FileText, color: "from-blue-500 to-indigo-600", shadow: "shadow-blue-500/25" },
-  { label: "Nowy klient", href: "/klienci", icon: Users, color: "from-violet-500 to-purple-600", shadow: "shadow-violet-500/25" },
-  { label: "Nowa faktura", href: "/faktury", icon: FileCheck, color: "from-emerald-500 to-green-600", shadow: "shadow-emerald-500/25" },
-  { label: "Harmonogram", href: "/harmonogram", icon: Calendar, color: "from-amber-500 to-orange-600", shadow: "shadow-amber-500/25" },
-  { label: "Materiały", href: "/materialy", icon: Package, color: "from-cyan-500 to-teal-600", shadow: "shadow-cyan-500/25" },
-  { label: "Raporty", href: "/raporty", icon: BarChart3, color: "from-pink-500 to-rose-600", shadow: "shadow-pink-500/25" },
+  { label: "Nowa wycena", href: "/wyceny/nowa", icon: FileText, color: "from-blue-600 to-indigo-600", shadow: "shadow-blue-500/25" },
+  { label: "Hydraulika", href: "/hydraulika", icon: Droplets, color: "from-cyan-500 to-blue-600", shadow: "shadow-cyan-500/25" },
+  { label: "Elektryka", href: "/elektryka", icon: Zap, color: "from-amber-500 to-orange-600", shadow: "shadow-amber-500/25" },
+  { label: "Baza klientów", href: "/klienci", icon: Users, color: "from-violet-500 to-purple-600", shadow: "shadow-violet-500/25" },
+  { label: "Faktury", href: "/faktury", icon: FileCheck, color: "from-emerald-500 to-green-600", shadow: "shadow-emerald-500/25" },
+  { label: "Próba szczelności", href: "/hydraulika", icon: ShieldCheck, color: "from-teal-500 to-cyan-700", shadow: "shadow-teal-500/25" },
 ];
 
 export function QuickActions() {

@@ -8,23 +8,22 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
-  Package, Calendar, FileCheck, BarChart3, ClipboardList, Settings, Wrench, Zap,
+  Package, Calendar, FileCheck, BarChart3, ClipboardList, Settings, Wrench, Zap, Droplets,
 } from "lucide-react";
 
 const MAIN_ITEMS = [
   { href: "/", icon: LayoutDashboard, label: "Pulpit" },
   { href: "/wyceny", icon: FileText, label: "Wyceny" },
-  { href: "/klienci", icon: Users, label: "Klienci" },
-  { href: "/czas", icon: Clock, label: "Czas" },
+  { href: "/hydraulika", icon: Droplets, label: "Hydraulika" },
+  { href: "/elektryka", icon: Zap, label: "Elektryka" },
 ];
 
 const MORE_ITEMS = [
+  { href: "/klienci", icon: Users, label: "Klienci" },
   { href: "/uslugi", icon: Wrench, label: "Usługi" },
   { href: "/materialy", icon: Package, label: "Materiały" },
-  { href: "/szablony", icon: ClipboardList, label: "Szablony" },
-  { href: "/elektryka", icon: Zap, label: "Elektryka" },
-  { href: "/harmonogram", icon: Calendar, label: "Harmonogram" },
   { href: "/faktury", icon: FileCheck, label: "Faktury" },
+  { href: "/harmonogram", icon: Calendar, label: "Harmonogram" },
   { href: "/raporty", icon: BarChart3, label: "Raporty" },
   { href: "/ustawienia", icon: Settings, label: "Ustawienia" },
 ];

@@ -236,6 +236,9 @@ export function calcTimeEntryCost(
 // ─── Formatowanie ─────────────────────────────────────────────────────────────
 
 export function formatCurrency(value: number): string {
+  if (typeof value !== "number" || isNaN(value) || !isFinite(value)) {
+    return "0,00 zł";
+  }
   return new Intl.NumberFormat("pl-PL", {
     style: "currency",
     currency: "PLN",
@@ -245,6 +248,9 @@ export function formatCurrency(value: number): string {
 }
 
 export function formatPercent(value: number, decimals = 1): string {
+  if (typeof value !== "number" || isNaN(value) || !isFinite(value)) {
+    return "0%";
+  }
   return `${value.toFixed(decimals)}%`;
 }
 
@@ -471,8 +477,9 @@ export function calcAdvancedPricing(
   // ── 11. Minimum marży ─────────────────────────────────────────────────────
   const totalCostBase = round(baseNetto + additionalCostsNetto);
   if (model.minimumMarginPercent > 0 && totalCostBase > 0) {
-    // Wymagane netto = koszt / (1 - marża%)
-    const requiredNetto = round(totalCostBase / (1 - clampDiscount(model.minimumMarginPercent) / 100));
+    // Wymagane netto = koszt / (1 - marża%) — limit 99% zabezpiecza przed dzieleniem przez zero
+    const safeMargin = Math.min(99.0, Math.max(0, clampDiscount(model.minimumMarginPercent)));
+    const requiredNetto = round(totalCostBase / (1 - safeMargin / 100));
     if (finalNetto < requiredNetto) {
       finalNetto = requiredNetto;
     }
@@ -1027,4 +1034,333 @@ export function generateOperationalAlerts(
   }
 
   return alerts.sort((a, b) => b.priority - a.priority);
+}
+
+
+// ─── Raport Rentowności per Pracownik ──────────────────────────────────────
+
+export interface EmployeeProfitability {
+  employeeId?: string;
+  employeeName: string;
+  totalHours: number;
+  totalRevenue: number;
+  totalCost: number;
+  totalProfit: number;
+  marginPercent: number;
+  revenuePerHour: number;
+  quoteCount: number;
+  avgQuoteValue: number;
+  trend: number; // % change vs previous period
+  recommendation: string;
+}
+
+export function analyzeEmployeeProfitability(
+  timeEntries: any[],
+  quotes: any[],
+  previousTimeEntries: any[] = []
+): EmployeeProfitability[] {
+  const employeeData: Record<string, {
+    hours: number;
+    cost: number;
+    revenue: number;
+    quoteCount: number;
+    quoteIds: Set<string>;
+  }> = {};
+
+  // Current period
+  timeEntries.forEach((t) => {
+    const key = t.employeeName || "Nieznany";
+    if (!employeeData[key]) {
+      employeeData[key] = { hours: 0, cost: 0, revenue: 0, quoteCount: 0, quoteIds: new Set() };
+    }
+    employeeData[key].hours += t.durationMinutes / 60;
+    employeeData[key].cost += t.totalCost;
+    if (t.quoteId) employeeData[key].quoteIds.add(t.quoteId);
+  });
+
+  // Add revenue from quotes
+  quotes.filter((q) => q.status === "zaakceptowana").forEach((q) => {
+    const timeEntry = timeEntries.find((t) => t.quoteId === q.id);
+    if (timeEntry) {
+      const key = timeEntry.employeeName || "Nieznany";
+      if (employeeData[key]) {
+        employeeData[key].revenue += q.totalBrutto;
+        employeeData[key].quoteCount = employeeData[key].quoteIds.size;
+      }
+    }
+  });
+
+  // Previous period for trend
+  const previousData: Record<string, { hours: number; cost: number; revenue: number }> = {};
+  previousTimeEntries.forEach((t) => {
+    const key = t.employeeName || "Nieznany";
+    if (!previousData[key]) previousData[key] = { hours: 0, cost: 0, revenue: 0 };
+    previousData[key].hours += t.durationMinutes / 60;
+    previousData[key].cost += t.totalCost;
+  });
+
+  return Object.entries(employeeData)
+    .map(([name, data]) => {
+      const totalProfit = data.revenue - data.cost;
+      const marginPercent = data.revenue > 0 ? round((totalProfit / data.revenue) * 100) : 0;
+      const revenuePerHour = data.hours > 0 ? round(data.revenue / data.hours) : 0;
+      const avgQuoteValue = data.quoteCount > 0 ? round(data.revenue / data.quoteCount) : 0;
+
+      // Trend calculation
+      const prevData = previousData[name];
+      let trend = 0;
+      if (prevData && prevData.revenue > 0) {
+        trend = round(((data.revenue - prevData.revenue) / prevData.revenue) * 100);
+      }
+
+      // Recommendation
+      let recommendation = "";
+      if (marginPercent >= 40) {
+        recommendation = "Doskonała rentowność — utrzymaj tempo";
+      } else if (marginPercent >= 30) {
+        recommendation = "Dobra rentowność — monitoruj koszty";
+      } else if (marginPercent >= 20) {
+        recommendation = "Średnia rentowność — optymalizuj procesy";
+      } else if (marginPercent >= 10) {
+        recommendation = "Niska rentowność — przeanalizuj przyczyny";
+      } else {
+        recommendation = "Krytycznie niska rentowność — pilna akcja";
+      }
+
+      return {
+        employeeName: name,
+        totalHours: round(data.hours),
+        totalRevenue: round(data.revenue),
+        totalCost: round(data.cost),
+        totalProfit: round(totalProfit),
+        marginPercent,
+        revenuePerHour,
+        quoteCount: data.quoteCount,
+        avgQuoteValue,
+        trend,
+        recommendation,
+      };
+    })
+    .sort((a, b) => b.totalRevenue - a.totalRevenue);
+}
+
+// ─── Raport Materiałów ────────────────────────────────────────────────────
+
+export interface MaterialReport {
+  materialId?: number;
+  materialName: string;
+  quantity: number;
+  unitPrice: number;
+  totalCost: number;
+  usageCount: number;
+  avgPricePerUnit: number;
+  trend: number; // % price change
+  recommendation: string;
+}
+
+export function analyzeMaterialUsage(
+  quotes: any[],
+  materials: any[],
+  previousQuotes: any[] = []
+): MaterialReport[] {
+  const materialUsage: Record<string, {
+    quantity: number;
+    cost: number;
+    count: number;
+    prices: number[];
+  }> = {};
+
+  // Current period
+  quotes.filter((q) => q.status === "zaakceptowana").forEach((q) => {
+    q.items.forEach((item: any) => {
+      const key = item.name;
+      if (!materialUsage[key]) {
+        materialUsage[key] = { quantity: 0, cost: 0, count: 0, prices: [] };
+      }
+      materialUsage[key].quantity += item.quantity;
+      materialUsage[key].cost += item.nettoTotal || item.bruttoTotal;
+      materialUsage[key].count += 1;
+      materialUsage[key].prices.push(item.unitPrice || 0);
+    });
+  });
+
+  // Previous period for trend
+  const previousUsage: Record<string, { cost: number }> = {};
+  previousQuotes.filter((q) => q.status === "zaakceptowana").forEach((q) => {
+    q.items.forEach((item: any) => {
+      const key = item.name;
+      if (!previousUsage[key]) previousUsage[key] = { cost: 0 };
+      previousUsage[key].cost += item.nettoTotal || item.bruttoTotal;
+    });
+  });
+
+  return Object.entries(materialUsage)
+    .map(([name, data]) => {
+      const avgPrice = data.quantity > 0 ? round(data.cost / data.quantity) : 0;
+      const avgPricePerUnit = data.prices.length > 0 ? round(data.prices.reduce((s, p) => s + p, 0) / data.prices.length) : 0;
+
+      // Trend calculation
+      const prevData = previousUsage[name];
+      let trend = 0;
+      if (prevData && prevData.cost > 0) {
+        trend = round(((data.cost - prevData.cost) / prevData.cost) * 100);
+      }
+
+      // Recommendation
+      let recommendation = "";
+      if (trend > 20) {
+        recommendation = "Cena rośnie szybko — rozważ zmianę dostawcy";
+      } else if (trend > 10) {
+        recommendation = "Cena rośnie — monitoruj rynek";
+      } else if (trend < -10) {
+        recommendation = "Cena spada — dobra okazja";
+      } else {
+        recommendation = "Cena stabilna";
+      }
+
+      return {
+        materialName: name,
+        quantity: round(data.quantity),
+        unitPrice: avgPricePerUnit,
+        totalCost: round(data.cost),
+        usageCount: data.count,
+        avgPricePerUnit,
+        trend,
+        recommendation,
+      };
+    })
+    .sort((a, b) => b.totalCost - a.totalCost);
+}
+
+// ─── Funnel Analysis (Konwersja) ──────────────────────────────────────────
+
+export interface FunnelStage {
+  stage: string;
+  count: number;
+  percentage: number;
+  conversionRate: number; // % of previous stage
+  avgDays: number;
+  revenue: number;
+}
+
+export function analyzeFunnel(quotes: any[]): FunnelStage[] {
+  const stages = {
+    draft: quotes.filter((q) => q.status === "szkic"),
+    sent: quotes.filter((q) => q.status === "wyslana"),
+    accepted: quotes.filter((q) => q.status === "zaakceptowana"),
+    rejected: quotes.filter((q) => q.status === "odrzucona"),
+  };
+
+  const stageLabels = [
+    { key: "draft", label: "Szkic", revenue: false },
+    { key: "sent", label: "Wysłana", revenue: false },
+    { key: "accepted", label: "Zaakceptowana", revenue: true },
+    { key: "rejected", label: "Odrzucona", revenue: false },
+  ];
+
+  const now = new Date();
+  const funnel: FunnelStage[] = [];
+  let previousCount = 0;
+
+  stageLabels.forEach((stage) => {
+    const stageQuotes = (stages as any)[stage.key];
+    const count = stageQuotes.length;
+    const percentage = quotes.length > 0 ? round((count / quotes.length) * 100) : 0;
+    const conversionRate = previousCount > 0 ? round((count / previousCount) * 100) : 100;
+
+    // Calculate average days in stage
+    let avgDays = 0;
+    if (count > 0) {
+      const totalDays = (stageQuotes as Array<{ createdAt: string | Date }>).reduce((sum: number, q: { createdAt: string | Date }) => {
+        const createdDate = new Date(q.createdAt);
+        const days = differenceInDays(now, createdDate);
+        return sum + days;
+      }, 0);
+      avgDays = round(totalDays / count);
+    }
+
+    // Calculate revenue for this stage
+    const revenue = stage.revenue
+      ? (stageQuotes as Array<{ totalBrutto: number }>).reduce((sum: number, q: { totalBrutto: number }) => sum + q.totalBrutto, 0)
+      : 0;
+
+    funnel.push({
+      stage: stage.label,
+      count,
+      percentage,
+      conversionRate,
+      avgDays,
+      revenue: round(revenue),
+    });
+
+    previousCount = count;
+  });
+
+  return funnel;
+}
+
+// ─── Heatmap Marż (Usługa × Klient) ───────────────────────────────────────
+
+export interface MarginHeatmapCell {
+  service: string;
+  client: string;
+  margin: number;
+  revenue: number;
+  count: number;
+  recommendation: string;
+}
+
+export function analyzeMarginHeatmap(quotes: any[], services: any[]): MarginHeatmapCell[] {
+  const heatmap: Record<string, {
+    margin: number;
+    revenue: number;
+    count: number;
+  }> = {};
+
+  quotes.filter((q) => q.status === "zaakceptowana").forEach((q) => {
+    q.items.forEach((item: any) => {
+      const key = `${item.name}|${q.clientName}`;
+      if (!heatmap[key]) {
+        heatmap[key] = { margin: 0, revenue: 0, count: 0 };
+      }
+      heatmap[key].revenue += item.bruttoTotal;
+      heatmap[key].count += 1;
+
+      // Calculate margin
+      const service = services.find((s) => s.id === item.serviceId);
+      if (service) {
+        const cost = (service.costPrice || 0) * item.quantity;
+        const profit = item.bruttoTotal - cost;
+        const margin = item.bruttoTotal > 0 ? (profit / item.bruttoTotal) * 100 : 0;
+        heatmap[key].margin = (heatmap[key].margin + margin) / 2;
+      }
+    });
+  });
+
+  return Object.entries(heatmap)
+    .map(([key, data]) => {
+      const [service, client] = key.split("|");
+      let recommendation = "";
+      if (data.margin >= 40) {
+        recommendation = "Doskonała marża — utrzymaj";
+      } else if (data.margin >= 30) {
+        recommendation = "Dobra marża — monitoruj";
+      } else if (data.margin >= 20) {
+        recommendation = "Średnia marża — optymalizuj";
+      } else if (data.margin >= 10) {
+        recommendation = "Niska marża — podnieś cenę";
+      } else {
+        recommendation = "Krytycznie niska — pilna akcja";
+      }
+
+      return {
+        service,
+        client,
+        margin: round(data.margin),
+        revenue: round(data.revenue),
+        count: data.count,
+        recommendation,
+      };
+    })
+    .sort((a, b) => b.margin - a.margin);
 }

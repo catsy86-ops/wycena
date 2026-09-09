@@ -30,22 +30,22 @@ import { useSidebarBadges } from "@/components/sidebar-badges";
 import { PressureStatus } from "@/components/hydraulic-decorations";
 
 const NAV_ITEMS = [
-  { href: "/",             label: "Pulpit",       icon: LayoutDashboard, group: "main" },
+  { href: "/",             label: "Pulpit",        icon: LayoutDashboard, group: "main" },
   { href: "/wyceny",       label: "Wyceny",        icon: FileText,        group: "main" },
   { href: "/klienci",      label: "Klienci",       icon: Users,           group: "main" },
-  { href: "/uslugi",       label: "Usługi",        icon: Wrench,          group: "catalog" },
+  { href: "/hydraulika",   label: "Hydraulika",    icon: Droplets,        group: "tools" },
+  { href: "/elektryka",    label: "Elektryka",     icon: Zap,             group: "tools" },
+  { href: "/uslugi",       label: "Cennik usług",  icon: Wrench,          group: "catalog" },
   { href: "/materialy",    label: "Materiały",     icon: Package,         group: "catalog" },
-  { href: "/szablony",     label: "Szablony",      icon: ClipboardList,   group: "catalog" },
-  { href: "/elektryka",    label: "Elektryka",     icon: Zap,             group: "catalog" },
-  { href: "/harmonogram",  label: "Harmonogram",   icon: Calendar,        group: "ops" },
-  { href: "/czas",         label: "Czas pracy",    icon: Clock,           group: "ops" },
   { href: "/faktury",      label: "Faktury",       icon: FileCheck,       group: "ops" },
+  { href: "/harmonogram",  label: "Harmonogram",   icon: Calendar,        group: "ops" },
   { href: "/raporty",      label: "Raporty",       icon: BarChart3,       group: "ops" },
   { href: "/ustawienia",   label: "Ustawienia",    icon: Settings,        group: "system" },
 ];
 
 const GROUP_LABELS: Record<string, string> = {
   main:    "Główne",
+  tools:   "Narzędzia",
   catalog: "Katalog",
   ops:     "Operacje",
   system:  "System",
@@ -97,23 +97,25 @@ function Logo({ size = "default" }: { size?: "default" | "sm" }) {
 
       {/* Tekst */}
       <div>
-        <motion.div
+        <div
           className={cn(
-            "font-black tracking-widest uppercase",
-            isSmall ? "text-base" : "text-lg"
+            "font-black tracking-wider uppercase",
+            isSmall ? "text-base leading-none" : "text-lg leading-tight"
           )}
           style={{
-            background: "linear-gradient(135deg, oklch(0.92 0.01 220), oklch(0.72 0.17 195), oklch(0.92 0.01 220))",
-            backgroundSize: "200% auto",
+            background: "linear-gradient(135deg, oklch(0.95 0.01 220), oklch(0.75 0.17 195))",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",
-            animation: "text-weld 5s ease-in-out infinite",
           }}
-          whileHover={{ scale: 1.02 }}
         >
-          GK
-        </motion.div>
+          WYCENA PRO
+        </div>
+        {!isSmall && (
+          <div className="text-[10px] font-semibold text-slate-400 tracking-tight">
+            Hydraulika & Elektryka
+          </div>
+        )}
       </div>
     </div>
   );
@@ -218,7 +220,7 @@ function NavItem({
 /* ── Zawartość nawigacji ── */
 function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const groups = ["main", "catalog", "ops", "system"];
+  const groups = ["main", "tools", "catalog", "ops", "system"];
 
   // Badge powiadomień
   const badges = useSidebarBadges();
