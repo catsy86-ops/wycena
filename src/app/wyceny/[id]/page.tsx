@@ -431,7 +431,41 @@ export default function WycenaDetailPage() {
           <Card className="card-modern">
             <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Pozycje wyceny</CardTitle></CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              {/* Widok mobilny: czytelne karty pozycji bez konieczności przewijania w poziomie */}
+              <div className="md:hidden space-y-2.5">
+                {q.items.map((item, idx) => (
+                  <div
+                    key={item.id || idx}
+                    className="p-3 rounded-xl border border-border/80 bg-card/50 space-y-2 shadow-xs"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-semibold text-sm text-foreground">
+                        {item.name}
+                        {item.externalPriceSource && (
+                          <span className="ml-1.5 text-[10px] text-muted-foreground/70 font-normal">
+                            ({item.externalPriceSource})
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm font-bold text-primary shrink-0">
+                        {formatCurrency(item.bruttoTotal)}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-1.5 border-t border-border/40">
+                      <div>
+                        {item.quantity} {UNIT_LABELS[item.unit]} × {formatCurrency(item.priceNettoPerUnit)}
+                        {item.discountPercent > 0 ? ` (-${item.discountPercent}%)` : ""}
+                      </div>
+                      <div className="font-medium text-foreground/90">
+                        netto: {formatCurrency(item.nettotal)} <span className="text-muted-foreground">({VAT_RATE_LABELS[item.vatRate]})</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Widok desktopowy: pełna tabela pozycji */}
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>

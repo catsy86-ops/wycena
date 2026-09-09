@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useProtocolStore } from "@/store/protocol-store";
 import { MeasurementProtocol } from "@/lib/electrical-protocols";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -101,11 +102,22 @@ const MOCK_PROTOCOLS: MeasurementProtocol[] = [
 ];
 
 export default function ProtokołyPage() {
-  const [protocols, setProtocols] = useState<MeasurementProtocol[]>(MOCK_PROTOCOLS);
+  const { protocols, add, update, remove, load } = useProtocolStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "completed" | "signed">("all");
   const [selectedProtocol, setSelectedProtocol] = useState<MeasurementProtocol | null>(null);
   const [showForm, setShowForm] = useState(false);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleSeedExample = async () => {
+    for (const p of MOCK_PROTOCOLS) {
+      await add(p);
+    }
+    toast.success("Załadowano przykładowe protokoły");
+  };
 
   // Filtrowanie
   const filteredProtocols = useMemo(() => {
@@ -131,22 +143,20 @@ export default function ProtokołyPage() {
     return { total, completed, draft, signed };
   }, [protocols]);
 
-  const handleSaveProtocol = (protocol: MeasurementProtocol) => {
+  const handleSaveProtocol = async (protocol: MeasurementProtocol) => {
     if (selectedProtocol) {
-      setProtocols((prev) =>
-        prev.map((p) => (p.id === protocol.id ? protocol : p))
-      );
+      await update(protocol.id, protocol);
       toast.success("Protokół zaktualizowany");
     } else {
-      setProtocols((prev) => [...prev, protocol]);
+      await add(protocol);
       toast.success("Protokół utworzony");
     }
     setShowForm(false);
     setSelectedProtocol(null);
   };
 
-  const handleDeleteProtocol = (id: string) => {
-    setProtocols((prev) => prev.filter((p) => p.id !== id));
+  const handleDeleteProtocol = async (id: string) => {
+    await remove(id);
     toast.success("Protokół usunięty");
   };
 
@@ -280,8 +290,15 @@ export default function ProtokołyPage() {
         <StaggerItem>
           {filteredProtocols.length === 0 ? (
             <Card className="text-center py-12">
-              <Zap className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="text-muted-foreground">Brak protokołów spełniających kryteria wyszukiwania</p>
+              <Zap className="h-12 w-12 mx-auto mb-3 opacity-30 text-amber-500" />
+              <p className="text-muted-foreground mb-4">Brak protokołów spełniających kryteria wyszukiwania</p>
+              {protocols.length === 0 && (
+                <div className="flex justify-center gap-3">
+                  <Button variant="outline" size="sm" onClick={handleSeedExample}>
+                    Załaduj przykładowy protokół
+                  </Button>
+                </div>
+              )}
             </Card>
           ) : (
             <div className="space-y-3">

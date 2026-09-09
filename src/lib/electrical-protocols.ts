@@ -523,12 +523,16 @@ export function validateProtocol(protocol: MeasurementProtocol): ValidationResul
 
 // ─── Formatowanie Danych ──────────────────────────────────────────────────────
 
-export function formatProtocolDate(date: Date): string {
-  return format(date, "dd.MM.yyyy", { locale: pl });
+export function formatProtocolDate(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (!d || isNaN(d.getTime())) return "-";
+  return format(d, "dd.MM.yyyy", { locale: pl });
 }
 
-export function formatProtocolDateTime(date: Date): string {
-  return format(date, "dd.MM.yyyy HH:mm", { locale: pl });
+export function formatProtocolDateTime(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (!d || isNaN(d.getTime())) return "-";
+  return format(d, "dd.MM.yyyy HH:mm", { locale: pl });
 }
 
 export function getMeasurementStatusLabel(status: MeasurementEntry["status"]): string {

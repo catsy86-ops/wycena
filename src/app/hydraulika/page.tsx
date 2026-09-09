@@ -102,7 +102,7 @@ export default function HydraulikaPage() {
   };
 
   return (
-    <div className="space-y-6 pb-24 lg:pb-6">
+    <div className="space-y-6 pb-32 lg:pb-6">
       {/* Header branżowy */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-gradient-to-r from-cyan-900/40 via-blue-900/30 to-slate-900/40 p-4 sm:p-5 rounded-2xl border border-cyan-800/40 shadow-sm">
         <div className="flex items-center gap-3">
@@ -131,18 +131,21 @@ export default function HydraulikaPage() {
       </div>
 
       <Tabs defaultValue="calculator" className="space-y-4">
-        <TabsList className="grid grid-cols-3 w-full max-w-md">
-          <TabsTrigger value="calculator" className="gap-1.5 text-xs sm:text-sm">
-            <Calculator className="h-4 w-4" />
-            Kalkulator punktów
+        <TabsList className="grid grid-cols-3 w-full max-w-md h-auto p-1 bg-muted/60">
+          <TabsTrigger value="calculator" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
+            <Calculator className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Kalkulator punktów</span>
+            <span className="sm:hidden">Kalkulator</span>
           </TabsTrigger>
-          <TabsTrigger value="protocols" className="gap-1.5 text-xs sm:text-sm">
-            <ShieldCheck className="h-4 w-4" />
-            Protokoły prób
+          <TabsTrigger value="protocols" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Protokoły prób</span>
+            <span className="sm:hidden">Protokoły</span>
           </TabsTrigger>
-          <TabsTrigger value="standards" className="gap-1.5 text-xs sm:text-sm">
-            <FileText className="h-4 w-4" />
-            Normy PN-EN
+          <TabsTrigger value="standards" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
+            <FileText className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Normy PN-EN</span>
+            <span className="sm:hidden">Normy PN</span>
           </TabsTrigger>
         </TabsList>
 

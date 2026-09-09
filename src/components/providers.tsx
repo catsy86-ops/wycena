@@ -10,7 +10,6 @@ import { HydraulicBackground } from "@/components/hydraulic-background";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
-import { FabButton } from "@/components/fab-button";
 import { SkipToContent } from "@/components/skip-to-content";
 import { OnboardingTour } from "@/components/onboarding-tour";
 import { ScrollToTop } from "@/components/scroll-to-top";
@@ -48,9 +47,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {/* Mobile bottom nav + FAB */}
+          {/* Mobile bottom nav */}
           <MobileBottomNav />
-          <FabButton />
           <ScrollToTop />
 
           {/* Keyboard shortcuts */}

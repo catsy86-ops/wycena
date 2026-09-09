@@ -19,7 +19,7 @@ export function QuickActions() {
       {actions.map((action, i) => {
         const Icon = action.icon;
         return (
-          <Link key={action.href} href={action.href}>
+          <Link key={action.label} href={action.href}>
             <motion.div
               whileHover={{ y: -4, scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
