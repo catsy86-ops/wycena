@@ -90,4 +90,8 @@ db.version(4).stores({
   plumbingProtocols: "id, number, clientName, status, date, installationType",
 });
 
+db.version(5).stores({
+  materials: "++id, name, category, trade, supplier, sku, createdAt",
+});
+
 export { db };

@@ -1,4 +1,4 @@
-﻿export type VatRate = 0 | 8 | 23;
+export type VatRate = 0 | 8 | 23;
 
 export type ServiceCategory =
   | "montaz"
@@ -304,6 +304,7 @@ export interface Material {
   id?: number;
   name: string;
   category: string;
+  trade?: "hydraulika" | "elektryka" | "ogolne";
   unit: Unit;
   purchasePrice: number;
   salePrice: number;

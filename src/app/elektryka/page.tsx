@@ -78,10 +78,22 @@ export default function ElektrykaPage() {
   // ─── Statystyki elektryczne ─────────────────────────────────────────────
   // Filtrujemy wyceny które zawierają usługi elektryczne
   // (na podstawie nazw usług zawierających słowa kluczowe)
-  const electricalKeywords = ["elektr", "gniazdko", "wyłącznik", "kabel", "przewód", "bezpiecznik", "rozdzielni", "oświetleni", "lampa", "led", "pomiar", "instalacj", "fotowolt", "ładowark", "ups", "domofon", "alarm"];
-
   const isElectricalItem = useCallback((name: string) => {
     const lower = name.toLowerCase();
+    // Ścisłe wykluczenie fraz hydraulicznych
+    const hydraulicKeywords = [
+      "rura pcv", "rura pex", "rura miedzian", "syfon", "bateria", "spłuczka",
+      "kanaliz", "wc", "umywalk", "wanna", "prysznic", "wod-kan", "ciśnieni"
+    ];
+    if (hydraulicKeywords.some((hw) => lower.includes(hw))) return false;
+
+    // Słowa ściśle elektryczne (bez wieloznacznego "instalacj" i ogólnego "pomiar")
+    const electricalKeywords = [
+      "elektr", "gniazdko", "wyłącznik", "kabel", "przewód", "bezpiecznik",
+      "rozdzielni", "oświetleni", "lampa", "led", "pomiar elektryczn", "pomiary sep",
+      "rezystancj", "zerowani", "fotowolt", "ładowark", "ups", "domofon", "alarm",
+      "wago", "peszel", "aparatura", "rcd", "spd"
+    ];
     return electricalKeywords.some((kw) => lower.includes(kw));
   }, []);
 
@@ -138,9 +150,61 @@ export default function ElektrykaPage() {
   }, [categoryFilter, searchTerm]);
 
   // ─── Materiały elektryczne ──────────────────────────────────────────────
+  const [materialSearchTerm, setMaterialSearchTerm] = useState("");
+  const [materialCategoryFilter, setMaterialCategoryFilter] = useState<string>("all");
+
   const electricalMaterials = useMemo(() => {
-    const keywords = ["kabel", "przewód", "gniazdko", "wyłącznik", "bezpiecznik", "puszka", "rura", "korytko", "złączka", "taśma"];
-    return materials.filter((m) => keywords.some((kw) => m.name.toLowerCase().includes(kw)));
+    const electricalKeywords = [
+      "kabel", "przewód", "gniazdko", "wyłącznik", "bezpiecznik", "puszka",
+      "korytko", "peszel", "rozdzielnic", "wago", "oprawa", "led", "lampa",
+      "nadprądow", "różnicowoprądow", "rcd", "spd", "przepięć", "szyna łączeniowa",
+      "aparatura", "teletechnika", "utp", "domofon"
+    ];
+    const hydraulicExclusions = [
+      "pcv", "pex", "miedź", "miedzian", "syfon", "bateria", "spłuczka",
+      "kanaliz", "wc", "zawór", "grzejnik", "wod-kan", "wanny", "umywalk", "uszczelka"
+    ];
+    const hydraulicCategories = ["Rury", "Syfony", "Baterie", "WC", "Uszczelnienia", "Kanalizacja"];
+
+    let filtered = materials.filter((m) => {
+      // 1. Jawny znacznik branży
+      if (m.trade === "elektryka") return true;
+      if (m.trade === "hydraulika") return false;
+
+      // 2. Wyklucz kategorie hydrauliczne
+      if (hydraulicCategories.includes(m.category)) return false;
+
+      const nameLower = m.name.toLowerCase();
+      // 3. Wyklucz słowa kluczowe hydrauliki
+      if (hydraulicExclusions.some((kw) => nameLower.includes(kw))) return false;
+
+      // 4. Dopasuj do elektryki
+      const catLower = m.category.toLowerCase();
+      return (
+        electricalKeywords.some((kw) => nameLower.includes(kw)) ||
+        catLower.includes("elektr") ||
+        catLower.includes("kabl") ||
+        catLower.includes("aparat") ||
+        catLower.includes("rozdziel")
+      );
+    });
+
+    if (materialCategoryFilter !== "all") {
+      filtered = filtered.filter((m) => m.category === materialCategoryFilter);
+    }
+    if (materialSearchTerm) {
+      const lower = materialSearchTerm.toLowerCase();
+      filtered = filtered.filter((m) => m.name.toLowerCase().includes(lower) || m.sku?.toLowerCase().includes(lower));
+    }
+    return filtered;
+  }, [materials, materialCategoryFilter, materialSearchTerm]);
+
+  const electricalMaterialCategories = useMemo(() => {
+    const cats = new Set<string>();
+    materials.forEach((m) => {
+      if (m.trade === "elektryka") cats.add(m.category);
+    });
+    return Array.from(cats);
   }, [materials]);
 
   return (
@@ -486,29 +550,98 @@ export default function ElektrykaPage() {
             {/* ── Materiały ── */}
             <TabsContent value="materialy" className="space-y-4 mt-4">
               <Card className="card-electrical">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Materiały Elektryczne</CardTitle>
-                  <CardDescription>Materiały powiązane z usługami elektrycznymi</CardDescription>
+                <CardHeader className="pb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Package className="h-5 w-5 text-amber-500" />
+                        Magazyn Materiałów Elektrycznych
+                      </CardTitle>
+                      <CardDescription>
+                        Kable, aparatura modułowa, złączki WAGO i osprzęt elektroinstalacyjny ({electricalMaterials.length} pozycji)
+                      </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Link href="/materialy">
+                        <Button size="sm" variant="outline" className="gap-1.5 border-amber-500/30 hover:border-amber-500/60">
+                          <Plus className="h-4 w-4 text-amber-500" /> Zarządzaj w magazynie
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Filtry i wyszukiwarka */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-3 border-t border-border/40 mt-2">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Szukaj kabla, aparatu, SKU..."
+                        value={materialSearchTerm}
+                        onChange={(e) => setMaterialSearchTerm(e.target.value)}
+                        className="pl-8 h-9 text-xs"
+                      />
+                    </div>
+
+                    <Select value={materialCategoryFilter} onValueChange={setMaterialCategoryFilter}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="Wszystkie kategorie" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Wszystkie kategorie</SelectItem>
+                        <SelectItem value="Kable i przewody">Kable i przewody</SelectItem>
+                        <SelectItem value="Aparatura modułowa">Aparatura modułowa</SelectItem>
+                        <SelectItem value="Rozdzielnice">Rozdzielnice</SelectItem>
+                        <SelectItem value="Osprzęt i puszki">Osprzęt i puszki</SelectItem>
+                        <SelectItem value="Prowadzenie kabli">Prowadzenie kabli</SelectItem>
+                        <SelectItem value="Teletechnika">Teletechnika</SelectItem>
+                        {electricalMaterialCategories
+                          .filter((c) => !["Kable i przewody", "Aparatura modułowa", "Rozdzielnice", "Osprzęt i puszki", "Prowadzenie kabli", "Teletechnika"].includes(c))
+                          .map((c) => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+
+                    {(materialSearchTerm || materialCategoryFilter !== "all") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 text-xs justify-start text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setMaterialSearchTerm("");
+                          setMaterialCategoryFilter("all");
+                        }}
+                      >
+                        Resetuj filtry
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {electricalMaterials.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
-                      <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                      <Zap className="h-12 w-12 mx-auto mb-3 opacity-30 text-amber-500" />
                       <div className="text-lg font-semibold mb-1">Brak materiałów elektrycznych</div>
-                      <div className="text-sm">Dodaj materiały z kategorii elektrycznej do magazynu</div>
-                      <Link href="/materialy">
-                        <Button className="mt-4" variant="outline">
-                          <Plus className="h-4 w-4" /> Dodaj materiały
-                        </Button>
-                      </Link>
+                      <div className="text-sm">Nie znaleziono materiałów spełniających kryteria wyszukiwania.</div>
+                      <Button
+                        className="mt-4"
+                        variant="outline"
+                        onClick={() => {
+                          setMaterialSearchTerm("");
+                          setMaterialCategoryFilter("all");
+                        }}
+                      >
+                        Pokaż wszystkie materiały elektryczne
+                      </Button>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b text-muted-foreground">
-                            <th className="text-left py-2 font-medium">Nazwa</th>
+                            <th className="text-left py-2 font-medium">Nazwa materiału</th>
                             <th className="text-left py-2 font-medium">Kategoria</th>
+                            <th className="text-left py-2 font-medium">SKU / Kod</th>
                             <th className="text-right py-2 font-medium">Cena zakupu</th>
                             <th className="text-right py-2 font-medium">Cena sprzedaży</th>
                             <th className="text-right py-2 font-medium">Stan</th>
@@ -516,12 +649,26 @@ export default function ElektrykaPage() {
                         </thead>
                         <tbody>
                           {electricalMaterials.map((m) => (
-                            <tr key={m.id} className="border-b border-border/50 hover:bg-accent/50">
-                              <td className="py-2 font-medium">{m.name}</td>
-                              <td className="py-2 text-muted-foreground">{m.category}</td>
-                              <td className="py-2 text-right">{formatCurrency(m.purchasePrice)}</td>
-                              <td className="py-2 text-right font-semibold">{formatCurrency(m.salePrice)}</td>
-                              <td className="py-2 text-right">
+                            <tr key={m.id || m.name} className="border-b border-border/50 hover:bg-amber-500/5 transition-colors">
+                              <td className="py-2.5 font-medium">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                                  <span>{m.name}</span>
+                                </div>
+                              </td>
+                              <td className="py-2.5">
+                                <Badge variant="outline" className="text-[11px] font-normal border-amber-500/30 bg-amber-500/5 text-amber-300">
+                                  {m.category}
+                                </Badge>
+                              </td>
+                              <td className="py-2.5 text-xs text-muted-foreground font-mono">
+                                {m.sku || "-"}
+                              </td>
+                              <td className="py-2.5 text-right text-muted-foreground">{formatCurrency(m.purchasePrice)}</td>
+                              <td className="py-2.5 text-right font-bold" style={{ color: "oklch(0.78 0.18 65)" }}>
+                                {formatCurrency(m.salePrice)}
+                              </td>
+                              <td className="py-2.5 text-right">
                                 <Badge variant={m.stockQuantity <= m.minStockLevel ? "destructive" : "secondary"}>
                                   {m.stockQuantity} {m.unit}
                                 </Badge>

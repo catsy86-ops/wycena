@@ -116,16 +116,39 @@ const DEFAULT_SERVICES: Omit<Service, "id" | "createdAt" | "updatedAt">[] = [
 ];
 
 const DEFAULT_MATERIALS: Omit<Material, "id" | "createdAt" | "updatedAt">[] = [
-  { name: "Rura PCV 50mm", category: "Rury", unit: "m", purchasePrice: 8, salePrice: 12, vatRate: 23, stockQuantity: 100, minStockLevel: 20, supplier: "Hurtownia Sanitarna", sku: "PCV-50" },
-  { name: "Rura PCV 110mm", category: "Rury", unit: "m", purchasePrice: 15, salePrice: 25, vatRate: 23, stockQuantity: 50, minStockLevel: 10, supplier: "Hurtownia Sanitarna", sku: "PCV-110" },
-  { name: "Rura miedziana 15mm", category: "Rury", unit: "m", purchasePrice: 22, salePrice: 35, vatRate: 23, stockQuantity: 30, minStockLevel: 10, supplier: "Metal-Plast", sku: "CU-15" },
-  { name: "Rura PEX 16mm", category: "Rury", unit: "m", purchasePrice: 5, salePrice: 8, vatRate: 23, stockQuantity: 200, minStockLevel: 50, supplier: "PEX-System", sku: "PEX-16" },
-  { name: "Uszczelka silikonowa", category: "Uszczelnienia", unit: "szt", purchasePrice: 3, salePrice: 5, vatRate: 23, stockQuantity: 200, minStockLevel: 50, supplier: "Uszczelki-PL", sku: "USZ-SIL" },
-  { name: "Fita uszczelniająca", category: "Uszczelnienia", unit: "szt", purchasePrice: 4, salePrice: 8, vatRate: 23, stockQuantity: 150, minStockLevel: 30, supplier: "Uszczelki-PL", sku: "FITA-1" },
-  { name: "Syfon butelkowy", category: "Syfony", unit: "szt", purchasePrice: 15, salePrice: 25, vatRate: 23, stockQuantity: 20, minStockLevel: 5, supplier: "Hurtownia Sanitarna", sku: "SYF-BUT" },
-  { name: "Syfon płaski", category: "Syfony", unit: "szt", purchasePrice: 28, salePrice: 45, vatRate: 23, stockQuantity: 10, minStockLevel: 3, supplier: "Hurtownia Sanitarna", sku: "SYF-PL" },
-  { name: "Spłuczka podtynkowa", category: "WC", unit: "szt", purchasePrice: 220, salePrice: 350, vatRate: 23, stockQuantity: 5, minStockLevel: 2, supplier: "Sanit-Plus", sku: "SPL-PT" },
-  { name: "Bateria umywalkowa", category: "Baterie", unit: "szt", purchasePrice: 100, salePrice: 180, vatRate: 23, stockQuantity: 8, minStockLevel: 3, supplier: "Sanit-Plus", sku: "BAT-UM" },
+  // ── Hydraulika ──
+  { name: "Rura PCV 50mm", category: "Rury", trade: "hydraulika", unit: "m", purchasePrice: 8, salePrice: 12, vatRate: 23, stockQuantity: 100, minStockLevel: 20, supplier: "Hurtownia Sanitarna", sku: "PCV-50" },
+  { name: "Rura PCV 110mm", category: "Rury", trade: "hydraulika", unit: "m", purchasePrice: 15, salePrice: 25, vatRate: 23, stockQuantity: 50, minStockLevel: 10, supplier: "Hurtownia Sanitarna", sku: "PCV-110" },
+  { name: "Rura miedziana 15mm", category: "Rury", trade: "hydraulika", unit: "m", purchasePrice: 22, salePrice: 35, vatRate: 23, stockQuantity: 30, minStockLevel: 10, supplier: "Metal-Plast", sku: "CU-15" },
+  { name: "Rura PEX 16mm", category: "Rury", trade: "hydraulika", unit: "m", purchasePrice: 5, salePrice: 8, vatRate: 23, stockQuantity: 200, minStockLevel: 50, supplier: "PEX-System", sku: "PEX-16" },
+  { name: "Uszczelka silikonowa", category: "Uszczelnienia", trade: "hydraulika", unit: "szt", purchasePrice: 3, salePrice: 5, vatRate: 23, stockQuantity: 200, minStockLevel: 50, supplier: "Uszczelki-PL", sku: "USZ-SIL" },
+  { name: "Fita teflonowa uszczelniająca", category: "Uszczelnienia", trade: "hydraulika", unit: "szt", purchasePrice: 4, salePrice: 8, vatRate: 23, stockQuantity: 150, minStockLevel: 30, supplier: "Uszczelki-PL", sku: "FITA-1" },
+  { name: "Syfon butelkowy", category: "Syfony", trade: "hydraulika", unit: "szt", purchasePrice: 15, salePrice: 25, vatRate: 23, stockQuantity: 20, minStockLevel: 5, supplier: "Hurtownia Sanitarna", sku: "SYF-BUT" },
+  { name: "Syfon płaski", category: "Syfony", trade: "hydraulika", unit: "szt", purchasePrice: 28, salePrice: 45, vatRate: 23, stockQuantity: 10, minStockLevel: 3, supplier: "Hurtownia Sanitarna", sku: "SYF-PL" },
+  { name: "Spłuczka podtynkowa", category: "WC", trade: "hydraulika", unit: "szt", purchasePrice: 220, salePrice: 350, vatRate: 23, stockQuantity: 5, minStockLevel: 2, supplier: "Sanit-Plus", sku: "SPL-PT" },
+  { name: "Bateria umywalkowa", category: "Baterie", trade: "hydraulika", unit: "szt", purchasePrice: 100, salePrice: 180, vatRate: 23, stockQuantity: 8, minStockLevel: 3, supplier: "Sanit-Plus", sku: "BAT-UM" },
+
+  // ── Elektryka ──
+  { name: "Przewód YDYp 3x1.5 mm² 450/750V (oświetlenie)", category: "Kable i przewody", trade: "elektryka", unit: "m", purchasePrice: 2.8, salePrice: 4.2, vatRate: 23, stockQuantity: 500, minStockLevel: 100, supplier: "Elektro-Hurt", sku: "YDYP-3X1.5" },
+  { name: "Przewód YDYp 3x2.5 mm² 450/750V (gniazda 230V)", category: "Kable i przewody", trade: "elektryka", unit: "m", purchasePrice: 4.2, salePrice: 6.5, vatRate: 23, stockQuantity: 400, minStockLevel: 100, supplier: "Elektro-Hurt", sku: "YDYP-3X2.5" },
+  { name: "Przewód YDYp 5x2.5 mm² 450/750V (siła / płyta 400V)", category: "Kable i przewody", trade: "elektryka", unit: "m", purchasePrice: 7.1, salePrice: 10.8, vatRate: 23, stockQuantity: 250, minStockLevel: 50, supplier: "Elektro-Hurt", sku: "YDYP-5X2.5" },
+  { name: "Przewód YDYp 5x4.0 mm² (zasilanie rozdzielnicy)", category: "Kable i przewody", trade: "elektryka", unit: "m", purchasePrice: 11.5, salePrice: 17.0, vatRate: 23, stockQuantity: 120, minStockLevel: 30, supplier: "Elektro-Hurt", sku: "YDYP-5X4.0" },
+  { name: "Kabel ziemny YKY 5x10 mm² (WLZ przyłącze)", category: "Kable i przewody", trade: "elektryka", unit: "m", purchasePrice: 28.0, salePrice: 42.0, vatRate: 23, stockQuantity: 80, minStockLevel: 25, supplier: "Elektro-Hurt", sku: "YKY-5X10" },
+  { name: "Kabel sieciowy UTP Kat. 6 LAN", category: "Teletechnika", trade: "elektryka", unit: "m", purchasePrice: 1.6, salePrice: 2.8, vatRate: 23, stockQuantity: 300, minStockLevel: 100, supplier: "Tele-Net", sku: "UTP-CAT6" },
+  { name: "Wyłącznik nadprądowy B16 1P 6kA (Hager/Eaton)", category: "Aparatura modułowa", trade: "elektryka", unit: "szt", purchasePrice: 14.5, salePrice: 24.0, vatRate: 23, stockQuantity: 60, minStockLevel: 15, supplier: "Aparatura-Pro", sku: "MCB-B16" },
+  { name: "Wyłącznik nadprądowy B10 1P 6kA (Hager/Eaton)", category: "Aparatura modułowa", trade: "elektryka", unit: "szt", purchasePrice: 14.5, salePrice: 24.0, vatRate: 23, stockQuantity: 40, minStockLevel: 10, supplier: "Aparatura-Pro", sku: "MCB-B10" },
+  { name: "Wyłącznik różnicowoprądowy RCD 40A 30mA 4P typ A", category: "Aparatura modułowa", trade: "elektryka", unit: "szt", purchasePrice: 130.0, salePrice: 195.0, vatRate: 23, stockQuantity: 12, minStockLevel: 3, supplier: "Aparatura-Pro", sku: "RCD-40-30-4P" },
+  { name: "Wyłącznik różnicowoprądowy RCD 25A 30mA 2P typ A", category: "Aparatura modułowa", trade: "elektryka", unit: "szt", purchasePrice: 95.0, salePrice: 145.0, vatRate: 23, stockQuantity: 15, minStockLevel: 4, supplier: "Aparatura-Pro", sku: "RCD-25-30-2P" },
+  { name: "Ogranicznik przepięć SPD T1+T2 (B+C) 4P", category: "Aparatura modułowa", trade: "elektryka", unit: "szt", purchasePrice: 280.0, salePrice: 420.0, vatRate: 23, stockQuantity: 6, minStockLevel: 2, supplier: "Aparatura-Pro", sku: "SPD-T1T2-4P" },
+  { name: "Rozdzielnica podtynkowa 24M (2x12) z drzwiczkami", category: "Rozdzielnice", trade: "elektryka", unit: "szt", purchasePrice: 110.0, salePrice: 175.0, vatRate: 23, stockQuantity: 8, minStockLevel: 2, supplier: "Aparatura-Pro", sku: "ROZDZ-24M" },
+  { name: "Rozdzielnica podtynkowa 36M (3x12) z drzwiczkami", category: "Rozdzielnice", trade: "elektryka", unit: "szt", purchasePrice: 165.0, salePrice: 245.0, vatRate: 23, stockQuantity: 5, minStockLevel: 2, supplier: "Aparatura-Pro", sku: "ROZDZ-36M" },
+  { name: "Złączka WAGO 221-412 (2x4mm²)", category: "Osprzęt i puszki", trade: "elektryka", unit: "szt", purchasePrice: 1.1, salePrice: 1.8, vatRate: 23, stockQuantity: 500, minStockLevel: 100, supplier: "WAGO-Dystrybucja", sku: "WAGO-221-412" },
+  { name: "Złączka WAGO 221-413 (3x4mm²)", category: "Osprzęt i puszki", trade: "elektryka", unit: "szt", purchasePrice: 1.4, salePrice: 2.2, vatRate: 23, stockQuantity: 400, minStockLevel: 100, supplier: "WAGO-Dystrybucja", sku: "WAGO-221-413" },
+  { name: "Złączka WAGO 221-415 (5x4mm²)", category: "Osprzęt i puszki", trade: "elektryka", unit: "szt", purchasePrice: 2.1, salePrice: 3.4, vatRate: 23, stockQuantity: 250, minStockLevel: 50, supplier: "WAGO-Dystrybucja", sku: "WAGO-221-415" },
+  { name: "Puszka podtynkowa fi 60 głęboka z wkrętami", category: "Osprzęt i puszki", trade: "elektryka", unit: "szt", purchasePrice: 1.8, salePrice: 3.2, vatRate: 23, stockQuantity: 300, minStockLevel: 60, supplier: "Elektro-Hurt", sku: "PUSZ-60-GL" },
+  { name: "Puszka podtynkowa wielokrotna łączona 2-krotna", category: "Osprzęt i puszki", trade: "elektryka", unit: "szt", purchasePrice: 4.2, salePrice: 7.0, vatRate: 23, stockQuantity: 120, minStockLevel: 30, supplier: "Elektro-Hurt", sku: "PUSZ-60-2K" },
+  { name: "Peszel karbowany z pilotem fi 20mm (samogasnący)", category: "Prowadzenie kabli", trade: "elektryka", unit: "m", purchasePrice: 1.2, salePrice: 2.2, vatRate: 23, stockQuantity: 300, minStockLevel: 50, supplier: "Elektro-Hurt", sku: "PESZ-20" },
+  { name: "Taśma izolacyjna PVC elektroinstalacyjna (kpl 6 kolorów)", category: "Osprzęt i puszki", trade: "elektryka", unit: "kpl", purchasePrice: 12.0, salePrice: 20.0, vatRate: 23, stockQuantity: 50, minStockLevel: 10, supplier: "Elektro-Hurt", sku: "TASMA-PVC-KPL" },
 ];
 
 const DEFAULT_TEMPLATES: Omit<QuoteTemplate, "id" | "createdAt" | "updatedAt" | "usageCount">[] = [
@@ -184,8 +207,8 @@ export async function seedDatabase() {
   }
 
   const materialCount = await db.materials.count();
+  const now = new Date();
   if (materialCount === 0) {
-    const now = new Date();
     await db.materials.bulkAdd(
       DEFAULT_MATERIALS.map((m) => ({
         ...m,
@@ -193,6 +216,26 @@ export async function seedDatabase() {
         updatedAt: now,
       }))
     );
+  } else {
+    // Sprawdź czy baza zawiera już dedykowane materiały elektryczne
+    const existing = await db.materials.toArray();
+    const hasElectrical = existing.some((m) => m.trade === "elektryka");
+    if (!hasElectrical) {
+      const electricalSeeds = DEFAULT_MATERIALS.filter((m) => m.trade === "elektryka");
+      await db.materials.bulkAdd(
+        electricalSeeds.map((m) => ({
+          ...m,
+          createdAt: now,
+          updatedAt: now,
+        }))
+      );
+      // Oznacz dotychczasowe materiały hydrauliczne
+      for (const item of existing) {
+        if (!item.trade && item.id) {
+          await db.materials.update(item.id, { trade: "hydraulika" });
+        }
+      }
+    }
   }
 
   const templateCount = await db.quoteTemplates.count();
