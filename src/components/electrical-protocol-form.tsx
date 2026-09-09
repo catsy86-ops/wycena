@@ -13,10 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   FileText, Plus, Trash2, Download, CheckCircle2, AlertTriangle, AlertCircle,
-  Copy, Save, Eye, Edit2, Zap,
+  Copy, Save, Eye, Edit2, Zap, PenTool,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { SignaturePad } from "@/components/quote/signature-pad";
 
 interface ElectricalProtocolFormProps {
   protocol?: MeasurementProtocol;
@@ -50,6 +51,7 @@ export function ElectricalProtocolForm({
 
   const [editingMeasurement, setEditingMeasurement] = useState<string | null>(null);
   const [showValidation, setShowValidation] = useState(false);
+  const [activeSignaturePad, setActiveSignaturePad] = useState<"electrician" | "client" | null>(null);
 
   // Walidacja
   const validation = useMemo(() => validateProtocol(protocol), [protocol]);
@@ -323,6 +325,160 @@ export function ElectricalProtocolForm({
                   </div>
                 </div>
               </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold text-sm mb-3">Podpisy Cyfrowe (E-Podpis)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Podpis Elektryka */}
+                  <div className="p-3 border rounded-lg bg-card space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold">Podpis Elektryka</Label>
+                      {protocol.signatureElectrician && (
+                        <Badge variant="default" className="text-[10px]">
+                          Złożony
+                        </Badge>
+                      )}
+                    </div>
+                    {protocol.signatureElectrician ? (
+                      <div className="space-y-2">
+                        <div className="h-20 bg-slate-50 dark:bg-slate-900 border rounded flex items-center justify-center p-1">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={protocol.signatureElectrician}
+                            alt="Podpis elektryka"
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+                        {!readOnly && (
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-7"
+                              onClick={() => setActiveSignaturePad("electrician")}
+                            >
+                              <PenTool className="h-3 w-3 mr-1" /> Zmień
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs h-7 text-red-500 hover:text-red-600"
+                              onClick={() => handleFieldChange("signatureElectrician", undefined)}
+                            >
+                              Usuń
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="h-20 border border-dashed rounded flex flex-col items-center justify-center text-muted-foreground gap-1 p-2">
+                        <p className="text-xs">Brak podpisu elektryka</p>
+                        {!readOnly && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-xs h-7"
+                            onClick={() => setActiveSignaturePad("electrician")}
+                          >
+                            <PenTool className="h-3 w-3 mr-1" /> Złóż podpis
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Podpis Klienta */}
+                  <div className="p-3 border rounded-lg bg-card space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold">Podpis Klienta / Odbiorcy</Label>
+                      {protocol.signatureClient && (
+                        <Badge variant="default" className="text-[10px]">
+                          Złożony
+                        </Badge>
+                      )}
+                    </div>
+                    {protocol.signatureClient ? (
+                      <div className="space-y-2">
+                        <div className="h-20 bg-slate-50 dark:bg-slate-900 border rounded flex items-center justify-center p-1">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={protocol.signatureClient}
+                            alt="Podpis klienta"
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+                        {!readOnly && (
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-7"
+                              onClick={() => setActiveSignaturePad("client")}
+                            >
+                              <PenTool className="h-3 w-3 mr-1" /> Zmień
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs h-7 text-red-500 hover:text-red-600"
+                              onClick={() => handleFieldChange("signatureClient", undefined)}
+                            >
+                              Usuń
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="h-20 border border-dashed rounded flex flex-col items-center justify-center text-muted-foreground gap-1 p-2">
+                        <p className="text-xs">Brak podpisu klienta</p>
+                        {!readOnly && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-xs h-7"
+                            onClick={() => setActiveSignaturePad("client")}
+                          >
+                            <PenTool className="h-3 w-3 mr-1" /> Złóż podpis
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal padu do podpisu */}
+              {activeSignaturePad && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                  <div className="w-full max-w-md bg-background rounded-lg shadow-xl overflow-hidden">
+                    <SignaturePad
+                      onSign={(dataUrl) => {
+                        if (activeSignaturePad === "electrician") {
+                          handleFieldChange("signatureElectrician", dataUrl);
+                        } else {
+                          handleFieldChange("signatureClient", dataUrl);
+                        }
+                        handleFieldChange("signatureDate", new Date());
+                        handleFieldChange("status", "signed");
+                        setActiveSignaturePad(null);
+                        toast.success("Podpis został zapisany");
+                      }}
+                      onCancel={() => setActiveSignaturePad(null)}
+                      existingSignature={
+                        activeSignaturePad === "electrician"
+                          ? protocol.signatureElectrician
+                          : protocol.signatureClient
+                      }
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="border-t pt-4">
                 <Label className="text-xs font-semibold">Uwagi</Label>

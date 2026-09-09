@@ -217,27 +217,55 @@ export function generateProtocolPDF(protocol: MeasurementProtocol, options: PDFO
 
     yPos += 10;
 
+    // Podpisy
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.text("PODPISY", margin, yPos);
     yPos += 8;
+
+    const startYSignatures = yPos;
 
     // Podpis elektryka
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.text("Elektryk:", margin, yPos);
     yPos += 2;
-    doc.line(margin, yPos, margin + 40, yPos);
-    yPos += 8;
+    doc.line(margin, yPos, margin + 50, yPos);
+    yPos += 3;
+
+    if (protocol.signatureElectrician && protocol.signatureElectrician.startsWith("data:image")) {
+      try {
+        doc.addImage(protocol.signatureElectrician, "PNG", margin, yPos, 45, 18);
+        yPos += 20;
+      } catch {
+        yPos += 5;
+      }
+    } else {
+      yPos += 5;
+    }
     doc.text(protocol.electricianName || "___________________", margin, yPos);
-    yPos += 8;
 
     // Podpis klienta
-    doc.text("Klient:", margin + 60, yPos - 16);
-    yPos -= 16;
-    doc.line(margin + 60, yPos, margin + 100, yPos);
-    yPos += 8;
-    doc.text(protocol.clientName || "___________________", margin + 60, yPos);
+    let clientY = startYSignatures;
+    const clientX = margin + 70;
+    doc.text("Klient:", clientX, clientY);
+    clientY += 2;
+    doc.line(clientX, clientY, clientX + 50, clientY);
+    clientY += 3;
+
+    if (protocol.signatureClient && protocol.signatureClient.startsWith("data:image")) {
+      try {
+        doc.addImage(protocol.signatureClient, "PNG", clientX, clientY, 45, 18);
+        clientY += 20;
+      } catch {
+        clientY += 5;
+      }
+    } else {
+      clientY += 5;
+    }
+    doc.text(protocol.clientName || "___________________", clientX, clientY);
+
+    yPos = Math.max(yPos, clientY) + 6;
   }
 
   // ─── Stopka ───────────────────────────────────────────────────────────────

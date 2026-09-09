@@ -310,15 +310,15 @@ if (validation.isValid) {
    - Automatyczne wyliczanie modułów DIN, rezerwy przestrzennej (25%) i szacowanego czasu montażu
    - Integracja z modułem tworzenia ofert (`/wyceny/nowa?source=elektryka`)
 
-4. **Eksport do Kosztorysu**
-   - Format NORMA/Zuzia
-   - Format Excel
-   - Format XML
+4. **Eksport do Kosztorysu / Excel** ✅ *Zrealizowano (Faza 4)*
+   - Eksport pojedynczych protokołów z pełnymi wynikami prób obwodów i normami do Excela (.xlsx)
+   - Zbiorczy eksport rejestru pomiarowego wszystkich obiektów do Excela (.xlsx)
+   - Format kompatybilny z arkuszami kalkulacyjnymi i programami kosztorysowymi
 
-5. **Podpisy Cyfrowe**
-   - Podpisy elektroniczne
-   - Certyfikaty
-   - Archiwizacja
+5. **Podpisy Cyfrowe (E-Podpis)** ✅ *Zrealizowano (Faza 4)*
+   - Moduł odręcznego podpisu cyfrowego na ekranach dotykowych i myszką (HTML5 Canvas)
+   - Zapis podpisu elektryka z uprawnieniami SEP oraz klienta / odbiorcy
+   - Renderowanie wektorowych i rastrowych podpisów bezpośrednio w generowanych plikach PDF protokołu pomiarowego
 
 6. **Raporty Zaawansowane**
    - Porównanie pomiarów w czasie

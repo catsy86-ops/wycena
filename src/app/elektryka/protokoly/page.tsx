@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FileText, Plus, Search, Download, Eye, Trash2, Edit2,
-  CheckCircle2, AlertTriangle, AlertCircle, Zap, Receipt,
+  CheckCircle2, AlertTriangle, AlertCircle, Zap, Receipt, FileSpreadsheet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
@@ -247,7 +247,104 @@ export default function ProtokołyPage() {
       });
       toast.success("PDF pobrany");
     } catch (error) {
-      toast.error("Błąd podczas generowania PDF");
+    }
+  };
+
+  const handleExportExcel = async (protocol?: MeasurementProtocol) => {
+    try {
+      const XLSX = await import("xlsx");
+      const wb = XLSX.utils.book_new();
+
+      if (protocol) {
+        // Eksport pojedynczego protokołu z pełnymi pomiarami
+        const metaRows = [
+          ["PROTOKÓŁ POMIARÓW ELEKTRYCZNYCH (SEP)", ""],
+          ["Numer protokołu:", protocol.number],
+          ["Data badania:", formatProtocolDate(protocol.date)],
+          ["Klient:", protocol.clientName],
+          ["Adres obiektu:", protocol.clientAddress || protocol.location],
+          ["Elektryk wykonujący:", protocol.electricianName],
+          ["Uprawnienia SEP:", protocol.electricianLicense],
+          ["Typ instalacji:", protocol.installationType],
+          ["Status:", protocol.status],
+          [],
+          ["WYNIKI BADAŃ I POMIARÓW OBWODÓW"],
+          ["Lp.", "Rodzaj pomiaru", "Lokalizacja / Obwód", "Wartość zmierzona", "Jednostka", "Wartość dopuszczalna", "Norma SEP", "Wynik próby", "Uwagi"]
+        ];
+
+        const measurementRows = protocol.measurements.map((m, idx) => [
+          idx + 1,
+          m.description || m.type,
+          m.location,
+          m.measuredValue,
+          m.unit,
+          m.expectedValue || "-",
+          m.norm || "-",
+          m.status === "pass" ? "Pozytywny (OK)" : m.status === "warning" ? "Ostrzeżenie" : "Negatywny (Błąd)",
+          m.notes || "-"
+        ]);
+
+        const ws = XLSX.utils.aoa_to_sheet([...metaRows, ...measurementRows]);
+        ws["!cols"] = [
+          { wch: 6 },
+          { wch: 30 },
+          { wch: 25 },
+          { wch: 18 },
+          { wch: 10 },
+          { wch: 22 },
+          { wch: 20 },
+          { wch: 18 },
+          { wch: 25 }
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, "Protokół pomiarowy");
+        XLSX.writeFile(wb, `Protokol_${protocol.number.replace(/\//g, "-")}.xlsx`);
+        toast.success(`Wyeksportowano arkusz Excel dla protokołu ${protocol.number}`);
+      } else {
+        // Zbiorczy rejestr wszystkich protokołów
+        const summaryRows = [
+          ["REJESTR PROTOKOŁÓW POMIAROWYCH SEP", "", "", "", "", "", ""],
+          ["Wygenerowano:", formatProtocolDate(new Date())],
+          [],
+          ["Numer", "Data", "Klient", "Lokalizacja", "Typ instalacji", "Status", "Pomiary OK", "Błędy", "Uprawnienia SEP"]
+        ];
+
+        protocols.forEach((p) => {
+          const ok = p.measurements.filter((m) => m.status === "pass").length;
+          const err = p.measurements.filter((m) => m.status === "fail").length;
+          summaryRows.push([
+            p.number,
+            formatProtocolDate(p.date),
+            p.clientName,
+            p.location,
+            p.installationType,
+            p.status,
+            ok as any,
+            err as any,
+            p.electricianLicense
+          ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(summaryRows);
+        ws["!cols"] = [
+          { wch: 22 },
+          { wch: 12 },
+          { wch: 25 },
+          { wch: 30 },
+          { wch: 18 },
+          { wch: 12 },
+          { wch: 12 },
+          { wch: 10 },
+          { wch: 20 }
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, "Rejestr protokołów");
+        XLSX.writeFile(wb, `Rejestr_protokolow_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        toast.success("Wyeksportowano zbiorczy rejestr protokołów do Excela");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Błąd podczas eksportu do arkusza Excel");
     }
   };
 
@@ -279,15 +376,27 @@ export default function ProtokołyPage() {
               </h1>
               <p className="text-muted-foreground mt-0.5 text-sm">Zarządzanie protokołami pomiarów elektrycznych</p>
             </div>
-            <Button
-              onClick={() => {
-                setSelectedProtocol(null);
-                setShowForm(true);
-              }}
-              className="btn-switch"
-            >
-              <Plus className="h-4 w-4" /> Nowy protokół
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleExportExcel()}
+                className="btn-glass"
+                title="Eksportuj zbiorczy rejestr do Excela"
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-1.5 text-emerald-500" />
+                Eksport rejestru Excel
+              </Button>
+              <Button
+                onClick={() => {
+                  setSelectedProtocol(null);
+                  setShowForm(true);
+                }}
+                className="btn-switch"
+              >
+                <Plus className="h-4 w-4" /> Nowy protokół
+              </Button>
+            </div>
           </div>
         </StaggerItem>
 
@@ -487,6 +596,14 @@ export default function ProtokołyPage() {
                               title="Pobierz protokół PDF"
                             >
                               <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleExportExcel(protocol)}
+                              title="Eksportuj protokół do Excela (.xlsx)"
+                            >
+                              <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
                             </Button>
                             <Button
                               size="sm"
