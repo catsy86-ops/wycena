@@ -36,6 +36,12 @@ import {
   type ClimateZone,
   type InsulationStandard,
 } from "@/lib/heatpump-calc";
+import {
+  calculateExpansionVessel,
+  EMITTER_LITERS_PER_KW,
+  type SystemWaterVolumeParams,
+  type ExpansionVesselParams,
+} from "@/lib/expansion-vessel-calc";
 
 // Typowe pakiety i punkty hydrauliczne z cenami rynkowymi
 const PLUMBING_FAST_POINTS = [
@@ -263,6 +269,103 @@ export default function HydraulikaPage() {
     router.push("/wyceny/nowa?source=hydraulika");
   };
 
+  // ─── Stan Kalkulatora Naczyń Wzbiorczych i Zładu (PN-EN 12828) ────────
+  const [evInputMode, setEvInputMode] = useState<"direct" | "estimated">("estimated");
+  const [evDirectVolume, setEvDirectVolume] = useState<number>(200);
+  const [evHeatingPowerKw, setEvHeatingPowerKw] = useState<number>(10);
+  const [evEmitterType, setEvEmitterType] = useState<SystemWaterVolumeParams["emitterType"]>("underfloor");
+  const [evBufferTankVolume, setEvBufferTankVolume] = useState<number>(100);
+  const [evDhwCoilVolume, setEvDhwCoilVolume] = useState<number>(15);
+  const [evPipeworkPercent, setEvPipeworkPercent] = useState<number>(10);
+
+  const [evStaticHeight, setEvStaticHeight] = useState<number>(6); // 2 kondygnacje ~ 6m
+  const [evMaxTempC, setEvMaxTempC] = useState<number>(45); // Niska temp dla pomp ciepła / podłogówki
+  const [evSafetyValveBar, setEvSafetyValveBar] = useState<number>(3.0);
+  const [evGlycolPercent, setEvGlycolPercent] = useState<number>(0);
+
+  const expansionVesselResult = useMemo(() => {
+    return calculateExpansionVessel(
+      {
+        inputMode: evInputMode,
+        directVolumeLiters: evDirectVolume,
+        heatingPowerKw: evHeatingPowerKw,
+        emitterType: evEmitterType,
+        bufferTankVolumeLiters: evBufferTankVolume,
+        dhwTankCoilVolumeLiters: evDhwCoilVolume,
+        pipeworkEstimatePercent: evPipeworkPercent,
+      },
+      {
+        staticHeightMeters: evStaticHeight,
+        maxDesignTempC: evMaxTempC,
+        safetyValvePressureBar: evSafetyValveBar,
+        glycolPercentage: evGlycolPercent,
+      }
+    );
+  }, [
+    evInputMode,
+    evDirectVolume,
+    evHeatingPowerKw,
+    evEmitterType,
+    evBufferTankVolume,
+    evDhwCoilVolume,
+    evPipeworkPercent,
+    evStaticHeight,
+    evMaxTempC,
+    evSafetyValveBar,
+    evGlycolPercent,
+  ]);
+
+  const handleAddExpansionVesselToQuote = () => {
+    const res = expansionVesselResult;
+    const vesselPriceEst = res.recommendedStandardVesselLiters <= 24 ? 180 : res.recommendedStandardVesselLiters <= 50 ? 320 : res.recommendedStandardVesselLiters <= 100 ? 580 : 950;
+    const items = [
+      {
+        name: `Naczynie wzbiorcze przeponowe C.O. ${res.recommendedStandardVesselLiters}L (min. ${res.minimumVesselVolumeLiters}L wg PN-EN 12828)`,
+        quantity: 1,
+        unit: "szt" as const,
+        priceNettoPerUnit: vesselPriceEst,
+        vatRate: 8 as const,
+      },
+      {
+        name: `Grupa bezpieczeństwa C.O. z zaworem ${evSafetyValveBar} bar, manometrem i odpowietrznikiem`,
+        quantity: 1,
+        unit: "kpl" as const,
+        priceNettoPerUnit: 220,
+        vatRate: 8 as const,
+      },
+      {
+        name: `Szybkozłącze rewizyjne z zaworem odcinającym do naczynia przeponowego 3/4"`,
+        quantity: 1,
+        unit: "szt" as const,
+        priceNettoPerUnit: 95,
+        vatRate: 8 as const,
+      },
+      {
+        name: `Montaż i regulacja ciśnienia wstępnego naczynia wzbiorczego (${res.prechargePressureBar} bar)`,
+        quantity: 1,
+        unit: "usł" as const,
+        priceNettoPerUnit: 180,
+        vatRate: 8 as const,
+      },
+    ];
+
+    if (evGlycolPercent > 0) {
+      const glycolLiters = Math.round((res.totalWaterVolumeLiters * evGlycolPercent) / 100);
+      items.push({
+        name: `Płyn niezamarzający do instalacji C.O. (glikol propylenowy ${evGlycolPercent}%)`,
+        quantity: glycolLiters,
+        unit: "szt" as any,
+        priceNettoPerUnit: 14,
+        vatRate: 8 as const,
+      });
+    }
+
+    sounds.playSuccess();
+    localStorage.setItem("gksystem_quick_plumbing_quote", JSON.stringify(items));
+    toast.success(`Przeniesiono dobór naczynia wzbiorczego ${res.recommendedStandardVesselLiters}L do nowej wyceny!`);
+    router.push("/wyceny/nowa?source=hydraulika");
+  };
+
   // Filtrujemy wyceny hydrauliczne (z wykluczeniem pozycji elektrycznych)
   const hydraulicQuotes = useMemo(() => {
     const keywords = ["woda", "wod-kan", "bateria", "umywalk", "wanna", "prysznic", "wc", "stelaż", "podłogów", "kocioł", "grzejnik", "syfon", "kanalizacj", "hydraul", "pex"];
@@ -355,7 +458,7 @@ export default function HydraulikaPage() {
       </div>
 
       <Tabs defaultValue="calculator" className="space-y-4">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-6 w-full max-w-4xl h-auto p-1 bg-muted/60">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 w-full max-w-5xl h-auto p-1 bg-muted/60">
           <TabsTrigger value="calculator" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
             <Calculator className="h-4 w-4 shrink-0 text-cyan-500" />
             <span>Kalkulator</span>
@@ -363,6 +466,10 @@ export default function HydraulikaPage() {
           <TabsTrigger value="heatpump" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
             <Flame className="h-4 w-4 shrink-0 text-amber-500" />
             <span className="font-semibold text-amber-600 dark:text-amber-400">Pompa & OZC</span>
+          </TabsTrigger>
+          <TabsTrigger value="vessel" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
+            <Gauge className="h-4 w-4 shrink-0 text-indigo-500" />
+            <span className="font-semibold text-indigo-600 dark:text-indigo-400">Naczynie & Zład</span>
           </TabsTrigger>
           <TabsTrigger value="underfloor" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
             <Layers className="h-4 w-4 shrink-0 text-cyan-500" />
@@ -376,7 +483,7 @@ export default function HydraulikaPage() {
             <ShieldCheck className="h-4 w-4 shrink-0 text-cyan-500" />
             <span>Protokoły prób</span>
           </TabsTrigger>
-          <TabsTrigger value="standards" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
+          <TabsTrigger value="standards" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium col-span-2 sm:col-span-1">
             <FileText className="h-4 w-4 shrink-0 text-cyan-500" />
             <span>Normy PN</span>
           </TabsTrigger>
@@ -812,6 +919,345 @@ export default function HydraulikaPage() {
                     onClick={handleAddHeatPumpToQuote}
                   >
                     Przenieś zestaw pompy ciepła do wyceny
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ─── Zakładka: Dobór Naczyń Wzbiorczych i Zładu (PN-EN 12828) ─── */}
+        <TabsContent value="vessel" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Formularz parametrów instalacji */}
+            <div className="lg:col-span-7 space-y-4">
+              <Card className="border-indigo-500/30 shadow-sm">
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <Gauge className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                    Kalkulator naczynia przeponowego wg PN-EN 12828
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Precyzyjny dobór objętości naczynia wzbiorczego i poduszki gazowej na podstawie parametrów hydraulicznych zładu
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 pt-2 space-y-4">
+                  {/* Wybór metody zładu */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold">Metoda określenia zładu wody w instalacji</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant={evInputMode === "estimated" ? "default" : "outline"}
+                        className={`text-xs h-9 justify-center ${evInputMode === "estimated" ? "bg-indigo-600 hover:bg-indigo-700 text-white" : ""}`}
+                        onClick={() => setEvInputMode("estimated")}
+                      >
+                        Szacowanie wg składowych
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={evInputMode === "direct" ? "default" : "outline"}
+                        className={`text-xs h-9 justify-center ${evInputMode === "direct" ? "bg-indigo-600 hover:bg-indigo-700 text-white" : ""}`}
+                        onClick={() => setEvInputMode("direct")}
+                      >
+                        Znam pojemność (litry)
+                      </Button>
+                    </div>
+                  </div>
+
+                  {evInputMode === "direct" ? (
+                    <div className="p-3 bg-muted/40 rounded-xl space-y-1.5 border">
+                      <Label className="text-xs font-semibold">Całkowity zład wody w instalacji (litry)</Label>
+                      <Input
+                        type="number"
+                        min={10}
+                        max={10000}
+                        value={evDirectVolume}
+                        onChange={(e) => setEvDirectVolume(Math.max(10, Number(e.target.value)))}
+                        className="font-mono text-sm"
+                      />
+                      <span className="text-[11px] text-muted-foreground">
+                        Suma objętości rur, grzejników/podłogówki, bufora oraz kotła/pompy ciepła.
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-muted/30 rounded-xl space-y-3 border">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">Moc źródła ciepła (kW)</Label>
+                          <Input
+                            type="number"
+                            min={2}
+                            max={200}
+                            value={evHeatingPowerKw}
+                            onChange={(e) => setEvHeatingPowerKw(Math.max(1, Number(e.target.value)))}
+                            className="font-mono text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">Typ odbiorników ciepła</Label>
+                          <Select
+                            value={evEmitterType}
+                            onValueChange={(val) => {
+                              if (val) setEvEmitterType(val as SystemWaterVolumeParams["emitterType"]);
+                            }}
+                          >
+                            <SelectTrigger className="text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(EMITTER_LITERS_PER_KW).map(([k, opt]) => (
+                                <SelectItem key={k} value={k} className="text-xs">
+                                  {opt.label} (~{opt.lPerKw} l/kW)
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">Zbiornik buforowy (L)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={2000}
+                            value={evBufferTankVolume}
+                            onChange={(e) => setEvBufferTankVolume(Math.max(0, Number(e.target.value)))}
+                            className="font-mono text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">Wężownica CWU (L)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={evDhwCoilVolume}
+                            onChange={(e) => setEvDhwCoilVolume(Math.max(0, Number(e.target.value)))}
+                            className="font-mono text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">Rurociągi i armatura (%)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={30}
+                            value={evPipeworkPercent}
+                            onChange={(e) => setEvPipeworkPercent(Math.max(0, Number(e.target.value)))}
+                            className="font-mono text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground flex justify-between pt-1 border-t border-border/50">
+                        <span>Oszacowana objętość zładu instalacji:</span>
+                        <strong className="text-foreground font-mono">{expansionVesselResult.totalWaterVolumeLiters} litrów</strong>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Parametry hydrauliczne */}
+                  <div className="space-y-2 pt-2 border-t">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Parametry hydrauliczne i ciśnienia
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold">Wysokość statyczna instalacji h (m)</Label>
+                        <Input
+                          type="number"
+                          step={0.5}
+                          min={1}
+                          max={50}
+                          value={evStaticHeight}
+                          onChange={(e) => setEvStaticHeight(Math.max(0.5, Number(e.target.value)))}
+                          className="font-mono text-sm"
+                        />
+                        <span className="text-[10px] text-muted-foreground">
+                          Od naczynia do najwyższego punktu grzejnika/odpowietrznika (10m ≈ 1 bar).
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold">Maks. temperatura zasilania (°C)</Label>
+                        <Select
+                          value={String(evMaxTempC)}
+                          onValueChange={(val) => setEvMaxTempC(Number(val))}
+                        >
+                          <SelectTrigger className="text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="35" className="text-xs">35°C — Podłogówka niska temp. (e=0.6%)</SelectItem>
+                            <SelectItem value="45" className="text-xs">45°C — Podłogówka / Pompa ciepła (e=1.0%)</SelectItem>
+                            <SelectItem value="55" className="text-xs">55°C — Grzejniki niskotemperaturowe (e=1.45%)</SelectItem>
+                            <SelectItem value="75" className="text-xs">75°C — Kocioł gazowy / pelet (e=2.58%)</SelectItem>
+                            <SelectItem value="90" className="text-xs">90°C — Kocioł zasypowy / kominek (e=3.59%)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <span className="text-[10px] text-muted-foreground">
+                          Współczynnik rozszerzalności: <strong>{expansionVesselResult.expansionCoefficientPercent}%</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold">Zawór bezpieczeństwa (bar)</Label>
+                        <Select
+                          value={String(evSafetyValveBar)}
+                          onValueChange={(val) => setEvSafetyValveBar(Number(val))}
+                        >
+                          <SelectTrigger className="text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="2.5" className="text-xs">2.5 bar (kotły gazowe wiszące)</SelectItem>
+                            <SelectItem value="3.0" className="text-xs">3.0 bar (standard pomp ciepła i domów)</SelectItem>
+                            <SelectItem value="4.0" className="text-xs">4.0 bar (instalacje wyższe / rozległe)</SelectItem>
+                            <SelectItem value="6.0" className="text-xs">6.0 bar (instalacje CWU / przemysłowe)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold">Dodatek glikolu niezamarzającego (%)</Label>
+                        <Select
+                          value={String(evGlycolPercent)}
+                          onValueChange={(val) => setEvGlycolPercent(Number(val))}
+                        >
+                          <SelectTrigger className="text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0" className="text-xs">0% — Czysta woda (układ wewnętrzny)</SelectItem>
+                            <SelectItem value="25" className="text-xs">25% glikolu (ochrona do -12°C)</SelectItem>
+                            <SelectItem value="35" className="text-xs">35% glikolu (pompa monoblok do -20°C)</SelectItem>
+                            <SelectItem value="45" className="text-xs">45% glikolu (kolektory słoneczne do -30°C)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Informacje normowe */}
+              <div className="p-3.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/50 dark:border-indigo-800/40 text-xs space-y-1">
+                <div className="font-semibold flex items-center gap-1.5 text-indigo-900 dark:text-indigo-300">
+                  <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                  Wymagania normy PN-EN 12828:
+                </div>
+                <p className="text-muted-foreground leading-relaxed">
+                  Pojemność użytkowa naczynia musi w całości pomieścić przyrost objętości zładu (Ve) powiększony o rezerwę eksploatacyjną (Vdf ≥ 0.5% zładu, min. 3L), z uwzględnieniem ciśnienia statycznego i nastawy zaworu bezpieczeństwa.
+                </p>
+              </div>
+            </div>
+
+            {/* Wyniki obliczeń i dobór typoszeregu */}
+            <div className="lg:col-span-5 space-y-4">
+              <Card className="border-indigo-500/40 bg-gradient-to-b from-indigo-500/5 to-transparent shadow-md">
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                      Dobór naczynia przeponowego
+                    </span>
+                    <Badge className="bg-indigo-600 text-white font-mono text-xs">
+                      PN-EN 12828
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-xl font-black text-foreground flex items-baseline gap-2">
+                    <span>{expansionVesselResult.recommendedStandardVesselLiters} L</span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      (min. obliczeniowe: {expansionVesselResult.minimumVesselVolumeLiters} L)
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-2 space-y-4">
+                  {/* Zestawienie wskaźników inżynieryjnych */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2.5 rounded-lg bg-background border text-left">
+                      <span className="text-[10px] text-muted-foreground uppercase block font-semibold">Zład całkowity (VA)</span>
+                      <span className="text-base font-black text-foreground font-mono">
+                        {expansionVesselResult.totalWaterVolumeLiters} L
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-background border text-left">
+                      <span className="text-[10px] text-muted-foreground uppercase block font-semibold">Przyrost objętości (Ve)</span>
+                      <span className="text-base font-black text-indigo-600 dark:text-indigo-400 font-mono">
+                        {expansionVesselResult.expansionVolumeLiters} L
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-background border text-left">
+                      <span className="text-[10px] text-muted-foreground uppercase block font-semibold">Rezerwa wodna (Vdf)</span>
+                      <span className="text-sm font-bold text-foreground font-mono">
+                        {expansionVesselResult.reserveVolumeLiters} L
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-background border text-left">
+                      <span className="text-[10px] text-muted-foreground uppercase block font-semibold">Współcz. ciśnieniowy (D)</span>
+                      <span className="text-sm font-bold text-foreground font-mono">
+                        {expansionVesselResult.pressureUtilizationRatio}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Wytyczne ciśnień dla montażysty */}
+                  <div className="p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-xs space-y-1.5">
+                    <div className="font-bold text-foreground flex items-center gap-1.5">
+                      <Gauge className="h-3.5 w-3.5 text-indigo-600" />
+                      Nastawy ciśnień dla montażysty:
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Ciśnienie statyczne słupa cieczy (p_st):</span>
+                      <span className="font-bold text-foreground font-mono">{expansionVesselResult.staticPressureBar} bar</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Ciśnienie wstępne gazu (p_0):</span>
+                      <span className="font-bold text-indigo-600 dark:text-indigo-400 font-mono">{expansionVesselResult.prechargePressureBar} bar</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Ciśnienie napełnienia na zimno:</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                        {Number((expansionVesselResult.prechargePressureBar + 0.2).toFixed(2))} bar
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Ciśnienie końcowe maks. (p_max):</span>
+                      <span className="font-bold text-foreground font-mono">{expansionVesselResult.maxFinalPressureBar} bar</span>
+                    </div>
+                  </div>
+
+                  {/* Ostrzeżenia i rekomendacje */}
+                  {expansionVesselResult.warnings.length > 0 && (
+                    <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-800 dark:text-amber-300 space-y-1">
+                      {expansionVesselResult.warnings.map((w, i) => (
+                        <div key={i} className="flex items-start gap-1.5">
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                          <span>{w}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="text-[11px] text-muted-foreground space-y-1 bg-muted/30 p-2.5 rounded-lg border">
+                    {expansionVesselResult.recommendations.map((r, i) => (
+                      <div key={i} className="flex items-start gap-1.5">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                        <span>{r}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Przycisk akcji */}
+                  <Button
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-2 py-5 shadow-md"
+                    onClick={handleAddExpansionVesselToQuote}
+                  >
+                    Przenieś naczynie {expansionVesselResult.recommendedStandardVesselLiters}L do nowej wyceny
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </CardContent>
