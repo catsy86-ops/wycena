@@ -645,6 +645,16 @@ export default function ElektrykaPage() {
                         <Plus className="h-4 w-4" /> Nowa wycena elektryczna
                       </Button>
                     </Link>
+                    <Link href="/elektryka/protokoly" className="block">
+                      <Button variant="outline" className="w-full justify-start gap-2 border-amber-500/30 text-amber-600 dark:text-amber-400">
+                        <FileText className="h-4 w-4" /> Protokoły pomiarowe i SEP
+                      </Button>
+                    </Link>
+                    <Link href="/elektryka/protokol" className="block">
+                      <Button variant="outline" className="w-full justify-start gap-2">
+                        <ShieldCheck className="h-4 w-4 text-emerald-500" /> Szybki protokół odbioru instalacji
+                      </Button>
+                    </Link>
                     <Link href="/uslugi" className="block">
                       <Button variant="outline" className="w-full justify-start gap-2">
                         <Wrench className="h-4 w-4" /> Zarządzaj usługami

@@ -12,11 +12,13 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Plus, Trash2, Download, CheckCircle2, AlertCircle, FileText,
-  Zap, User, Gauge, Shield, Lightbulb,
+  Zap, User, Gauge, Shield, Lightbulb, Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
+import { useProtocolStore } from "@/store/protocol-store";
+import { useRouter } from "next/navigation";
 
 interface InsulationMeasurement {
   id: string;
@@ -45,7 +47,9 @@ interface VoltageCurrentMeasurement {
 }
 
 export function MeasurementProtocolForm() {
+  const router = useRouter();
   const settings = useSettingsStore((s) => s.settings);
+  const { add: addProtocol } = useProtocolStore();
 
   // Dane instalacji
   const [installationAddress, setInstallationAddress] = useState("");
@@ -194,8 +198,81 @@ export function MeasurementProtocolForm() {
     [recommendations]
   );
 
-  // ─── Generowanie PDF ───────────────────────────────────────────────────────
+  // ─── Zapis do rejestru protokołów w Dexie ─────────────────────────────
+  const handleSaveToDatabase = async () => {
+    if (!installationAddress.trim()) {
+      toast.error("Podaj adres instalacji");
+      return;
+    }
+    if (!electricianName.trim()) {
+      toast.error("Podaj imię i nazwisko elektryka");
+      return;
+    }
 
+    try {
+      const protoId = `proto-${Date.now()}`;
+      const protoNumber = `PROTO/${new Date().getFullYear()}/${String(new Date().getMonth() + 1).padStart(2, "0")}/${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const measurementsList = [
+        ...insulationMeasurements.map((m, idx) => ({
+          id: `m-iso-${idx}-${Date.now()}`,
+          type: "insulation" as const,
+          description: `Rezystancja izolacji (${m.circuit}, faza ${m.phase || "L1"})`,
+          location: installationAddress,
+          expectedValue: `> ${m.minRequired || 0.5} MΩ`,
+          measuredValue: String(m.resistance),
+          unit: "MΩ",
+          status: m.pass ? ("pass" as const) : ("fail" as const),
+          norm: "PN-HD 60364-6-61",
+        })),
+        ...protectionMeasurements.map((m, idx) => ({
+          id: `m-prot-${idx}-${Date.now()}`,
+          type: "continuity" as const,
+          description: `Skuteczność ochrony / zerowanie (${m.circuit})`,
+          location: installationAddress,
+          expectedValue: `< ${m.maxAllowed || 2.1} Ω`,
+          measuredValue: String(m.resistance),
+          unit: "Ω",
+          status: m.pass ? ("pass" as const) : ("fail" as const),
+          norm: "PN-EN 60364-4-41",
+        })),
+        ...voltageMeasurements.map((m, idx) => ({
+          id: `m-volt-${idx}-${Date.now()}`,
+          type: "voltage" as const,
+          description: `Napięcie i prąd roboczy (${m.circuit})`,
+          location: installationAddress,
+          expectedValue: "230V ±10%",
+          measuredValue: String(m.voltage || 230),
+          unit: "V",
+          status: "pass" as const,
+          norm: "PN-EN 50160",
+        })),
+      ];
+
+      await addProtocol({
+        id: protoId,
+        number: protoNumber,
+        date: new Date(measurementDate),
+        location: installationAddress,
+        clientName: installationAddress.split(",")[0] || "Klient",
+        clientAddress: installationAddress,
+        electricianName,
+        electricianLicense: electricianLicense || "SEP",
+        installationType: installationType === "mieszkanie" || installationType === "dom" ? "nowa" : "przegląd",
+        measurements: measurementsList,
+        notes: notes || recommendations.join(". "),
+        status: shouldPass ? "completed" : "draft",
+      });
+
+      toast.success(`Zapisano protokół ${protoNumber} w rejestrze bazy danych! Przekierowywanie...`);
+      router.push("/elektryka/protokoly");
+    } catch (err) {
+      console.error(err);
+      toast.error("Błąd podczas zapisywania protokołu do bazy danych");
+    }
+  };
+
+  // ─── Generowanie PDF ───────────────────────────────────────────────────────
   const handleGeneratePdf = async () => {
     if (!installationAddress.trim()) {
       toast.error("Podaj adres instalacji");
@@ -682,10 +759,20 @@ export function MeasurementProtocolForm() {
             </TabsContent>
           </Tabs>
 
-          <div className="mt-6 flex gap-2">
+          <div className="mt-6 flex flex-col sm:flex-row gap-2">
+            <Button
+              onClick={handleSaveToDatabase}
+              variant="default"
+              className="flex-1 btn-switch"
+              size="lg"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Zapisz w rejestrze protokołów
+            </Button>
             <Button
               onClick={handleGeneratePdf}
               disabled={isGenerating}
+              variant="outline"
               className="flex-1"
               size="lg"
             >
