@@ -25,7 +25,7 @@ import {
   Plus, Pencil, Trash2, Search, Package, Copy, TrendingUp,
   Clock, BarChart3, Percent, Wrench, History, Link2,
   Calculator, DollarSign, ArrowUpRight, ArrowDownRight, Layers,
-  CheckSquare, Square, Star, ExternalLink,
+  CheckSquare, Square, Star, ExternalLink, LayoutGrid, List,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
@@ -87,6 +87,7 @@ export default function UslugiPage() {
   const [activeTab, setActiveTab] = useState("list");
   const [costCalcOpen, setCostCalcOpen] = useState(false);
   const [costCalcService, setCostCalcService] = useState<typeof services[0] | null>(null);
+  const [viewMode, setViewMode] = useState<"auto" | "cards" | "table">("auto");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
@@ -289,26 +290,26 @@ export default function UslugiPage() {
 
         {/* KPI Cards */}
         <StaggerItem>
-          <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
-            <Card className="card-steel"><CardContent className="pt-4 p-3">
-              <div className="text-xs text-muted-foreground">Usługi</div>
+          <div className="grid gap-2.5 sm:gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+            <Card className="card-steel"><CardContent className="p-3">
+              <div className="text-[11px] font-medium text-muted-foreground">Usługi</div>
               <div className="text-xl font-black">{analytics.totalServices}</div>
             </CardContent></Card>
-            <Card className="card-steel"><CardContent className="pt-4 p-3">
-              <div className="text-xs text-muted-foreground">Śr. cena netto</div>
+            <Card className="card-steel"><CardContent className="p-3">
+              <div className="text-[11px] font-medium text-muted-foreground">Śr. cena netto</div>
               <div className="text-lg font-black">{formatCurrency(analytics.avgPrice)}</div>
             </CardContent></Card>
-            <Card className="card-steel"><CardContent className="pt-4 p-3">
-              <div className="text-xs text-muted-foreground">Przychód łączny</div>
-              <div className="text-lg font-black text-green-600">{formatCurrency(analytics.totalRevenue)}</div>
+            <Card className="card-steel"><CardContent className="p-3">
+              <div className="text-[11px] font-medium text-muted-foreground">Przychód łączny</div>
+              <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(analytics.totalRevenue)}</div>
             </CardContent></Card>
-            <Card className="card-steel"><CardContent className="pt-4 p-3">
-              <div className="text-xs text-muted-foreground">Śr. marża</div>
+            <Card className="card-steel"><CardContent className="p-3">
+              <div className="text-[11px] font-medium text-muted-foreground">Śr. marża</div>
               <div className="text-lg font-black">{analytics.avgMargin}%</div>
             </CardContent></Card>
-            <Card className="card-steel"><CardContent className="pt-4 p-3">
-              <div className="text-xs text-muted-foreground">Nieużywane</div>
-              <div className="text-lg font-black text-amber-600">{analytics.unusedServices.length}</div>
+            <Card className="card-steel col-span-2 sm:col-span-1"><CardContent className="p-3">
+              <div className="text-[11px] font-medium text-muted-foreground">Nieużywane</div>
+              <div className="text-lg font-black text-amber-600 dark:text-amber-400">{analytics.unusedServices.length}</div>
             </CardContent></Card>
           </div>
         </StaggerItem>
@@ -326,29 +327,183 @@ export default function UslugiPage() {
             <TabsContent value="list" className="mt-4">
               <Card className="card-modern">
                 <CardHeader className="pb-3">
-                  <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input placeholder="Szukaj usług..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
                     </div>
-                    <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter((v ?? "all") as ServiceCategory | "all")}>
-                      <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Wszystkie ({services.length})</SelectItem>
-                        {Object.entries(CATEGORY_LABELS).map(([key, label]) => {
-                          const count = services.filter((s) => s.category === key).length;
-                          return <SelectItem key={key} value={key}>{label} ({count})</SelectItem>;
-                        })}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-2">
+                      <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter((v ?? "all") as ServiceCategory | "all")}>
+                        <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Wszystkie ({services.length})</SelectItem>
+                          {Object.entries(CATEGORY_LABELS).map(([key, label]) => {
+                            const count = services.filter((s) => s.category === key).length;
+                            return <SelectItem key={key} value={key}>{label} ({count})</SelectItem>;
+                          })}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Przełącznik widoku: Karty vs Tabela */}
+                      <div className="hidden sm:flex items-center rounded-lg border bg-muted/30 p-0.5">
+                        <Button
+                          variant={viewMode === "auto" || viewMode === "cards" ? "secondary" : "ghost"}
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setViewMode("cards")}
+                          title="Widok kafelkowy (Mobile/Karty)"
+                        >
+                          <LayoutGrid className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant={viewMode === "table" ? "secondary" : "ghost"}
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setViewMode("table")}
+                          title="Widok tabeli"
+                        >
+                          <List className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-3 sm:p-6">
                   {loading ? <TableSkeleton rows={5} /> : filtered.length === 0 ? (
                     <AnimatedEmptyState icon={Wrench} title={services.length === 0 ? "Brak usług" : "Brak wyników"} description={services.length === 0 ? "Dodaj pierwszą usługę" : "Zmień kryteria"} action={services.length === 0 ? <Button className="btn-primary" onClick={openAdd}><Plus className="mr-2 h-4 w-4" />Dodaj usługę</Button> : undefined} />
                   ) : (
                     <>
-                      <div className="overflow-x-auto">
+                      {/* ── Widok mobilny / Kafelkowy ── */}
+                      <div className={viewMode === "table" ? "hidden" : "grid gap-3 sm:hidden"}>
+                        {paginated.map((s) => {
+                          const stats = serviceStats[s.id!];
+                          const margin = getMargin(s);
+                          const hasVariants = s.variants && s.variants.length > 0;
+                          const hasMaterials = s.relatedMaterialIds && s.relatedMaterialIds.length > 0;
+                          const isSelected = selectedIds.has(s.id!);
+
+                          return (
+                            <div
+                              key={s.id}
+                              className={`p-3.5 rounded-xl border transition-all duration-200 bg-card ${
+                                isSelected
+                                  ? "border-primary/60 bg-primary/5 shadow-sm"
+                                  : "border-border/60 hover:border-border"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2.5">
+                                <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={() => toggleSelect(s.id!)}
+                                    className="mt-1"
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-bold text-sm text-foreground leading-snug">{s.name}</span>
+                                      {hasVariants && <span title="Ma warianty"><Layers className="h-3.5 w-3.5 text-purple-500" /></span>}
+                                      {hasMaterials && <span title="Powiązane materiały"><Link2 className="h-3.5 w-3.5 text-blue-500" /></span>}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                      <Badge className={`text-[10px] px-1.5 py-0.5 ${CATEGORY_COLORS[s.category]}`}>
+                                        {CATEGORY_LABELS[s.category]}
+                                      </Badge>
+                                      {s.subcategory && (
+                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                                          {s.subcategory}
+                                        </Badge>
+                                      )}
+                                      {s.estimatedMinutes ? (
+                                        <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
+                                          <Clock className="h-3 w-3" />
+                                          {s.estimatedMinutes} min
+                                        </span>
+                                      ) : null}
+                                    </div>
+
+                                    {s.description && (
+                                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                                        {s.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="text-right shrink-0">
+                                  <div className="text-base font-black text-foreground font-mono">
+                                    {formatCurrency(s.priceNetto)}
+                                  </div>
+                                  <div className="text-[11px] font-semibold text-primary font-mono">
+                                    {formatCurrency(s.priceNetto * (1 + s.vatRate / 100))} brutto
+                                  </div>
+                                  {margin !== null && (
+                                    <div className={`text-[10px] font-bold ${margin >= 30 ? "text-emerald-600" : margin >= 15 ? "text-amber-600" : "text-red-500"}`}>
+                                      marża {margin}%
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Pasek akcji mobilnych */}
+                              <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-border/40">
+                                <div className="text-[11px] text-muted-foreground">
+                                  Użyto: <strong className="text-foreground">{stats?.usageCount || 0}×</strong>
+                                  {stats?.revenue ? ` (${formatCurrency(stats.revenue)})` : ""}
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 px-2.5 text-xs gap-1"
+                                    onClick={() => openEdit(s.id!)}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                    Edytuj
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                    onClick={() => openCostCalc(s)}
+                                    title="Kalkulacja kosztów"
+                                  >
+                                    <Calculator className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                    onClick={() => handleDuplicate(s.id!)}
+                                    title="Duplikuj"
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>} />
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Usuń usługę</AlertDialogTitle>
+                                        <AlertDialogDescription>Usunąć &ldquo;{s.name}&rdquo;?</AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => { remove(s.id!); toast.success("Usunięto"); }}>
+                                          Usuń
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* ── Widok tabelaryczny (Desktop & opcjonalnie tablet) ── */}
+                      <div className={viewMode === "cards" ? "hidden" : "hidden sm:block overflow-x-auto"}>
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -414,12 +569,13 @@ export default function UslugiPage() {
                           </TableBody>
                         </Table>
                       </div>
+
                       {totalPages > 1 && (
-                        <div className="flex items-center justify-between pt-4 border-t mt-4">
-                          <p className="text-sm text-muted-foreground">{(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} z {filtered.length}</p>
-                          <div className="flex gap-1">
-                            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Poprzednia</Button>
-                            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Następna</Button>
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t mt-4">
+                          <p className="text-xs sm:text-sm text-muted-foreground">{(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} z {filtered.length}</p>
+                          <div className="flex gap-1.5 w-full sm:w-auto justify-end">
+                            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="flex-1 sm:flex-none">Poprzednia</Button>
+                            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="flex-1 sm:flex-none">Następna</Button>
                           </div>
                         </div>
                       )}
@@ -513,32 +669,83 @@ export default function UslugiPage() {
             {/* ── Cennik (pricing comparison) ── */}
             <TabsContent value="pricing" className="mt-4 space-y-4">
               <Card className="card-modern">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Cennik zaawansowany — porównanie marż</CardTitle>
-                  <CardDescription>Usługi z kosztem własnym — analiza rentowności</CardDescription>
+                <CardHeader className="pb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <div>
+                      <CardTitle className="text-base">Cennik zaawansowany — rentowność i marże</CardTitle>
+                      <CardDescription className="text-xs">Porównanie ceny netto do kosztu własnego oraz marży na usłudze</CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   {(() => {
                     const withCost = services.filter((s) => s.costPrice && s.costPrice > 0);
-                    if (withCost.length === 0) return <div className="text-center py-8 text-muted-foreground text-sm">Dodaj koszt własny do usług aby zobaczyć porównanie</div>;
+                    if (withCost.length === 0) return <div className="text-center py-8 text-muted-foreground text-sm">Dodaj koszt własny do usług w edycji, aby zobaczyć analizę rentowności.</div>;
                     const data = withCost.map((s) => ({
-                      name: s.name.length > 20 ? s.name.slice(0, 20) + "..." : s.name,
+                      name: s.name.length > 22 ? s.name.slice(0, 22) + "…" : s.name,
+                      fullName: s.name,
+                      unit: s.unit,
                       cena: s.priceNetto,
                       koszt: s.costPrice || 0,
+                      zysk: round(s.priceNetto - (s.costPrice || 0)),
                       marza: round(((s.priceNetto - (s.costPrice || 0)) / s.priceNetto) * 100),
                     })).sort((a, b) => b.marza - a.marza);
+
                     return (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={data} layout="vertical">
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                          <XAxis type="number" className="text-[10px]" tick={{ fontSize: 10 }} />
-                          <YAxis type="category" dataKey="name" className="text-[9px]" tick={{ fontSize: 9 }} width={120} />
-                          <Tooltip formatter={(v) => formatCurrency(Number(v))} />
-                          <Legend wrapperStyle={{ fontSize: "11px" }} />
-                          <Bar dataKey="cena" name="Cena netto" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-                          <Bar dataKey="koszt" name="Koszt własny" fill="#ef4444" radius={[0, 4, 4, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                      <div className="space-y-4">
+                        {/* Mobile list / cards for pricing */}
+                        <div className="grid gap-2.5 sm:hidden">
+                          {data.map((item, idx) => (
+                            <div key={idx} className="p-3 rounded-lg border border-border/70 bg-card/60 space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="font-semibold text-sm leading-snug line-clamp-2">{item.fullName}</span>
+                                <Badge
+                                  variant="secondary"
+                                  className={`text-[10px] font-bold shrink-0 ${
+                                    item.marza >= 50
+                                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                      : item.marza >= 30
+                                      ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                                      : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                  }`}
+                                >
+                                  Marża {item.marza}%
+                                </Badge>
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-1 pt-1 border-t border-border/40 text-center">
+                                <div className="bg-muted/30 p-1.5 rounded">
+                                  <div className="text-[10px] text-muted-foreground uppercase font-medium">Koszt</div>
+                                  <div className="text-xs font-semibold text-rose-600 dark:text-rose-400">{formatCurrency(item.koszt)}</div>
+                                </div>
+                                <div className="bg-muted/30 p-1.5 rounded">
+                                  <div className="text-[10px] text-muted-foreground uppercase font-medium">Cena netto</div>
+                                  <div className="text-xs font-bold text-primary">{formatCurrency(item.cena)}</div>
+                                </div>
+                                <div className="bg-muted/30 p-1.5 rounded">
+                                  <div className="text-[10px] text-muted-foreground uppercase font-medium">Zysk / j.m.</div>
+                                  <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">+{formatCurrency(item.zysk)}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Desktop chart */}
+                        <div className="hidden sm:block">
+                          <ResponsiveContainer width="100%" height={Math.max(260, data.length * 36)}>
+                            <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                              <XAxis type="number" className="text-[10px]" tick={{ fontSize: 10 }} tickFormatter={(v) => `${v} zł`} />
+                              <YAxis type="category" dataKey="name" className="text-[10px]" tick={{ fontSize: 10 }} width={140} />
+                              <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                              <Legend wrapperStyle={{ fontSize: "11px" }} />
+                              <Bar dataKey="cena" name="Cena netto" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={14} />
+                              <Bar dataKey="koszt" name="Koszt własny" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={14} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
                     );
                   })()}
                 </CardContent>
@@ -548,26 +755,35 @@ export default function UslugiPage() {
               <Card className="card-modern">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">Zakres cenowy usług</CardTitle>
-                  <CardDescription>Min / Aktualna / Max — usługi z ustawionym zakresem</CardDescription>
+                  <CardDescription className="text-xs">Min / Aktualna / Max — widełki cenowe do negocjacji</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {(() => {
                     const withRange = services.filter((s) => s.priceMin && s.priceMax && s.priceMin > 0);
-                    if (withRange.length === 0) return <div className="text-center py-8 text-muted-foreground text-sm">Ustaw ceny min/max w usługach aby zobaczyć zakres</div>;
+                    if (withRange.length === 0) return <div className="text-center py-8 text-muted-foreground text-sm">Ustaw ceny minimalne i maksymalne w szczegółach usług aby zobaczyć widełki.</div>;
                     return (
-                      <div className="space-y-3">
-                        {withRange.slice(0, 10).map((s) => {
+                      <div className="space-y-4">
+                        {withRange.slice(0, 12).map((s) => {
                           const range = (s.priceMax || 0) - (s.priceMin || 0);
-                          const position = range > 0 ? round(((s.priceNetto - (s.priceMin || 0)) / range) * 100) : 50;
+                          const position = range > 0 ? Math.min(100, Math.max(0, round(((s.priceNetto - (s.priceMin || 0)) / range) * 100))) : 50;
                           return (
-                            <div key={s.id} className="space-y-1">
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="font-medium truncate max-w-[50%]">{s.name}</span>
-                                <span className="text-xs text-muted-foreground">{formatCurrency(s.priceMin || 0)} — <span className="font-bold text-primary">{formatCurrency(s.priceNetto)}</span> — {formatCurrency(s.priceMax || 0)}</span>
+                            <div key={s.id} className="p-2.5 rounded-lg bg-muted/20 border border-border/50 space-y-1.5">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-sm">
+                                <span className="font-semibold text-foreground truncate">{s.name}</span>
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+                                  <span>Min: <span className="font-medium text-foreground">{formatCurrency(s.priceMin || 0)}</span></span>
+                                  <span>·</span>
+                                  <span className="font-bold text-primary px-1.5 py-0.5 rounded bg-primary/10">{formatCurrency(s.priceNetto)}</span>
+                                  <span>·</span>
+                                  <span>Max: <span className="font-medium text-foreground">{formatCurrency(s.priceMax || 0)}</span></span>
+                                </div>
                               </div>
-                              <div className="relative h-2 rounded-full bg-accent/50">
-                                <div className="absolute h-full rounded-full bg-gradient-to-r from-green-400 to-red-400 opacity-30" style={{ width: "100%" }} />
-                                <div className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-primary border-2 border-white shadow" style={{ left: `${position}%` }} />
+                              <div className="relative h-2.5 rounded-full bg-accent/60 overflow-hidden">
+                                <div className="absolute h-full rounded-full bg-gradient-to-r from-emerald-500 via-amber-400 to-rose-500 opacity-60 w-full" />
+                                <div
+                                  className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full bg-primary border-2 border-background shadow-md transform -translate-x-1/2"
+                                  style={{ left: `${position}%` }}
+                                />
                               </div>
                             </div>
                           );
