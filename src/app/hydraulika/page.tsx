@@ -29,6 +29,13 @@ import { PLUMBING_STANDARDS } from "@/lib/plumbing-protocols";
 import Link from "next/link";
 import { toast } from "sonner";
 import { sounds } from "@/lib/audio";
+import {
+  calcHeatPumpDemand,
+  CLIMATE_ZONES_PL,
+  INSULATION_STANDARDS,
+  type ClimateZone,
+  type InsulationStandard,
+} from "@/lib/heatpump-calc";
 
 // Typowe pakiety i punkty hydrauliczne z cenami rynkowymi
 const PLUMBING_FAST_POINTS = [
@@ -189,6 +196,73 @@ export default function HydraulikaPage() {
     router.push("/wyceny/nowa?source=hydraulika");
   };
 
+  // ─── Stan Kalkulatora Pomp Ciepła i OZC (PN-EN 12831 / WT 2021) ───────────
+  const [hpArea, setHpArea] = useState<number>(150);
+  const [hpHeight, setHpHeight] = useState<number>(2.6);
+  const [hpClimateZone, setHpClimateZone] = useState<ClimateZone>("III");
+  const [hpInsulation, setHpInsulation] = useState<InsulationStandard>("wt2021");
+  const [hpOccupants, setHpOccupants] = useState<number>(4);
+  const [hpSystemType, setHpSystemType] = useState<"floor_only" | "radiators_low_temp" | "radiators_high_temp" | "mixed">("floor_only");
+  const [hpHotWaterComfort, setHpHotWaterComfort] = useState<"eco" | "standard" | "high">("standard");
+
+  const heatPumpResult = useMemo(() => {
+    return calcHeatPumpDemand({
+      heatedAreaM2: hpArea,
+      ceilingHeightM: hpHeight,
+      climateZone: hpClimateZone,
+      insulation: hpInsulation,
+      occupantsCount: hpOccupants,
+      heatingSystemType: hpSystemType,
+      hotWaterComfort: hpHotWaterComfort,
+    });
+  }, [hpArea, hpHeight, hpClimateZone, hpInsulation, hpOccupants, hpSystemType, hpHotWaterComfort]);
+
+  const handleAddHeatPumpToQuote = () => {
+    const pkg = heatPumpResult.recommendedPackage;
+    const items = [
+      {
+        name: `${heatPumpResult.suggestedPumpModel} (A+++, ${heatPumpResult.norm})`,
+        quantity: 1,
+        unit: "kpl" as const,
+        priceNettoPerUnit: pkg.pumpPriceNetto,
+        vatRate: 8 as const,
+      },
+      {
+        name: `Zasobnik C.W.U. ${heatPumpResult.dhwTankVolumeLiters}L z dużą wężownicą (min. 2.5 m²) do pompy ciepła`,
+        quantity: 1,
+        unit: "kpl" as const,
+        priceNettoPerUnit: pkg.dhwPriceNetto,
+        vatRate: 8 as const,
+      },
+      {
+        name: `Zbiornik buforowy C.O. ${heatPumpResult.bufferTankVolumeLiters}L (sprzęgło hydrauliczne)`,
+        quantity: 1,
+        unit: "kpl" as const,
+        priceNettoPerUnit: pkg.bufferPriceNetto,
+        vatRate: 8 as const,
+      },
+      {
+        name: "Armatura kotłowni (grupa bezp., naczynia przeponowe, separator magnetyczny, zawór 3-dr)",
+        quantity: 1,
+        unit: "kpl" as const,
+        priceNettoPerUnit: pkg.hydraulicAccessoriesPriceNetto,
+        vatRate: 8 as const,
+      },
+      {
+        name: "Montaż maszynowni, podłączenie hydrauliczne i freonowe, próba azotem i uruchomienie",
+        quantity: 1,
+        unit: "usł" as const,
+        priceNettoPerUnit: pkg.laborPriceNetto,
+        vatRate: 8 as const,
+      },
+    ];
+
+    sounds.playSuccess();
+    localStorage.setItem("gksystem_quick_plumbing_quote", JSON.stringify(items));
+    toast.success(`Przeniesiono zestaw pompy ciepła ${heatPumpResult.recommendedPumpPowerKW} kW do nowej wyceny!`);
+    router.push("/wyceny/nowa?source=hydraulika");
+  };
+
   // Filtrujemy wyceny hydrauliczne (z wykluczeniem pozycji elektrycznych)
   const hydraulicQuotes = useMemo(() => {
     const keywords = ["woda", "wod-kan", "bateria", "umywalk", "wanna", "prysznic", "wc", "stelaż", "podłogów", "kocioł", "grzejnik", "syfon", "kanalizacj", "hydraul", "pex"];
@@ -281,24 +355,28 @@ export default function HydraulikaPage() {
       </div>
 
       <Tabs defaultValue="calculator" className="space-y-4">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full max-w-2xl h-auto p-1 bg-muted/60">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-6 w-full max-w-4xl h-auto p-1 bg-muted/60">
           <TabsTrigger value="calculator" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
             <Calculator className="h-4 w-4 shrink-0 text-cyan-500" />
             <span>Kalkulator</span>
           </TabsTrigger>
-          <TabsTrigger value="materials" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
-            <Package className="h-4 w-4 shrink-0 text-cyan-500" />
-            <span>Materiały</span>
+          <TabsTrigger value="heatpump" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
+            <Flame className="h-4 w-4 shrink-0 text-amber-500" />
+            <span className="font-semibold text-amber-600 dark:text-amber-400">Pompa & OZC</span>
           </TabsTrigger>
           <TabsTrigger value="underfloor" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
             <Layers className="h-4 w-4 shrink-0 text-cyan-500" />
             <span>Podłogówka PEX</span>
           </TabsTrigger>
+          <TabsTrigger value="materials" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
+            <Package className="h-4 w-4 shrink-0 text-cyan-500" />
+            <span>Materiały</span>
+          </TabsTrigger>
           <TabsTrigger value="protocols" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
             <ShieldCheck className="h-4 w-4 shrink-0 text-cyan-500" />
             <span>Protokoły prób</span>
           </TabsTrigger>
-          <TabsTrigger value="standards" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium col-span-2 sm:col-span-1">
+          <TabsTrigger value="standards" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
             <FileText className="h-4 w-4 shrink-0 text-cyan-500" />
             <span>Normy PN</span>
           </TabsTrigger>
@@ -447,6 +525,298 @@ export default function HydraulikaPage() {
               Utwórz wycenę
               <ArrowRight className="h-4 w-4" />
             </Button>
+          </div>
+        </TabsContent>
+
+        {/* ─── Zakładka: Kalkulator Pomp Ciepła i OZC (PN-EN 12831 / WT 2021) ─── */}
+        <TabsContent value="heatpump" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Formularz wprowadzania danych budynku */}
+            <div className="lg:col-span-7 space-y-4">
+              <Card className="border-amber-500/30 shadow-sm">
+                <CardHeader className="p-4 pb-3 border-b bg-amber-500/5">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+                      <Flame className="h-5 w-5 text-amber-500" />
+                      Parametry budynku i zapotrzebowanie (OZC)
+                    </CardTitle>
+                    <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 font-mono text-xs">
+                      PN-EN 12831 / WT 2021
+                    </Badge>
+                  </div>
+                  <CardDescription className="text-xs">
+                    Oblicz straty przenikania, wentylacji i moc grzewczą pod pompę ciepła
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-5 space-y-4">
+                  {/* Powierzchnia i wysokość */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="hp-area" className="text-xs font-semibold">
+                        Powierzchnia ogrzewana (m²)
+                      </Label>
+                      <Input
+                        id="hp-area"
+                        type="number"
+                        min={20}
+                        max={1000}
+                        value={hpArea}
+                        onChange={(e) => setHpArea(Math.max(1, Number(e.target.value) || 0))}
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="hp-height" className="text-xs font-semibold">
+                        Wysokość kondygnacji (m)
+                      </Label>
+                      <Input
+                        id="hp-height"
+                        type="number"
+                        step={0.1}
+                        min={2.0}
+                        max={5.0}
+                        value={hpHeight}
+                        onChange={(e) => setHpHeight(Number(e.target.value) || 2.6)}
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Strefa klimatyczna i Standard izolacji */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Strefa klimatyczna Polski</Label>
+                      <Select
+                        value={hpClimateZone}
+                        onValueChange={(val) => {
+                          if (val) setHpClimateZone(val as ClimateZone);
+                        }}
+                      >
+                        <SelectTrigger className="text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(CLIMATE_ZONES_PL).map(([key, zone]) => (
+                            <SelectItem key={key} value={key} className="text-xs">
+                              <span className="font-bold">Strefa {key}</span> ({zone.designOutdoorTemp}°C) - {zone.regionDescription}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <span className="text-[11px] text-muted-foreground block">
+                        Projektowa temp. zewn.: <strong>{CLIMATE_ZONES_PL[hpClimateZone]?.designOutdoorTemp}°C</strong>
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Standard izolacji budynku</Label>
+                      <Select
+                        value={hpInsulation}
+                        onValueChange={(val) => {
+                          if (val) setHpInsulation(val as InsulationStandard);
+                        }}
+                      >
+                        <SelectTrigger className="text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(INSULATION_STANDARDS).map(([key, info]) => (
+                            <SelectItem key={key} value={key} className="text-xs">
+                              {info.label} (~{info.specificHeatLossWperM2} W/m²)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <span className="text-[11px] text-muted-foreground block truncate">
+                        {INSULATION_STANDARDS[hpInsulation]?.description}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Odbiorniki i C.W.U. */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Typ instalacji grzewczej</Label>
+                      <Select
+                        value={hpSystemType}
+                        onValueChange={(val: any) => setHpSystemType(val)}
+                      >
+                        <SelectTrigger className="text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="floor_only" className="text-xs">Podłogówka 100% (35°C)</SelectItem>
+                          <SelectItem value="radiators_low_temp" className="text-xs">Grzejniki niskotemp. (45°C)</SelectItem>
+                          <SelectItem value="mixed" className="text-xs">Mieszana: podłogówka + grzejniki</SelectItem>
+                          <SelectItem value="radiators_high_temp" className="text-xs">Grzejniki tradycyjne (55°C)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="hp-occupants" className="text-xs font-semibold">
+                        Liczba domowników (C.W.U.)
+                      </Label>
+                      <Input
+                        id="hp-occupants"
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={hpOccupants}
+                        onChange={(e) => setHpOccupants(Math.max(1, Number(e.target.value) || 1))}
+                        className="font-mono text-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Komfort ciepłej wody</Label>
+                      <Select
+                        value={hpHotWaterComfort}
+                        onValueChange={(val: any) => setHpHotWaterComfort(val)}
+                      >
+                        <SelectTrigger className="text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="eco" className="text-xs">Eco (30 L/os/dobę)</SelectItem>
+                          <SelectItem value="standard" className="text-xs">Standard (50 L/os/dobę)</SelectItem>
+                          <SelectItem value="high" className="text-xs">Wysoki / wanna (70 L/os/dobę)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Wyjaśnienia inżynieryjne */}
+              <div className="p-3.5 rounded-xl bg-muted/40 border text-xs space-y-1.5">
+                <div className="font-semibold flex items-center gap-1.5 text-foreground">
+                  <ShieldCheck className="h-4 w-4 text-cyan-600" />
+                  Dobór wg wytycznych PORT PC i PN-EN 12831:
+                </div>
+                <p className="text-muted-foreground leading-relaxed">
+                  Nowoczesne inwerterowe pompy ciepła dobiera się na 100% obciążenia budynku w punkcie biwalentnym (-7°C do -10°C). 
+                  Zintegrowana grzałka szczytowa 3-9 kW wspomaga układ jedynie w rzadkie noce z temperaturą poniżej projektowej.
+                </p>
+              </div>
+            </div>
+
+            {/* Wyniki obliczeń i Kompletna kotłownia */}
+            <div className="lg:col-span-5 space-y-4">
+              <Card className="border-amber-500/40 bg-gradient-to-b from-amber-500/5 to-transparent shadow-md">
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                      Rekomendowana Pompa Ciepła
+                    </span>
+                    <Badge className="bg-amber-600 text-white font-mono text-xs">
+                      {heatPumpResult.recommendedPumpPowerKW} kW (A+++)
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-lg font-black text-foreground">
+                    {heatPumpResult.suggestedPumpModel}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-2 space-y-4">
+                  {/* Wskaźniki OZC */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2.5 rounded-lg bg-background border text-left">
+                      <span className="text-[10px] text-muted-foreground uppercase block font-semibold">Moc OZC (c.o.)</span>
+                      <span className="text-base font-black text-foreground font-mono">
+                        {heatPumpResult.buildingTransmissionLossKW} kW
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-background border text-left">
+                      <span className="text-[10px] text-muted-foreground uppercase block font-semibold">Dodatek C.W.U.</span>
+                      <span className="text-base font-black text-foreground font-mono">
+                        +{heatPumpResult.hotWaterDemandKW} kW
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-background border text-left">
+                      <span className="text-[10px] text-muted-foreground uppercase block font-semibold">Zbiornik buforowy</span>
+                      <span className="text-sm font-bold text-foreground font-mono">
+                        {heatPumpResult.bufferTankVolumeLiters} L
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-background border text-left">
+                      <span className="text-[10px] text-muted-foreground uppercase block font-semibold">Zasobnik C.W.U.</span>
+                      <span className="text-sm font-bold text-foreground font-mono">
+                        {heatPumpResult.dhwTankVolumeLiters} L
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Sprawność i zużycie */}
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Szacowany sezonowy SCOP:</span>
+                      <span className="font-bold text-foreground font-mono">{heatPumpResult.scopEstimate}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Punkt biwalencji:</span>
+                      <span className="font-bold text-foreground font-mono">{heatPumpResult.bivalentPointTempC}°C</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Roczne zapotrzebowanie ciepła:</span>
+                      <span className="font-bold text-foreground font-mono">{heatPumpResult.estimatedYearlyHeatKWh.toLocaleString("pl-PL")} kWh/rok</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Szacowany pobór prądu:</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                        {Math.round(heatPumpResult.estimatedYearlyHeatKWh / heatPumpResult.scopEstimate).toLocaleString("pl-PL")} kWh/rok
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Kosztorys montażu maszynowni */}
+                  <div className="pt-2 border-t space-y-1.5 text-xs">
+                    <div className="font-bold text-foreground flex items-center justify-between">
+                      <span>Kompletna kotłownia z montażem:</span>
+                      <span className="font-mono font-bold text-sm text-amber-600 dark:text-amber-400">
+                        {formatCurrency(heatPumpResult.recommendedPackage.totalNetto)} netto
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground space-y-0.5">
+                      <div className="flex justify-between">
+                        <span>• Jednostka pompy ciepła:</span>
+                        <span className="font-mono">{formatCurrency(heatPumpResult.recommendedPackage.pumpPriceNetto)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>• Zasobnik C.W.U. ({heatPumpResult.dhwTankVolumeLiters}L):</span>
+                        <span className="font-mono">{formatCurrency(heatPumpResult.recommendedPackage.dhwPriceNetto)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>• Bufor C.O. ({heatPumpResult.bufferTankVolumeLiters}L):</span>
+                        <span className="font-mono">{formatCurrency(heatPumpResult.recommendedPackage.bufferPriceNetto)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>• Armatura, filtry, zawory, naczynia:</span>
+                        <span className="font-mono">{formatCurrency(heatPumpResult.recommendedPackage.hydraulicAccessoriesPriceNetto)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>• Montaż, hydraulika, freon, rozruch:</span>
+                        <span className="font-mono">{formatCurrency(heatPumpResult.recommendedPackage.laborPriceNetto)}</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between pt-1 border-t text-foreground font-bold">
+                      <span>Razem brutto (8% VAT):</span>
+                      <span className="text-base text-amber-600 dark:text-amber-400 font-mono">
+                        {formatCurrency(heatPumpResult.recommendedPackage.totalNetto * 1.08)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Przycisk akcji */}
+                  <Button
+                    className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold gap-2 py-5 shadow-md"
+                    onClick={handleAddHeatPumpToQuote}
+                  >
+                    Przenieś zestaw pompy ciepła do wyceny
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </TabsContent>
 
