@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { format, subMonths, isThisMonth } from "date-fns";
 import { pl } from "date-fns/locale";
+import { sounds } from "@/lib/audio";
 
 // Kategorie usług elektrycznych
 const ELECTRICAL_CATEGORIES = [
@@ -156,15 +157,15 @@ export default function ElektrykaPage() {
               <p className="text-muted-foreground mt-0.5 text-sm">Wyceny, cennik i analityka usług elektrycznych</p>
             </div>
             <div className="flex items-center gap-2">
-              <Link href="/elektryka/protokoly">
-                <Button variant="outline">
-                  <FileText className="h-4 w-4" />
+              <Link href="/elektryka/protokoly" onClick={() => sounds.playClick(850)}>
+                <Button variant="outline" className="border-border/80 hover:border-amber-500/50">
+                  <FileText className="h-4 w-4 text-amber-500" />
                   Protokoły
                 </Button>
               </Link>
-              <Link href="/elektryka/nowa">
-                <Button className="btn-switch">
-                  <Plus className="h-4 w-4" />
+              <Link href="/elektryka/nowa" onClick={() => sounds.playSuccess()}>
+                <Button className="btn-glow-amber text-slate-950 font-black gap-1.5 shadow-md">
+                  <Plus className="h-4 w-4 stroke-[3]" />
                   Nowa wycena
                 </Button>
               </Link>
@@ -240,7 +241,13 @@ export default function ElektrykaPage() {
           <ScrewRow>Szczegóły</ScrewRow>
         </StaggerItem>
         <StaggerItem>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs
+            value={activeTab}
+            onValueChange={(val) => {
+              sounds.playClick(940);
+              setActiveTab(val);
+            }}
+          >
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Przegląd</TabsTrigger>
               <TabsTrigger value="cennik">Cennik</TabsTrigger>
@@ -255,7 +262,15 @@ export default function ElektrykaPage() {
                 {ELECTRICAL_CATEGORIES.map((cat) => {
                   const Icon = cat.icon;
                   return (
-                    <Card key={cat.id} className="card-panel cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => { setCategoryFilter(cat.id); setActiveTab("cennik"); }}>
+                    <Card
+                      key={cat.id}
+                      className="card-panel cursor-pointer hover:scale-[1.03] active:scale-95 transition-all"
+                      onClick={() => {
+                        sounds.playClick(850);
+                        setCategoryFilter(cat.id);
+                        setActiveTab("cennik");
+                      }}
+                    >
                       <CardContent className="p-4 text-center">
                         <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${cat.color} shadow-lg mx-auto mb-2`}>
                           <Icon className="h-5 w-5 text-white" />

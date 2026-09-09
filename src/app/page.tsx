@@ -22,6 +22,7 @@ import { Greeting } from "@/components/dashboard/greeting";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { Sparkline } from "@/components/dashboard/sparkline";
 import { subMonths, subDays, startOfDay, isSameDay } from "date-fns";
+import { sounds } from "@/lib/audio";
 
 // Lazy load widżety wspierające
 const TodaySchedule = lazy(() => import("@/components/dashboard/today-schedule").then((m) => ({ default: m.TodaySchedule })));
@@ -80,33 +81,37 @@ export default function DashboardPage() {
     <PageTransition>
       <StaggerContainer className="space-y-5 max-w-6xl mx-auto pb-10">
 
-        {/* ── 1. Czysty, przejrzysty Hero Header ── */}
+        {/* ── 1. Czysty, nowoczesny Hero Header z podświetleniem ── */}
         <StaggerItem>
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-md">
-            <div>
+          <div className="relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 text-white p-5 sm:p-6 rounded-3xl border border-slate-700/60 shadow-xl">
+            {/* Ozdobny akcent świetlny */}
+            <div className="absolute -top-12 -right-12 w-40 h-40 bg-gradient-to-br from-cyan-500/20 to-amber-500/20 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="relative z-10">
               <Greeting />
-              <p className="text-xs sm:text-sm text-slate-300 mt-1">
+              <p className="text-xs sm:text-sm text-slate-300 mt-1 flex items-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 System szybkich wycen i protokołów dla instalatorów
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
-              <Link href="/hydraulika" className="flex-1 sm:flex-initial">
-                <Button className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold gap-1.5 shadow-sm text-xs sm:text-sm h-10 px-4">
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto relative z-10">
+              <Link href="/hydraulika" className="flex-1 sm:flex-initial" onClick={() => sounds.playClick(900)}>
+                <Button className="w-full btn-glow-cyan text-white font-bold gap-1.5 shadow-md text-xs sm:text-sm h-10 px-4">
                   <Droplets className="h-4 w-4" />
                   Hydraulika
                 </Button>
               </Link>
 
-              <Link href="/elektryka" className="flex-1 sm:flex-initial">
-                <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold gap-1.5 shadow-sm text-xs sm:text-sm h-10 px-4">
-                  <Zap className="h-4 w-4" />
+              <Link href="/elektryka" className="flex-1 sm:flex-initial" onClick={() => sounds.playClick(1050)}>
+                <Button className="w-full btn-glow-amber text-slate-950 font-black gap-1.5 shadow-md text-xs sm:text-sm h-10 px-4">
+                  <Zap className="h-4 w-4 fill-current" />
                   Elektryka
                 </Button>
               </Link>
 
-              <Link href="/wyceny/nowa" className="flex-1 sm:flex-initial">
-                <Button className="w-full bg-primary hover:bg-primary/90 text-white font-bold gap-1.5 shadow-sm text-xs sm:text-sm h-10 px-4">
+              <Link href="/wyceny/nowa" className="flex-1 sm:flex-initial" onClick={() => sounds.playSuccess()}>
+                <Button className="w-full bg-primary hover:bg-primary/90 text-white font-bold gap-1.5 shadow-md text-xs sm:text-sm h-10 px-4 active:scale-95 transition-transform">
                   <Plus className="h-4 w-4" />
                   Nowa wycena
                 </Button>
@@ -123,29 +128,29 @@ export default function DashboardPage() {
         {/* ── 3. Kluczowe wskaźniki (Zredukowane do 4 czytelnych kart) ── */}
         <StaggerItem>
           <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-            <Link href="/wyceny">
-              <Card className="hover:border-primary/50 transition-all cursor-pointer h-full">
+            <Link href="/wyceny" onClick={() => sounds.playClick(800)}>
+              <Card className="card-wow hover:border-primary/50 transition-all cursor-pointer h-full border border-border/80 rounded-2xl">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between text-muted-foreground mb-2">
                     <span className="text-xs font-semibold">Wszystkie wyceny</span>
                     <FileText className="h-4 w-4 text-blue-500" />
                   </div>
-                  <div className="text-2xl font-black">{quoteCount}</div>
+                  <div className="text-2xl font-black font-mono">{quoteCount}</div>
                   <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">{acceptedCount}</span> zaakceptowane
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400 font-mono">{acceptedCount}</span> zaakceptowane
                   </div>
                 </CardContent>
               </Card>
             </Link>
 
-            <Link href="/wyceny?status=wyslana">
-              <Card className="hover:border-primary/50 transition-all cursor-pointer h-full">
+            <Link href="/wyceny?status=wyslana" onClick={() => sounds.playClick(850)}>
+              <Card className="card-wow hover:border-primary/50 transition-all cursor-pointer h-full border border-border/80 rounded-2xl">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between text-muted-foreground mb-2">
                     <span className="text-xs font-semibold">Oczekujące na decyzję</span>
                     <Clock className="h-4 w-4 text-amber-500" />
                   </div>
-                  <div className="text-2xl font-black text-amber-600 dark:text-amber-400">{pendingCount}</div>
+                  <div className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">{pendingCount}</div>
                   <div className="text-[11px] text-muted-foreground mt-1">
                     Wysłane do klienta
                   </div>
@@ -153,13 +158,13 @@ export default function DashboardPage() {
               </Card>
             </Link>
 
-            <Card className="h-full">
+            <Card className="card-wow h-full border border-border/80 rounded-2xl">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between text-muted-foreground mb-2">
                   <span className="text-xs font-semibold">Przychód (zaakceptowane)</span>
                   <TrendingUp className="h-4 w-4 text-emerald-500" />
                 </div>
-                <div className="text-xl sm:text-2xl font-black text-primary tabular-nums">
+                <div className="text-xl sm:text-2xl font-black text-primary font-mono tabular-nums">
                   {formatCurrency(totalRevenue)}
                 </div>
                 {revenueTrend !== 0 && (
@@ -171,14 +176,14 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Link href="/faktury">
-              <Card className="hover:border-primary/50 transition-all cursor-pointer h-full">
+            <Link href="/faktury" onClick={() => sounds.playClick(900)}>
+              <Card className="card-wow hover:border-primary/50 transition-all cursor-pointer h-full border border-border/80 rounded-2xl">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between text-muted-foreground mb-2">
                     <span className="text-xs font-semibold">Do rozliczenia</span>
                     <CheckCircle2 className="h-4 w-4 text-purple-500" />
                   </div>
-                  <div className={`text-xl sm:text-2xl font-black tabular-nums ${unpaidAmount > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
+                  <div className={`text-xl sm:text-2xl font-black font-mono tabular-nums ${unpaidAmount > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
                     {formatCurrency(unpaidAmount)}
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-1">

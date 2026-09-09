@@ -1,17 +1,23 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 
 const inter = Inter({
   variable: "--font-sans",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   display: "swap",
 });
 
-const APP_URL = "https://gk-system.pl";
-const APP_NAME = "GK";
-const APP_DESCRIPTION = "Profesjonalny system wycen usług hydraulicznych. Twórz wyceny, zarządzaj klientami, materiałami i fakturami w jednym miejscu.";
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-mono",
+  subsets: ["latin", "latin-ext"],
+  display: "swap",
+});
+
+const APP_URL = "https://wycenka.vercel.app";
+const APP_NAME = "Wyceny PRO";
+const APP_DESCRIPTION = "Profesjonalny system wycen instalacji hydraulicznych i elektrycznych w terenie. Szybkie kosztorysy, kalkulatory punktów i certyfikowane protokoły odbiorcze.";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -26,20 +32,21 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
-    default: `${APP_NAME} - System wycen usług hydraulicznych`,
+    default: `${APP_NAME} - Hydraulika & Elektryka`,
     template: `%s | ${APP_NAME}`,
   },
   description: APP_DESCRIPTION,
   keywords: [
     "wycena usług",
     "hydraulika",
+    "elektryka",
     "system wycen",
     "faktury",
     "wycena instalacji",
     "kosztorys",
-    "usługi hydrauliczne",
-    "zarządzanie klientami",
-    "program dla hydraulika",
+    "protokoły pomiarowe",
+    "próby ciśnieniowe",
+    "pomiary SEP",
   ],
   authors: [{ name: APP_NAME }],
   creator: APP_NAME,
@@ -126,7 +133,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased selection:bg-cyan-500/20 selection:text-cyan-400`}>
         <Providers>{children}</Providers>
       </body>
     </html>

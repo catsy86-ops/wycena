@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Package, Calendar, FileCheck, BarChart3, ClipboardList, Settings, Wrench, Zap, Droplets,
 } from "lucide-react";
+import { sounds } from "@/lib/audio";
 
 const MAIN_ITEMS = [
   { href: "/", icon: LayoutDashboard, label: "Pulpit" },
@@ -49,8 +50,9 @@ export function MobileBottomNav() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => sounds.playClick(isActive ? 700 : 920)}
               className={cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-colors relative",
+                "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-colors relative active:scale-95 transition-transform",
                 isActive ? "text-white" : "text-slate-400"
               )}
             >
@@ -71,7 +73,10 @@ export function MobileBottomNav() {
         {/* More button */}
         <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
           <SheetTrigger>
-            <button className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-slate-400 transition-colors">
+            <button
+              onClick={() => sounds.playClick(850)}
+              className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-slate-400 transition-colors active:scale-95 transition-transform"
+            >
               <MoreHorizontal className="h-5 w-5" />
               <span className="text-[9px] font-medium">Więcej</span>
             </button>
@@ -85,9 +90,12 @@ export function MobileBottomNav() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={() => setMoreOpen(false)}
+                    onClick={() => {
+                      sounds.playClick(880);
+                      setMoreOpen(false);
+                    }}
                     className={cn(
-                      "flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors",
+                      "flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors active:scale-95 transition-transform",
                       isActive ? "bg-primary/20 text-white" : "text-slate-400 hover:text-white hover:bg-white/5"
                     )}
                   >

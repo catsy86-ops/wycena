@@ -32,6 +32,7 @@ import { sanitizeCsvCell } from "@/lib/utils";
 import { AnimatedEmptyState } from "@/components/animated-empty-state";
 import { TableSkeleton } from "@/components/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
+import { sounds } from "@/lib/audio";
 
 const STATUS_COLORS: Record<QuoteStatus, string> = {
   szkic: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
@@ -268,7 +269,47 @@ export default function WycenyPage() {
                     <AnimatedEmptyState icon={FileText} title={quotes.length === 0 ? "Brak wycen" : "Brak wyników"} description={quotes.length === 0 ? "Utwórz pierwszą wycenę!" : "Zmień kryteria wyszukiwania"} action={quotes.length === 0 ? <Link href="/wyceny/nowa"><Button className="btn-primary"><Plus className="mr-2 h-4 w-4" />Nowa wycena</Button></Link> : undefined} />
                   ) : (
                     <>
-                      <div className="overflow-x-auto">
+                      {/* Widok mobilny — responsywne karty dotykowe dla instalatorów */}
+                      <div className="block md:hidden space-y-3">
+                        <AnimatePresence>
+                          {paginatedQuotes.map((q, index) => (
+                            <motion.div
+                              key={q.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              transition={{ delay: Math.min(index * 0.04, 0.3) }}
+                              className="card-wow p-4 rounded-2xl border border-border/80 cursor-pointer active:scale-[0.98] transition-all bg-card/60 hover:border-primary/40 shadow-sm"
+                              onClick={() => {
+                                sounds.playClick(850);
+                                router.push(`/wyceny/${q.id}`);
+                              }}
+                            >
+                              <div className="flex items-center justify-between gap-2 mb-1.5">
+                                <span className="font-mono font-bold text-sm text-foreground">{q.number}</span>
+                                <Badge className={STATUS_COLORS[q.status]}>{STATUS_LABELS[q.status]}</Badge>
+                              </div>
+                              <div className="text-sm font-semibold text-foreground/90">
+                                {q.clientName || <span className="text-muted-foreground italic font-normal">Brak przypisanego klienta</span>}
+                              </div>
+                              <div className="flex items-center justify-between pt-2.5 border-t border-border/50 mt-2.5 text-xs">
+                                <span className="text-muted-foreground font-mono">
+                                  {format(new Date(q.createdAt), "dd.MM.yyyy", { locale: pl })}
+                                </span>
+                                <div className="text-right">
+                                  <span className="text-[11px] text-muted-foreground mr-1.5">Brutto:</span>
+                                  <span className="font-mono font-black text-base text-primary">
+                                    {formatCurrency(q.totalBrutto)}
+                                  </span>
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      </div>
+
+                      {/* Widok desktopowy — pełna tabela */}
+                      <div className="hidden md:block overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -283,10 +324,10 @@ export default function WycenyPage() {
                           <TableBody>
                             <AnimatePresence>
                               {paginatedQuotes.map((q, index) => (
-                                <motion.tr key={q.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ delay: Math.min(index * 0.03, 0.3) }} className="group border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => router.push(`/wyceny/${q.id}`)}>
-                                  <TableCell className="font-semibold">{q.number}</TableCell>
+                                <motion.tr key={q.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ delay: Math.min(index * 0.03, 0.3) }} className="group border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => { sounds.playClick(850); router.push(`/wyceny/${q.id}`); }}>
+                                  <TableCell className="font-semibold font-mono">{q.number}</TableCell>
                                   <TableCell>{q.clientName || <span className="text-muted-foreground">—</span>}</TableCell>
-                                  <TableCell className="text-muted-foreground text-sm">{format(new Date(q.createdAt), "dd.MM.yyyy", { locale: pl })}</TableCell>
+                                  <TableCell className="text-muted-foreground text-sm font-mono">{format(new Date(q.createdAt), "dd.MM.yyyy", { locale: pl })}</TableCell>
                                   <TableCell>
                                     <DropdownMenu>
                                       <DropdownMenuTrigger onClick={(e: React.MouseEvent) => e.stopPropagation()}>
@@ -299,7 +340,7 @@ export default function WycenyPage() {
                                       </DropdownMenuContent>
                                     </DropdownMenu>
                                   </TableCell>
-                                  <TableCell className="text-right font-bold text-primary">{formatCurrency(q.totalBrutto)}</TableCell>
+                                  <TableCell className="text-right font-black text-primary font-mono tabular-nums">{formatCurrency(q.totalBrutto)}</TableCell>
                                   <TableCell>
                                     <DropdownMenu>
                                       <DropdownMenuTrigger onClick={(e: React.MouseEvent) => e.stopPropagation()}>
@@ -322,10 +363,10 @@ export default function WycenyPage() {
                       </div>
                       {totalPages > 1 && (
                         <div className="flex items-center justify-between pt-4 border-t mt-4">
-                          <p className="text-sm text-muted-foreground">{(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} z {filtered.length}</p>
+                          <p className="text-sm text-muted-foreground font-mono">{(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} z {filtered.length}</p>
                           <div className="flex gap-1">
-                            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Poprzednia</Button>
-                            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Następna</Button>
+                            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => { sounds.playClick(750); setPage((p) => p - 1); }}>Poprzednia</Button>
+                            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => { sounds.playClick(750); setPage((p) => p + 1); }}>Następna</Button>
                           </div>
                         </div>
                       )}

@@ -19,6 +19,7 @@ import { PlumbingProtocolManager } from "@/components/plumbing-protocol-manager"
 import { PLUMBING_STANDARDS } from "@/lib/plumbing-protocols";
 import Link from "next/link";
 import { toast } from "sonner";
+import { sounds } from "@/lib/audio";
 
 // Typowe pakiety i punkty hydrauliczne z cenami rynkowymi
 const PLUMBING_FAST_POINTS = [
@@ -69,6 +70,7 @@ export default function HydraulikaPage() {
   }, [selectedPoints]);
 
   const handleQtyChange = (id: string, delta: number) => {
+    sounds.playClick(delta > 0 ? 880 : 640);
     setSelectedPoints((prev) => {
       const cur = prev[id] || 0;
       const next = Math.max(0, cur + delta);
@@ -96,6 +98,7 @@ export default function HydraulikaPage() {
       return;
     }
 
+    sounds.playSuccess();
     // Zapisz do localStorage i przekieruj
     localStorage.setItem("gksystem_quick_plumbing_quote", JSON.stringify(items));
     router.push("/wyceny/nowa?source=hydraulika");
@@ -247,7 +250,7 @@ export default function HydraulikaPage() {
 
                   <div className="space-y-2">
                     <Button
-                      className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold gap-2 py-5"
+                      className="w-full btn-glow-cyan text-white font-bold gap-2 py-5"
                       onClick={handleCreateQuoteFromCalculator}
                       disabled={totalSummary.netto === 0}
                     >
@@ -280,12 +283,12 @@ export default function HydraulikaPage() {
           <div className="lg:hidden fixed bottom-16 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-cyan-500/20 p-3 shadow-xl flex items-center justify-between gap-3">
             <div>
               <div className="text-[11px] text-muted-foreground">Razem brutto (8% VAT):</div>
-              <div className="text-base font-black text-cyan-600 dark:text-cyan-400 leading-tight">
+              <div className="text-base font-black text-cyan-600 dark:text-cyan-400 leading-tight font-mono">
                 {formatCurrency(totalSummary.brutto)}
               </div>
             </div>
             <Button
-              className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold gap-2 h-11 px-5 shadow-sm active:scale-95 transition-transform"
+              className="btn-glow-cyan text-white font-bold gap-2 h-11 px-5"
               onClick={handleCreateQuoteFromCalculator}
               disabled={totalSummary.netto === 0}
             >
