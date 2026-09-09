@@ -165,6 +165,27 @@ export default function NowaWycenaPage() {
         }
       }
     }
+
+    // Obsługa wczytywania szybkiej wyceny z kalkulatora elektrycznego
+    if (source === "elektryka") {
+      const saved = localStorage.getItem("gksystem_quick_electrical_quote");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setItems(parsed.map((it) => calcQuoteItem({
+              ...createEmptyItem(8),
+              ...it,
+              id: generateItemId(),
+            })));
+            toast.success("Wczytano pozycje z kalkulatora elektrycznego");
+            localStorage.removeItem("gksystem_quick_electrical_quote");
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
   }, [searchParams, templates]);
 
   function handleClientSelect(clientId: string) {

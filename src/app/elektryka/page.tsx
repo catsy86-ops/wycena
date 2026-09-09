@@ -14,11 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import {
   Zap, Cable, CircuitBoard, Lightbulb, Power, Plug,
   FileText, TrendingUp, Users, Package, Plus, Search,
   ArrowUpRight, ArrowDownRight, Minus, BarChart3,
-  AlertTriangle, CheckCircle2, Clock, Wrench,
+  AlertTriangle, CheckCircle2, Clock, Wrench, Calculator, ShieldCheck,
+  ChevronRight, Sparkles, Layers,
 } from "lucide-react";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
 import { AnimatedCounter } from "@/components/animated-counter";
@@ -26,9 +28,18 @@ import { motion } from "framer-motion";
 import { CableSeparator, ScrewRow, ElectricalBadge, CurrentIndicator, WireProgress } from "@/components/electrical-decorations";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format, subMonths, isThisMonth } from "date-fns";
 import { pl } from "date-fns/locale";
 import { sounds } from "@/lib/audio";
+import {
+  calcCableSection,
+  calcBreaker,
+  CABLE_AMPACITY,
+  BREAKER_RATINGS,
+  type BreakerChar,
+  type BreakerRating,
+} from "@/lib/electrical-calc";
 
 // Kategorie usług elektrycznych
 const ELECTRICAL_CATEGORIES = [
@@ -65,6 +76,7 @@ const ELECTRICAL_SERVICES_TEMPLATE = [
 ];
 
 export default function ElektrykaPage() {
+  const router = useRouter();
   const quotes = useQuoteStore((s) => s.quotes);
   const clients = useClientStore((s) => s.clients);
   const services = useServiceStore((s) => s.services);
@@ -74,6 +86,164 @@ export default function ElektrykaPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
+  // ─── Szybka wycena punktów elektrycznych ──────────────────────────────────
+  const ELECTRICAL_FAST_POINTS = useMemo(() => [
+    { id: "el1", name: "Punkt oświetleniowy (wypust sufitowy/ścienny)", price: 90, unit: "pkt", desc: "Przewód YDYp 3x1.5, montaż puszki / wypustu" },
+    { id: "el2", name: "Punkt gniazda 230V pojedynczego/podwójnego", price: 100, unit: "pkt", desc: "Bruzda, peszel, przewód YDYp 3x2.5, puszka fi 60" },
+    { id: "el3", name: "Punkt gniazda siłowego 400V (kuchnia indukcja / garaż)", price: 220, unit: "pkt", desc: "Przewód YDY 5x2.5 lub 5x4, zabezpieczenie dedykowane" },
+    { id: "el4", name: "Biały montaż osprzętu (gniazdo/wyłącznik)", price: 35, unit: "szt", desc: "Osadzenie mechanizmu, podłączenie, ramka ozdobna" },
+    { id: "el5", name: "Montaż i podłączenie lampy / kinkietu / plafonu", price: 80, unit: "szt", desc: "Zawieszenie oprawy, podłączenie kostki, test" },
+    { id: "el6", name: "Montaż taśmy LED z zasilaczem i profilem ALU", price: 65, unit: "mb", desc: "Montaż profilu, wklejenie taśmy, podłączenie zasilacza 12/24V" },
+    { id: "el7", name: "Uzbrojenie rozdzielnicy modułowej (RCD + nadprądowe)", price: 650, unit: "kpl", desc: "Szyny DIN, blok rozdzielczy, aparatura 24-36M, opis obwodów" },
+    { id: "el8", name: "Pomiary odbiorcze instalacji (izolacja + pętla zwarcia)", price: 350, unit: "kpl", desc: "Pomiary miernikiem z certyfikatem wzorcowania, protokół SEP" },
+    { id: "el9", name: "Podłączenie płyty indukcyjnej z wpisem do gwarancji", price: 180, unit: "szt", desc: "Uprawnienia SEP E+D, wpis w kartę gwarancyjną producenta" },
+  ], []);
+
+  const [selectedFastPoints, setSelectedFastPoints] = useState<Record<string, number>>({
+    el1: 6,
+    el2: 12,
+    el3: 1,
+    el4: 18,
+    el7: 1,
+    el8: 1,
+  });
+
+  const fastPointsSummary = useMemo(() => {
+    let netto = 0;
+    Object.entries(selectedFastPoints).forEach(([id, qty]) => {
+      if (qty <= 0) return;
+      const pt = ELECTRICAL_FAST_POINTS.find((p) => p.id === id);
+      if (pt) netto += pt.price * qty;
+    });
+    const vat = netto * 0.08;
+    return { netto, vat, brutto: netto + vat };
+  }, [selectedFastPoints, ELECTRICAL_FAST_POINTS]);
+
+  const handleFastPointQty = (id: string, delta: number) => {
+    sounds.playClick(delta > 0 ? 880 : 640);
+    setSelectedFastPoints((prev) => {
+      const cur = prev[id] || 0;
+      return { ...prev, [id]: Math.max(0, cur + delta) };
+    });
+  };
+
+  const handleCreateQuoteFromFastPoints = () => {
+    const items = Object.entries(selectedFastPoints)
+      .filter(([, qty]) => qty > 0)
+      .map(([id, qty]) => {
+        const pt = ELECTRICAL_FAST_POINTS.find((p) => p.id === id)!;
+        return {
+          name: pt.name,
+          quantity: qty,
+          unit: pt.unit as any,
+          priceNettoPerUnit: pt.price,
+          vatRate: 8 as const,
+        };
+      });
+
+    if (items.length === 0) {
+      toast.error("Wybierz przynajmniej jeden punkt do wyceny.");
+      return;
+    }
+
+    sounds.playSuccess();
+    localStorage.setItem("gksystem_quick_electrical_quote", JSON.stringify(items));
+    toast.success("Przeniesiono pozycje do formularza wyceny!");
+    router.push("/wyceny/nowa?source=elektryka");
+  };
+
+  // ─── Stan Kalkulatora Kabla (PN-HD 60364-5-52) ───────────────────────────
+  const [cableCurrent, setCableCurrent] = useState<number>(16);
+  const [cableLength, setCableLength] = useState<number>(25);
+  const [cableVoltage, setCableVoltage] = useState<230 | 400>(230);
+  const [cablePhases, setCablePhases] = useState<1 | 3>(1);
+  const [cableMaterial, setCableMaterial] = useState<"cu" | "al">("cu");
+  const [cableCircuitType, setCableCircuitType] = useState<"lighting" | "power">("power");
+  const [cablePowerFactor, setCablePowerFactor] = useState<number>(1.0);
+
+  const cableCalcResult = useMemo(() => {
+    if (cableCurrent <= 0 || cableLength <= 0) return null;
+    return calcCableSection({
+      currentA: cableCurrent,
+      lengthM: cableLength,
+      voltageV: cableVoltage,
+      phases: cablePhases,
+      material: cableMaterial,
+      circuitType: cableCircuitType,
+      powerFactor: cablePowerFactor,
+    });
+  }, [cableCurrent, cableLength, cableVoltage, cablePhases, cableMaterial, cableCircuitType, cablePowerFactor]);
+
+  const handleAddCableToQuote = () => {
+    if (!cableCalcResult) return;
+    const items = [
+      {
+        name: `Przewód ${cableCalcResult.recommendedName} ${cableMaterial === "cu" ? "Cu" : "Al"} (${cablePhases === 1 ? "1-faz 230V" : "3-faz 400V"})`,
+        quantity: cableLength,
+        unit: "mb" as const,
+        priceNettoPerUnit: cableCalcResult.recommendedSection >= 6 ? 18 : 6.5,
+        vatRate: 23 as const,
+      },
+      {
+        name: `Układanie i podłączenie przewodu ${cableCalcResult.recommendedName} (trasa ${cableLength} mb)`,
+        quantity: cableLength,
+        unit: "mb" as const,
+        priceNettoPerUnit: 28,
+        vatRate: 8 as const,
+      },
+    ];
+
+    sounds.playSuccess();
+    localStorage.setItem("gksystem_quick_electrical_quote", JSON.stringify(items));
+    toast.success(`Przeniesiono kabel ${cableCalcResult.recommendedName} do nowej wyceny!`);
+    router.push("/wyceny/nowa?source=elektryka");
+  };
+
+  // ─── Stan Kalkulatora Zabezpieczeń (PN-EN 60898-1) ────────────────────────
+  const [breakerPower, setBreakerPower] = useState<number>(3600);
+  const [breakerVoltage, setBreakerVoltage] = useState<230 | 400>(230);
+  const [breakerPhases, setBreakerPhases] = useState<1 | 3>(1);
+  const [breakerPowerFactor, setBreakerPowerFactor] = useState<number>(1.0);
+  const [breakerLoadType, setBreakerLoadType] = useState<"resistive" | "inductive" | "motor" | "lighting" | "mixed">("mixed");
+  const [breakerCableSection, setBreakerCableSection] = useState<number | undefined>(2.5);
+
+  const breakerCalcResult = useMemo(() => {
+    if (breakerPower <= 0) return null;
+    return calcBreaker({
+      powerW: breakerPower,
+      voltageV: breakerVoltage,
+      phases: breakerPhases,
+      powerFactor: breakerPowerFactor,
+      loadType: breakerLoadType,
+      cableSection: breakerCableSection,
+    });
+  }, [breakerPower, breakerVoltage, breakerPhases, breakerPowerFactor, breakerLoadType, breakerCableSection]);
+
+  const handleAddBreakerToQuote = () => {
+    if (!breakerCalcResult) return;
+    const items = [
+      {
+        name: `Wyłącznik nadprądowy ${breakerCalcResult.recommendedName} (${breakerCalcResult.norm})`,
+        quantity: 1,
+        unit: "szt" as const,
+        priceNettoPerUnit: 45,
+        vatRate: 23 as const,
+      },
+      {
+        name: `Montaż i podłączenie zabezpieczenia ${breakerCalcResult.recommendedName} w rozdzielnicy`,
+        quantity: 1,
+        unit: "szt" as const,
+        priceNettoPerUnit: 60,
+        vatRate: 8 as const,
+      },
+    ];
+
+    sounds.playSuccess();
+    localStorage.setItem("gksystem_quick_electrical_quote", JSON.stringify(items));
+    toast.success(`Przeniesiono wyłącznik ${breakerCalcResult.recommendedName} do wyceny!`);
+    router.push("/wyceny/nowa?source=elektryka");
+  };
 
   // ─── Statystyki elektryczne ─────────────────────────────────────────────
   // Filtrujemy wyceny które zawierają usługi elektryczne
@@ -312,11 +482,19 @@ export default function ElektrykaPage() {
               setActiveTab(val);
             }}
           >
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="overview">Przegląd</TabsTrigger>
-              <TabsTrigger value="cennik">Cennik</TabsTrigger>
-              <TabsTrigger value="wyceny">Wyceny</TabsTrigger>
-              <TabsTrigger value="materialy">Materiały</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-6 h-auto p-1">
+              <TabsTrigger value="overview" className="text-xs sm:text-sm py-2">Przegląd</TabsTrigger>
+              <TabsTrigger value="quick_calculator" className="text-xs sm:text-sm py-2 font-medium flex items-center gap-1.5">
+                <Calculator className="h-3.5 w-3.5 text-amber-500" />
+                <span>Szybka wycena</span>
+              </TabsTrigger>
+              <TabsTrigger value="engineering_calcs" className="text-xs sm:text-sm py-2 font-medium flex items-center gap-1.5">
+                <ShieldCheck className="h-3.5 w-3.5 text-amber-500" />
+                <span>Kable i aparaty</span>
+              </TabsTrigger>
+              <TabsTrigger value="cennik" className="text-xs sm:text-sm py-2">Cennik</TabsTrigger>
+              <TabsTrigger value="wyceny" className="text-xs sm:text-sm py-2">Wyceny</TabsTrigger>
+              <TabsTrigger value="materialy" className="text-xs sm:text-sm py-2">Materiały</TabsTrigger>
             </TabsList>
 
             {/* ── Przegląd ── */}
@@ -681,6 +859,361 @@ export default function ElektrykaPage() {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* ── Szybka wycena punktowa instalacji elektrycznej ── */}
+            <TabsContent value="quick_calculator" className="space-y-4 mt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-3">
+                  <div className="flex items-center justify-between pb-1">
+                    <div>
+                      <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                        <Calculator className="h-5 w-5 text-amber-500" />
+                        Kosztorys punktowy instalacji elektrycznej
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        Wybierz ilość punktów instalacyjnych. Ceny obejmują bruzdowanie, okablowanie oraz montaż osprzętu.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3">
+                    {ELECTRICAL_FAST_POINTS.map((pt) => {
+                      const qty = selectedFastPoints[pt.id] || 0;
+                      return (
+                        <div
+                          key={pt.id}
+                          className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                            qty > 0
+                              ? "bg-amber-500/10 border-amber-500/40 shadow-sm"
+                              : "bg-card border-border/60 opacity-80"
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm text-foreground">{pt.name}</span>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/30 text-amber-400">
+                                {formatCurrency(pt.price)} / {pt.unit}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{pt.desc}</p>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 rounded-lg border-border/80"
+                              onClick={() => handleFastPointQty(pt.id, -1)}
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </Button>
+                            <span className="w-8 text-center font-bold text-sm">{qty}</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 rounded-lg border-amber-500/40 hover:border-amber-500 hover:bg-amber-500/20"
+                              onClick={() => handleFastPointQty(pt.id, 1)}
+                            >
+                              <Plus className="h-3.5 w-3.5 text-amber-500" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Podsumowanie punktowe */}
+                <div className="space-y-4">
+                  <Card className="card-electrical border-amber-500/40 sticky top-4">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-amber-400" />
+                        Podsumowanie szacunku
+                      </CardTitle>
+                      <CardDescription>
+                        Szacunkowa wycena robocizny i podstawowych materiałów
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Suma netto:</span>
+                          <span className="font-semibold">{formatCurrency(fastPointsSummary.netto)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">VAT (8% mieszkaniowy):</span>
+                          <span>{formatCurrency(fastPointsSummary.vat)}</span>
+                        </div>
+                        <Separator className="bg-border/60 my-2" />
+                        <div className="flex justify-between items-baseline">
+                          <span className="font-bold text-base">Łącznie brutto:</span>
+                          <span className="font-black text-xl text-amber-400">
+                            {formatCurrency(fastPointsSummary.brutto)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button
+                        className="w-full btn-glow-amber text-slate-950 font-black gap-2 h-11"
+                        onClick={handleCreateQuoteFromFastPoints}
+                      >
+                        Przenieś do pełnej wyceny
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+
+                      <p className="text-[11px] text-muted-foreground text-center">
+                        Pozycje zostaną automatycznie przeniesione do edytora nowej wyceny, gdzie możesz dobrać klienta i rabaty.
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* ── Zaawansowane obliczenia inżynieryjne SEP ── */}
+            <TabsContent value="engineering_calcs" className="space-y-6 mt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* 1. Kalkulator doboru przekroju kabla */}
+                <Card className="card-electrical">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                          <Cable className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base">Dobór Przekroju Kabla</CardTitle>
+                          <CardDescription>Norma PN-HD 60364-5-52 i dopuszczalny spadek ΔU</CardDescription>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="border-amber-500/40 text-amber-400 text-[10px]">
+                        PN-HD 60364
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-xs font-semibold text-muted-foreground">Prąd obciążenia [A]</span>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="250"
+                          value={cableCurrent}
+                          onChange={(e) => setCableCurrent(parseFloat(e.target.value) || 0)}
+                          className="mt-1 h-9 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold text-muted-foreground">Długość trasy [m]</span>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="500"
+                          value={cableLength}
+                          onChange={(e) => setCableLength(parseFloat(e.target.value) || 0)}
+                          className="mt-1 h-9 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold text-muted-foreground">Napięcie zasilania</span>
+                        <Select
+                          value={String(cableVoltage)}
+                          onValueChange={(v) => {
+                            const val = parseInt(v ?? "230") as 230 | 400;
+                            setCableVoltage(val);
+                            setCablePhases(val === 400 ? 3 : 1);
+                          }}
+                        >
+                          <SelectTrigger className="mt-1 h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="230">230 V (1-fazowe)</SelectItem>
+                            <SelectItem value="400">400 V (3-fazowe)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold text-muted-foreground">Materiał żyły</span>
+                        <Select
+                          value={cableMaterial}
+                          onValueChange={(v) => setCableMaterial(v as "cu" | "al")}
+                        >
+                          <SelectTrigger className="mt-1 h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cu">Miedź (Cu)</SelectItem>
+                            <SelectItem value="al">Aluminium (Al)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-xs font-semibold text-muted-foreground">Typ odbiornika (kryterium spadku ΔU)</span>
+                        <Select
+                          value={cableCircuitType}
+                          onValueChange={(v) => setCableCircuitType(v as "lighting" | "power")}
+                        >
+                          <SelectTrigger className="mt-1 h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="power">Gniazda wtykowe i siła (max 5.0% ΔU)</SelectItem>
+                            <SelectItem value="lighting">Oświetlenie i precyzyjne (max 3.0% ΔU)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {cableCalcResult && (
+                      <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                              Rekomendowany przekrój
+                            </span>
+                            <div className="text-2xl font-black text-amber-400">
+                              {cableCalcResult.recommendedName}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs font-semibold text-emerald-400 flex items-center justify-end gap-1">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Iz: {cableCalcResult.ampacity} A
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">
+                              ΔU: {cableCalcResult.voltageDropPercent}% ({cableCalcResult.voltageDrop} V)
+                            </div>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {cableCalcResult.recommendation}
+                        </p>
+
+                        <Button
+                          size="sm"
+                          className="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 gap-1.5 text-xs font-bold"
+                          onClick={handleAddCableToQuote}
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Dodaj kabel {cableCalcResult.recommendedName} do wyceny
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* 2. Kalkulator aparatury modułowej i zabezpieczeń */}
+                <Card className="card-electrical">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                          <Power className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base">Dobór Zabezpieczeń Nadprądowych</CardTitle>
+                          <CardDescription>Norma PN-EN 60898-1 i koordynacja z przewodami</CardDescription>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="border-amber-500/40 text-amber-400 text-[10px]">
+                        PN-EN 60898
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2 sm:col-span-1">
+                        <span className="text-xs font-semibold text-muted-foreground">Moc znamionowa odbiornika [W]</span>
+                        <Input
+                          type="number"
+                          min="100"
+                          max="40000"
+                          step="100"
+                          value={breakerPower}
+                          onChange={(e) => setBreakerPower(parseFloat(e.target.value) || 0)}
+                          className="mt-1 h-9 font-mono"
+                        />
+                      </div>
+                      <div className="col-span-2 sm:col-span-1">
+                        <span className="text-xs font-semibold text-muted-foreground">Napięcie robocze</span>
+                        <Select
+                          value={String(breakerVoltage)}
+                          onValueChange={(v) => {
+                            const val = parseInt(v ?? "230") as 230 | 400;
+                            setBreakerVoltage(val);
+                            setBreakerPhases(val === 400 ? 3 : 1);
+                          }}
+                        >
+                          <SelectTrigger className="mt-1 h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="230">230 V (1-faza)</SelectItem>
+                            <SelectItem value="400">400 V (3-fazy)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-xs font-semibold text-muted-foreground">Charakterystyka obciążenia</span>
+                        <Select
+                          value={breakerLoadType}
+                          onValueChange={(v) => setBreakerLoadType(v as any)}
+                        >
+                          <SelectTrigger className="mt-1 h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="mixed">Gniazda ogólne / mieszane (Charakterystyka B)</SelectItem>
+                            <SelectItem value="lighting">Oświetlenie LED / elektroniczne (Charakterystyka B)</SelectItem>
+                            <SelectItem value="resistive">Grzałki, bojlery, piekarniki (Charakterystyka B)</SelectItem>
+                            <SelectItem value="motor">Silniki, sprężarki, hydrofory (Charakterystyka C)</SelectItem>
+                            <SelectItem value="inductive">Transformatory, klimatyzatory (Charakterystyka C)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {breakerCalcResult && (
+                      <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                              Zalecany wyłącznik MCB
+                            </span>
+                            <div className="text-2xl font-black text-amber-400">
+                              {breakerCalcResult.recommendedName}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs font-semibold text-amber-300">
+                              Ib: {breakerCalcResult.loadCurrentA} A
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">
+                              Wykorzystanie: {breakerCalcResult.utilizationPercent}%
+                            </div>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {breakerCalcResult.recommendation}
+                        </p>
+
+                        <Button
+                          size="sm"
+                          className="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 gap-1.5 text-xs font-bold"
+                          onClick={handleAddBreakerToQuote}
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Dodaj aparat {breakerCalcResult.recommendedName} do wyceny
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </Tabs>
         </StaggerItem>
