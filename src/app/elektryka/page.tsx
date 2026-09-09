@@ -582,7 +582,7 @@ export default function ElektrykaPage() {
                       />
                     </div>
 
-                    <Select value={materialCategoryFilter} onValueChange={setMaterialCategoryFilter}>
+                    <Select value={materialCategoryFilter} onValueChange={(v) => setMaterialCategoryFilter(v || "all")}>
                       <SelectTrigger className="h-9 text-xs">
                         <SelectValue placeholder="Wszystkie kategorie" />
                       </SelectTrigger>

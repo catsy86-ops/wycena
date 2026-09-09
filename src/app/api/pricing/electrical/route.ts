@@ -255,6 +255,33 @@ const ELECTRICAL_ITEMS: ElectricalPricingItem[] = [
     unit: "kpl", priceNetto: 80, priceMin: 50, priceMax: 150, vatRate: 23,
     description: "Ryczałt za dojazd do 20 km", laborMinutes: 0,
   },
+
+  // ── OZE, Smart Home i Nowoczesne Zasilanie ────────────────────────────────
+  {
+    id: "EL-OZE-001", name: "Montaż i podłączenie stacji ładowania Wallbox EV (do 22kW)", category: "instalacja",
+    unit: "kpl", priceNetto: 850, priceMin: 650, priceMax: 1300, vatRate: 8,
+    description: "Montaż naścienny, podłączenie zasilania 5x6mm², zabezpieczenie RCD Typ B / EV, test pomiarowy", norm: "PN-EN 61851", laborMinutes: 180,
+  },
+  {
+    id: "EL-OZE-002", name: "Montaż 3-fazowego licznika energii MID z Modbus w rozdzielnicy", category: "rozdzielnia",
+    unit: "szt", priceNetto: 220, priceMin: 160, priceMax: 350, vatRate: 8,
+    description: "Montaż na szynie DIN, wpięcie torów prądowych i magistrali RS485", norm: "PN-EN 50470", laborMinutes: 60,
+  },
+  {
+    id: "EL-OZE-003", name: "Montaż manualnego przełącznika zasilania sieć-agregat (SZR) 4P", category: "rozdzielnia",
+    unit: "kpl", priceNetto: 350, priceMin: 250, priceMax: 500, vatRate: 8,
+    description: "Montaż przełącznika I-0-II z blokadą mechaniczną, podłączenie toru rezerwowego", laborMinutes: 90,
+  },
+  {
+    id: "EL-OZE-004", name: "Montaż i konfiguracja modułu przekaźnikowego Smart DIN (Zigbee/Tuya)", category: "instalacja",
+    unit: "szt", priceNetto: 140, priceMin: 100, priceMax: 200, vatRate: 8,
+    description: "Montaż na szynie TH35, sparowanie z bramką Zigbee i konfiguracja scen oświetleniowych", laborMinutes: 45,
+  },
+  {
+    id: "EL-OZE-005", name: "Montaż ogranicznika przepięć SPD T1+T2 z podłączeniem do GSU", category: "rozdzielnia",
+    unit: "kpl", priceNetto: 180, priceMin: 130, priceMax: 260, vatRate: 8,
+    description: "Montaż aparatu 4P na szynie DIN, podłączenie przewodu uziemiającego min. 16mm² Cu", norm: "PN-EN 62305", laborMinutes: 50,
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
