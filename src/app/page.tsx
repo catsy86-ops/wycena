@@ -23,6 +23,7 @@ import { QuickActions } from "@/components/dashboard/quick-actions";
 import { Sparkline } from "@/components/dashboard/sparkline";
 import { subMonths, subDays, startOfDay, isSameDay } from "date-fns";
 import { sounds } from "@/lib/audio";
+import { BrandLogo } from "@/components/brand-logo";
 
 // Lazy load widżety wspierające
 const TodaySchedule = lazy(() => import("@/components/dashboard/today-schedule").then((m) => ({ default: m.TodaySchedule })));
@@ -87,12 +88,18 @@ export default function DashboardPage() {
             {/* Ozdobny akcent świetlny */}
             <div className="absolute -top-12 -right-12 w-40 h-40 bg-gradient-to-br from-cyan-500/20 to-amber-500/20 rounded-full blur-2xl pointer-events-none" />
 
-            <div className="relative z-10">
-              <Greeting />
-              <p className="text-xs sm:text-sm text-slate-300 mt-1 flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                System szybkich wycen i protokołów dla instalatorów
-              </p>
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="hidden lg:block pr-2">
+                <BrandLogo size="lg" showBadge={true} />
+              </div>
+              <div className="hidden lg:block h-10 w-px bg-slate-700/60" />
+              <div>
+                <Greeting />
+                <p className="text-xs sm:text-sm text-slate-300 mt-1 flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  System szybkich wycen i certyfikowanych protokołów
+                </p>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto relative z-10">

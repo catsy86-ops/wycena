@@ -64,61 +64,11 @@ function Rivet({ className }: { className?: string }) {
   );
 }
 
+import { BrandLogo } from "@/components/brand-logo";
+
 /* ── Logo ── */
 function Logo({ size = "default" }: { size?: "default" | "sm" }) {
-  const isSmall = size === "sm";
-
-  return (
-    <div className="flex items-center gap-3">
-      {/* Ikona — manometr / rura */}
-      <div className="relative">
-        <motion.div
-          className="absolute inset-0 rounded-xl blur-lg"
-          style={{ background: "oklch(0.52 0.19 220 / 0.4)" }}
-          animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.7, 0.4] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className={cn(
-            "relative flex items-center justify-center rounded-xl",
-            "border border-white/10",
-            isSmall ? "h-8 w-8" : "h-10 w-10"
-          )}
-          style={{
-            background: "linear-gradient(135deg, oklch(0.52 0.19 220), oklch(0.44 0.20 230))",
-            boxShadow: "0 4px 16px oklch(0.52 0.19 220 / 0.4), inset 0 1px 0 oklch(1 0 0 / 0.15)",
-          }}
-          whileHover={{ rotate: 15, scale: 1.08 }}
-          transition={{ type: "spring", stiffness: 400, damping: 12 }}
-        >
-          <Droplets className={cn("text-white", isSmall ? "h-4 w-4" : "h-5 w-5")} />
-        </motion.div>
-      </div>
-
-      {/* Tekst */}
-      <div>
-        <div
-          className={cn(
-            "font-black tracking-wider uppercase",
-            isSmall ? "text-base leading-none" : "text-lg leading-tight"
-          )}
-          style={{
-            background: "linear-gradient(135deg, oklch(0.95 0.01 220), oklch(0.75 0.17 195))",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          }}
-        >
-          WYCENA PRO
-        </div>
-        {!isSmall && (
-          <div className="text-[10px] font-semibold text-slate-400 tracking-tight">
-            Hydraulika & Elektryka
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return <BrandLogo size={size} />;
 }
 
 /* ── Pozycja nawigacji ── */

@@ -1,5 +1,5 @@
-// Service Worker — Wyceny PRO PWA
-const CACHE_NAME = "wyceny-pro-v2";
+// Service Worker — Wycenka PWA
+const CACHE_NAME = "wycenka-v1";
 const STATIC_ASSETS = [
   "/",
   "/manifest.json",
@@ -69,7 +69,7 @@ self.addEventListener("fetch", (event) => {
             return caches.match("/").then((rootCached) => {
               if (rootCached) return rootCached;
               return new Response(
-                "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Wyceny PRO Offline</title></head><body style='font-family:sans-serif;text-align:center;padding:40px;'><h2>Jesteś offline</h2><p>Połącz się z internetem, aby odświeżyć dane.</p></body></html>",
+                "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Wycenka Offline</title></head><body style='font-family:sans-serif;text-align:center;padding:40px;'><h2>Jesteś offline</h2><p>Połącz się z internetem, aby odświeżyć dane.</p></body></html>",
                 { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } }
               );
             });

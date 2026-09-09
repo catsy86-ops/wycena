@@ -7,7 +7,34 @@ const dir = path.join(__dirname, "..", "public", "icons");
 if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
 sizes.forEach((s) => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 512 512"><rect width="512" height="512" rx="80" fill="#3b82f6"/><path d="M180 380 L220 140 L256 300 L292 140 L332 380" stroke="white" stroke-width="40" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="256" cy="400" r="20" fill="#60a5fa"/></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#0f172a" />
+      <stop offset="100%" stopColor="#020617" />
+    </linearGradient>
+    <linearGradient id="border" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#38bdf8" />
+      <stop offset="50%" stopColor="#f59e0b" />
+      <stop offset="100%" stopColor="#0284c7" />
+    </linearGradient>
+    <linearGradient id="drop" x1="120" y1="80" x2="392" y2="440" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#38bdf8" />
+      <stop offset="60%" stopColor="#0ea5e9" />
+      <stop offset="100%" stopColor="#0369a1" />
+    </linearGradient>
+    <linearGradient id="bolt" x1="220" y1="120" x2="330" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#fef08a" />
+      <stop offset="50%" stopColor="#f59e0b" />
+      <stop offset="100%" stopColor="#d97706" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+  <rect x="12" y="12" width="488" height="488" rx="98" fill="none" stroke="url(#border)" stroke-width="12" opacity="0.8"/>
+  <path d="M256 64 C256 64 128 224 128 320 C128 395 185 456 256 456 C327 456 384 395 384 320 C384 224 256 64 256 64 Z" fill="url(#drop)" opacity="0.9"/>
+  <path d="M192 230 C168 270 168 310 176 342 C160 318 160 278 184 238 C192 224 205 206 216 190 C205 203 197 217 192 230 Z" fill="#ffffff" opacity="0.4"/>
+  <polygon points="280,112 184,272 264,272 232,416 352,240 272,240 304,112" fill="url(#bolt)" stroke="#ffffff" stroke-width="6"/>
+</svg>`;
   fs.writeFileSync(path.join(dir, `icon-${s}x${s}.png`), svg);
 });
 

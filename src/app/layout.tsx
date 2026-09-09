@@ -16,7 +16,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 const APP_URL = "https://wycenka.vercel.app";
-const APP_NAME = "Wyceny PRO";
+const APP_NAME = "Wycenka";
 const APP_DESCRIPTION = "Profesjonalny system wycen instalacji hydraulicznych i elektrycznych w terenie. Szybkie kosztorysy, kalkulatory punktów i certyfikowane protokoły odbiorcze.";
 
 export const viewport: Viewport = {
