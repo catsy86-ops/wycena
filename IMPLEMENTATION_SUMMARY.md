@@ -300,13 +300,15 @@ if (validation.isValid) {
    - Przechowywanie protokołów w Dexie
    - Synchronizacja z serwerem
 
-2. **E-Faktura**
-   - Generowanie faktury VAT z protokołu
-   - Integracja z systemem fakturowania
+2. **E-Faktura z Protokołu** ✅ *Zrealizowano (Faza 3)*
+   - Bezpośrednie generowanie faktury VAT z protokołu pomiarowego
+   - Automatyczny przelicznik ryczałtu pomiarowego oraz stawek za punkty pomiarowe
+   - Zapis do bazy Dexie i przekierowanie do modułu Faktur
 
-3. **Kalkulator WAGO/Legrand**
-   - Integracja z katalogami producentów
-   - Automatyczne dobieranie komponentów
+3. **Kalkulator WAGO & Legrand BOM** ✅ *Zrealizowano (Faza 3)*
+   - Katalog modułowy z kodami producentów (złączki WAGO 221, adaptery DIN, wyłączniki Legrand TX³, RCD typ A, bloki rozdzielcze, obudowy Practibox S)
+   - Automatyczne wyliczanie modułów DIN, rezerwy przestrzennej (25%) i szacowanego czasu montażu
+   - Integracja z modułem tworzenia ofert (`/wyceny/nowa?source=elektryka`)
 
 4. **Eksport do Kosztorysu**
    - Format NORMA/Zuzia

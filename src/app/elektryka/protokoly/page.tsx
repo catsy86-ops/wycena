@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FileText, Plus, Search, Download, Eye, Trash2, Edit2,
-  CheckCircle2, AlertTriangle, AlertCircle, Zap,
+  CheckCircle2, AlertTriangle, AlertCircle, Zap, Receipt,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
@@ -19,6 +19,9 @@ import { ElectricalProtocolForm } from "@/components/electrical-protocol-form";
 import { downloadProtocolPDF } from "@/lib/protocol-pdf";
 import { formatProtocolDate } from "@/lib/electrical-protocols";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useInvoiceStore } from "@/store/invoice-store";
+import type { QuoteItem } from "@/types";
 
 // Mock data - w rzeczywistości byłoby z bazy danych
 const MOCK_PROTOCOLS: MeasurementProtocol[] = [
@@ -102,11 +105,14 @@ const MOCK_PROTOCOLS: MeasurementProtocol[] = [
 ];
 
 export default function ProtokołyPage() {
+  const router = useRouter();
   const { protocols, add, update, remove, load } = useProtocolStore();
+  const { add: addInvoice } = useInvoiceStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "completed" | "signed">("all");
   const [selectedProtocol, setSelectedProtocol] = useState<MeasurementProtocol | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState<string | null>(null);
 
   useEffect(() => {
     load();
@@ -117,6 +123,78 @@ export default function ProtokołyPage() {
       await add(p);
     }
     toast.success("Załadowano przykładowe protokoły");
+  };
+
+  const handleCreateInvoiceFromProtocol = async (protocol: MeasurementProtocol) => {
+    try {
+      setIsGeneratingInvoice(protocol.id);
+
+      // Usługi pomiarowe wygenerowane z protokołu
+      const items: QuoteItem[] = [];
+      const measurementCount = protocol.measurements.length;
+
+      // Pozycja główna - wykonanie pomiarów instalacji i sporządzenie protokołu
+      const baseFee = protocol.installationType === "nowa" ? 350 : 280;
+      items.push({
+        id: "proto-base-" + Date.now(),
+        name: `Pomiary odbiorcze i sporządzenie protokołu nr ${protocol.number} (${protocol.installationType})`,
+        quantity: 1,
+        unit: "kpl",
+        priceNettoPerUnit: baseFee,
+        vatRate: 23,
+        discountPercent: 0,
+        nettotal: baseFee,
+        vatAmount: Math.round(baseFee * 0.23 * 100) / 100,
+        bruttoTotal: Math.round(baseFee * 1.23 * 100) / 100,
+      });
+
+      // Punkty pomiarowe jednostkowe
+      if (measurementCount > 0) {
+        const perPointRate = 25; // 25 PLN netto za pojedynczy punkt pomiarowy
+        const totalPointsNetto = measurementCount * perPointRate;
+        items.push({
+          id: "proto-points-" + Date.now(),
+          name: `Wykonanie prób i pomiarów w punktach kontrolnych (ilość obwodów/punktów: ${measurementCount})`,
+          quantity: measurementCount,
+          unit: "szt",
+          priceNettoPerUnit: perPointRate,
+          vatRate: 23,
+          discountPercent: 0,
+          nettotal: totalPointsNetto,
+          vatAmount: Math.round(totalPointsNetto * 0.23 * 100) / 100,
+          bruttoTotal: Math.round(totalPointsNetto * 1.23 * 100) / 100,
+        });
+      }
+
+      const totalNetto = items.reduce((sum, item) => sum + item.nettotal, 0);
+      const totalVat = items.reduce((sum, item) => sum + item.vatAmount, 0);
+      const totalBrutto = items.reduce((sum, item) => sum + item.bruttoTotal, 0);
+
+      const now = new Date();
+      const dueDate = new Date();
+      dueDate.setDate(now.getDate() + 14);
+
+      await addInvoice({
+        clientName: protocol.clientName || "Klient",
+        clientAddress: protocol.clientAddress || protocol.location || "",
+        items,
+        additionalCosts: [],
+        totalNetto,
+        totalVat,
+        totalBrutto,
+        status: "niezaplacona",
+        issueDate: now,
+        dueDate,
+      });
+
+      toast.success(`Wystawiono fakturę dla protokołu ${protocol.number}! Przekierowywanie do faktur...`);
+      router.push("/faktury");
+    } catch (err) {
+      console.error(err);
+      toast.error("Wystąpił błąd podczas tworzenia faktury z protokołu");
+    } finally {
+      setIsGeneratingInvoice(null);
+    }
   };
 
   // Filtrowanie
@@ -379,7 +457,18 @@ export default function ProtokołyPage() {
                             </div>
                           </div>
 
-                          <div className="flex gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-8 border-amber-500/30 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400 font-medium"
+                              disabled={isGeneratingInvoice === protocol.id}
+                              onClick={() => handleCreateInvoiceFromProtocol(protocol)}
+                              title="Wystaw fakturę na podstawie pomiarów"
+                            >
+                              <Receipt className="h-3.5 w-3.5 mr-1" />
+                              Faktura
+                            </Button>
                             <Button
                               size="sm"
                               variant="ghost"
@@ -387,6 +476,7 @@ export default function ProtokołyPage() {
                                 setSelectedProtocol(protocol);
                                 setShowForm(true);
                               }}
+                              title="Edytuj protokół"
                             >
                               <Edit2 className="h-4 w-4" />
                             </Button>
@@ -394,6 +484,7 @@ export default function ProtokołyPage() {
                               size="sm"
                               variant="ghost"
                               onClick={() => handleDownloadPDF(protocol)}
+                              title="Pobierz protokół PDF"
                             >
                               <Download className="h-4 w-4" />
                             </Button>
@@ -401,6 +492,7 @@ export default function ProtokołyPage() {
                               size="sm"
                               variant="ghost"
                               onClick={() => handleDeleteProtocol(protocol.id)}
+                              title="Usuń protokół"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

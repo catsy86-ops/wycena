@@ -40,6 +40,12 @@ import {
   type BreakerChar,
   type BreakerRating,
 } from "@/lib/electrical-calc";
+import {
+  TYPICAL_CIRCUITS,
+  WAGO_LEGRAND_COMPONENTS,
+  calculateSwitchboardBOM,
+  type SwitchboardBOM,
+} from "@/lib/wago-catalog";
 
 // Kategorie usług elektrycznych
 const ELECTRICAL_CATEGORIES = [
@@ -242,6 +248,54 @@ export default function ElektrykaPage() {
     sounds.playSuccess();
     localStorage.setItem("gksystem_quick_electrical_quote", JSON.stringify(items));
     toast.success(`Przeniesiono wyłącznik ${breakerCalcResult.recommendedName} do wyceny!`);
+    router.push("/wyceny/nowa?source=elektryka");
+  };
+
+  // ─── Stan Konfiguratora Rozdzielnicy WAGO / Legrand BOM ───────────────────
+  const [circuitCounts, setCircuitCounts] = useState<Record<string, number>>({
+    "c-light": 4,
+    "c-sock-room": 6,
+    "c-kitchen-ind": 1,
+    "c-oven": 1,
+    "c-wash": 1,
+    "c-ac": 1,
+  });
+
+  const switchboardBOM = useMemo(() => {
+    return calculateSwitchboardBOM(circuitCounts);
+  }, [circuitCounts]);
+
+  const handleCircuitCountChange = (id: string, delta: number) => {
+    sounds.playClick(delta > 0 ? 900 : 700);
+    setCircuitCounts((prev) => {
+      const cur = prev[id] || 0;
+      return { ...prev, [id]: Math.max(0, cur + delta) };
+    });
+  };
+
+  const handleAddBOMToQuote = () => {
+    if (switchboardBOM.components.length === 0) return;
+
+    const items = switchboardBOM.components.map((c) => ({
+      name: `${c.item.brand} ${c.item.name} (SKU: ${c.item.sku})`,
+      quantity: c.quantity,
+      unit: "szt" as const,
+      priceNettoPerUnit: c.item.marketPriceNetto,
+      vatRate: c.item.vatRate as any,
+    }));
+
+    // Dodaj usługę montażu i prefabrykacji rozdzielnicy
+    items.push({
+      name: `Prefabrykacja i uzbrojenie rozdzielnicy ${switchboardBOM.suggestedEnclosureModules}M z pomiarami odbiorczymi`,
+      quantity: 1,
+      unit: "szt" as const,
+      priceNettoPerUnit: Math.round(switchboardBOM.totalModulesUsed * 35 + 250),
+      vatRate: 8 as any,
+    });
+
+    sounds.playSuccess();
+    localStorage.setItem("gksystem_quick_electrical_quote", JSON.stringify(items));
+    toast.success("Przeniesiono zestawienie rozdzielnicy WAGO/Legrand do nowej wyceny!");
     router.push("/wyceny/nowa?source=elektryka");
   };
 
@@ -482,19 +536,23 @@ export default function ElektrykaPage() {
               setActiveTab(val);
             }}
           >
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-6 h-auto p-1">
-              <TabsTrigger value="overview" className="text-xs sm:text-sm py-2">Przegląd</TabsTrigger>
-              <TabsTrigger value="quick_calculator" className="text-xs sm:text-sm py-2 font-medium flex items-center gap-1.5">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 h-auto p-1">
+              <TabsTrigger value="overview" className="text-xs py-2">Przegląd</TabsTrigger>
+              <TabsTrigger value="quick_calculator" className="text-xs py-2 font-medium flex items-center gap-1.5">
                 <Calculator className="h-3.5 w-3.5 text-amber-500" />
                 <span>Szybka wycena</span>
               </TabsTrigger>
-              <TabsTrigger value="engineering_calcs" className="text-xs sm:text-sm py-2 font-medium flex items-center gap-1.5">
+              <TabsTrigger value="switchboard_bom" className="text-xs py-2 font-medium flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5 text-amber-500" />
+                <span>Rozdzielnica WAGO</span>
+              </TabsTrigger>
+              <TabsTrigger value="engineering_calcs" className="text-xs py-2 font-medium flex items-center gap-1.5">
                 <ShieldCheck className="h-3.5 w-3.5 text-amber-500" />
                 <span>Kable i aparaty</span>
               </TabsTrigger>
-              <TabsTrigger value="cennik" className="text-xs sm:text-sm py-2">Cennik</TabsTrigger>
-              <TabsTrigger value="wyceny" className="text-xs sm:text-sm py-2">Wyceny</TabsTrigger>
-              <TabsTrigger value="materialy" className="text-xs sm:text-sm py-2">Materiały</TabsTrigger>
+              <TabsTrigger value="cennik" className="text-xs py-2">Cennik</TabsTrigger>
+              <TabsTrigger value="wyceny" className="text-xs py-2">Wyceny</TabsTrigger>
+              <TabsTrigger value="materialy" className="text-xs py-2">Materiały</TabsTrigger>
             </TabsList>
 
             {/* ── Przegląd ── */}
@@ -965,6 +1023,144 @@ export default function ElektrykaPage() {
 
                       <p className="text-[11px] text-muted-foreground text-center">
                         Pozycje zostaną automatycznie przeniesione do edytora nowej wyceny, gdzie możesz dobrać klienta i rabaty.
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* ── Konfigurator Rozdzielnicy WAGO / Legrand (BOM) ── */}
+            <TabsContent value="switchboard_bom" className="space-y-4 mt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-4">
+                  <div className="flex items-center justify-between pb-1">
+                    <div>
+                      <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                        <Layers className="h-5 w-5 text-amber-500" />
+                        Konfigurator Rozdzielnicy Modułowej (WAGO + Legrand)
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        Określ liczbę i typ obwodów w obiekcie. System automatycznie dobierze wyłączniki nadprądowe TX³, różnicówki RCD typ A, bloki rozdzielcze i złączki WAGO 221.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3">
+                    {TYPICAL_CIRCUITS.map((circ) => {
+                      const count = circuitCounts[circ.id] || 0;
+                      return (
+                        <div
+                          key={circ.id}
+                          className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                            count > 0
+                              ? "bg-amber-500/10 border-amber-500/40 shadow-sm"
+                              : "bg-card border-border/60 opacity-80"
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm text-foreground">{circ.name}</span>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/30 text-amber-400">
+                                {circ.phases === 3 ? "3-fazowy (400V)" : "1-fazowy (230V)"}
+                              </Badge>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">
+                              <span>Przewód: <strong className="text-foreground">{circ.recommendedWire}</strong></span>
+                              <span>•</span>
+                              <span>Zabezpieczenie: <strong className="text-foreground">{circ.recommendedBreaker}</strong></span>
+                              <span>•</span>
+                              <span>WAGO: <strong className="text-amber-400">~{circ.wagoConnectorsNeeded} szt</strong></span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 rounded-lg border-border/80"
+                              onClick={() => handleCircuitCountChange(circ.id, -1)}
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </Button>
+                            <span className="w-8 text-center font-bold text-sm">{count}</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 rounded-lg border-amber-500/40 hover:border-amber-500 hover:bg-amber-500/20"
+                              onClick={() => handleCircuitCountChange(circ.id, 1)}
+                            >
+                              <Plus className="h-3.5 w-3.5 text-amber-500" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Zestawienie materiałowe rozdzielnicy (BOM) */}
+                <div className="space-y-4">
+                  <Card className="card-electrical border-amber-500/40 sticky top-4">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Package className="h-4 w-4 text-amber-400" />
+                          Zestawienie aparatów (BOM)
+                        </CardTitle>
+                        <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-[11px]">
+                          {switchboardBOM.totalModulesUsed}M / {switchboardBOM.suggestedEnclosureModules}M DIN
+                        </Badge>
+                      </div>
+                      <CardDescription>
+                        Zalecana rozdzielnica: {switchboardBOM.suggestedEnclosureModules} modułowa (zapas min. 25%)
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="max-h-60 overflow-y-auto space-y-2 pr-1 text-xs">
+                        {switchboardBOM.components.map((c, i) => (
+                          <div key={i} className="flex justify-between items-center py-1 border-b border-border/40">
+                            <div className="min-w-0 pr-2">
+                              <div className="font-semibold truncate">{c.item.name}</div>
+                              <div className="text-[10px] text-muted-foreground">{c.item.brand} • SKU: {c.item.sku}</div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div>{c.quantity} szt.</div>
+                              <div className="font-bold text-amber-400">{formatCurrency(c.subtotalNetto)}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <Separator className="bg-border/60 my-2" />
+
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Materiały netto:</span>
+                          <span className="font-semibold">{formatCurrency(switchboardBOM.totalNetto)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">VAT 23%:</span>
+                          <span>{formatCurrency(switchboardBOM.totalVat)}</span>
+                        </div>
+                        <div className="flex justify-between items-baseline pt-1">
+                          <span className="font-bold text-sm">Materiały brutto:</span>
+                          <span className="font-black text-base text-amber-400">
+                            {formatCurrency(switchboardBOM.totalBrutto)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button
+                        className="w-full btn-glow-amber text-slate-950 font-black gap-2 h-11 mt-2"
+                        onClick={handleAddBOMToQuote}
+                      >
+                        Przenieś rozdzielnicę do wyceny
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+
+                      <p className="text-[11px] text-muted-foreground text-center">
+                        Dodaje aparaturę Legrand, złączki WAGO oraz usługę prefabrykacji i montażu do formularza kosztorysu.
                       </p>
                     </CardContent>
                   </Card>
