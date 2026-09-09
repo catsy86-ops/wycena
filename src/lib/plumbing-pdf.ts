@@ -174,16 +174,30 @@ export function generatePlumbingProtocolPDF(
   }
 
   // Sekcja podpisów
-  yPos = Math.max(yPos + 8, pageHeight - 35);
+  yPos = Math.max(yPos + 8, pageHeight - 45);
 
   doc.setFontSize(8);
   doc.setTextColor(80, 80, 80);
 
   // Podpis wykonawcy
+  if (protocol.signaturePlumber) {
+    try {
+      doc.addImage(protocol.signaturePlumber, "PNG", margin + 10, yPos - 12, 45, 20);
+    } catch {
+      // ignore image drawing error
+    }
+  }
   doc.line(margin + 5, yPos + 12, margin + 65, yPos + 12);
   doc.text("Podpis i pieczęć instalatora", margin + 15, yPos + 16);
 
   // Podpis inwestora / klienta
+  if (protocol.signatureClient) {
+    try {
+      doc.addImage(protocol.signatureClient, "PNG", pageWidth - margin - 60, yPos - 12, 45, 20);
+    } catch {
+      // ignore image drawing error
+    }
+  }
   doc.line(pageWidth - margin - 65, yPos + 12, pageWidth - margin - 5, yPos + 12);
   doc.text("Podpis inwestora / klienta", pageWidth - margin - 55, yPos + 16);
 

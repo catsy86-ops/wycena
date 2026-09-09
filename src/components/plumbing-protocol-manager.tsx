@@ -1,10 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { db } from "@/lib/db";
 import { PlumbingPressureProtocol, PLUMBING_STANDARDS, PLUMBING_PROTOCOL_PRESETS, formatPlumbingDate } from "@/lib/plumbing-protocols";
 import { downloadPlumbingProtocolPDF } from "@/lib/plumbing-pdf";
+import { exportPlumbingProtocolsToExcel } from "@/lib/excel-export";
 import { useSettingsStore } from "@/store/settings-store";
+import { useInvoiceStore } from "@/store/invoice-store";
+import { SignaturePad } from "@/components/quote/signature-pad";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +17,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, CheckCircle2, AlertCircle, Droplets, Plus, ShieldCheck, Wrench } from "lucide-react";
+import {
+  FileText, Download, CheckCircle2, AlertCircle, Droplets, Plus,
+  ShieldCheck, Wrench, FileSpreadsheet, Receipt, PenTool, Check,
+} from "lucide-react";
 import { toast } from "sonner";
+import { sounds } from "@/lib/audio";
 
 interface PlumbingProtocolManagerProps {
   initialProtocols?: PlumbingPressureProtocol[];
@@ -64,7 +72,99 @@ export function PlumbingProtocolManager({ initialProtocols = DEFAULT_MOCK_PROTOC
     }).catch(() => {});
   }, []);
 
-  // Nowy formularz protokołu
+  const router = useRouter();
+  const addInvoice = useInvoiceStore((s) => s.add);
+
+  // Stan podpisu elektronicznego
+  const [activeSignProtocol, setActiveSignProtocol] = useState<PlumbingPressureProtocol | null>(null);
+  const [signTarget, setSignTarget] = useState<"plumber" | "client">("client");
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+
+  // Obsługa eksportu do Excela
+  const handleExportExcel = () => {
+    sounds.playSuccess();
+    exportPlumbingProtocolsToExcel(protocols);
+    toast.success("Wyeksportowano protokoły prób ciśnieniowych do pliku Excel (.xlsx)!");
+  };
+
+  // Wystawienie faktury z protokołu
+  const handleCreateInvoiceFromProtocol = async (proto: PlumbingPressureProtocol) => {
+    sounds.playSuccess();
+    try {
+      const isFloor = proto.installationType === "ogrzewanie_podlogowe";
+      const items = [
+        {
+          id: `item-${Date.now()}-1`,
+          name: `Wykonanie próby ciśnieniowej szczelności (${proto.pipeMaterial}, ${proto.testPressureBar} bar) wg ${proto.number}`,
+          quantity: 1,
+          unit: "usł" as const,
+          priceNettoPerUnit: isFloor ? 350 : 250,
+          vatRate: 8 as const,
+        },
+        {
+          id: `item-${Date.now()}-2`,
+          name: `Wystawienie oficjalnego protokołu odbiorczego PN-EN (${proto.location})`,
+          quantity: 1,
+          unit: "kpl" as const,
+          priceNettoPerUnit: 100,
+          vatRate: 8 as const,
+        },
+      ];
+
+      const totalNetto = items.reduce((sum, it) => sum + it.quantity * it.priceNettoPerUnit, 0);
+      const totalVat = totalNetto * 0.08;
+      const totalBrutto = totalNetto + totalVat;
+
+      const issueDate = new Date();
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 14);
+
+      await addInvoice({
+        clientName: proto.clientName,
+        clientAddress: proto.clientAddress || proto.location,
+        items: items as any,
+        additionalCosts: [],
+        totalNetto,
+        totalVat,
+        totalBrutto,
+        status: "niezaplacona",
+        issueDate,
+        dueDate,
+      });
+
+      toast.success(`Wystawiono fakturę dla ${proto.clientName}! Przekierowuję do listy faktur...`);
+      router.push("/faktury");
+    } catch {
+      toast.error("Wystąpił błąd podczas generowania faktury.");
+    }
+  };
+
+  // Zapis podpisu na protokole
+  const handleSaveSignature = async (dataUrl: string) => {
+    if (!activeSignProtocol) return;
+
+    const updated: PlumbingPressureProtocol = {
+      ...activeSignProtocol,
+      signatureDate: new Date(),
+      status: "signed",
+      ...(signTarget === "client"
+        ? { signatureClient: dataUrl }
+        : { signaturePlumber: dataUrl }),
+    };
+
+    try {
+      await db.plumbingProtocols.put(updated);
+      setProtocols(protocols.map((p) => (p.id === updated.id ? updated : p)));
+      setSignatureModalOpen(false);
+      setActiveSignProtocol(null);
+      sounds.playSuccess();
+      toast.success(`Zapisano podpis ${signTarget === "client" ? "klienta" : "instalatora"}!`);
+    } catch {
+      toast.error("Nie udało się zapisać podpisu.");
+    }
+  };
+
+  // Stan formularza protokołu
   const [form, setForm] = useState<Omit<PlumbingPressureProtocol, "id" | "number" | "date">>({
     location: "",
     clientName: "",
@@ -155,13 +255,24 @@ export function PlumbingProtocolManager({ initialProtocols = DEFAULT_MOCK_PROTOC
           </p>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger>
-            <Button className="bg-cyan-600 hover:bg-cyan-700 text-white gap-1.5 shadow-sm">
-              <Plus className="h-4 w-4" />
-              Nowy protokół próby
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            className="gap-1.5 border-emerald-600/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-xs"
+          >
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+            Eksport do Excel (.xlsx)
+          </Button>
+
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger>
+              <Button className="bg-cyan-600 hover:bg-cyan-700 text-white gap-1.5 shadow-sm">
+                <Plus className="h-4 w-4" />
+                Nowy protokół próby
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -356,6 +467,7 @@ export function PlumbingProtocolManager({ initialProtocols = DEFAULT_MOCK_PROTOC
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Lista protokołów */}
@@ -381,15 +493,66 @@ export function PlumbingProtocolManager({ initialProtocols = DEFAULT_MOCK_PROTOC
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-center">
+                <div className="flex flex-wrap items-center gap-1.5 self-end sm:self-center">
+                  {/* Przycisk Podpisz jako Instalator */}
                   <Button
                     size="sm"
                     variant="outline"
-                    className="text-xs gap-1.5 border-cyan-300 dark:border-cyan-800 text-cyan-800 dark:text-cyan-300"
+                    className={`text-xs gap-1 h-8 ${
+                      proto.signaturePlumber
+                        ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 bg-emerald-50/30"
+                        : "text-muted-foreground"
+                    }`}
+                    onClick={() => {
+                      setActiveSignProtocol(proto);
+                      setSignTarget("plumber");
+                      setSignatureModalOpen(true);
+                    }}
+                  >
+                    <PenTool className="h-3.5 w-3.5 text-cyan-600" />
+                    <span>{proto.signaturePlumber ? "Podpisano (Instalator)" : "Podpis instalatora"}</span>
+                  </Button>
+
+                  {/* Przycisk Podpisz jako Klient */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={`text-xs gap-1 h-8 ${
+                      proto.signatureClient
+                        ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 bg-emerald-50/30"
+                        : "text-muted-foreground"
+                    }`}
+                    onClick={() => {
+                      setActiveSignProtocol(proto);
+                      setSignTarget("client");
+                      setSignatureModalOpen(true);
+                    }}
+                  >
+                    <PenTool className="h-3.5 w-3.5 text-amber-600" />
+                    <span>{proto.signatureClient ? "Podpisano (Klient)" : "Podpis klienta"}</span>
+                  </Button>
+
+                  {/* Wystaw fakturę */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs gap-1 h-8 border-cyan-500/40 text-cyan-700 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/30"
+                    onClick={() => handleCreateInvoiceFromProtocol(proto)}
+                    title="Wystaw fakturę z tego protokołu"
+                  >
+                    <Receipt className="h-3.5 w-3.5 text-cyan-600" />
+                    <span>Faktura</span>
+                  </Button>
+
+                  {/* Pobierz PDF */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs gap-1.5 h-8 border-cyan-300 dark:border-cyan-800 text-cyan-800 dark:text-cyan-300"
                     onClick={() => handleDownloadPDF(proto)}
                   >
                     <Download className="h-3.5 w-3.5" />
-                    Pobierz PDF
+                    <span>PDF</span>
                   </Button>
                 </div>
               </CardContent>
@@ -397,6 +560,26 @@ export function PlumbingProtocolManager({ initialProtocols = DEFAULT_MOCK_PROTOC
           );
         })}
       </div>
+
+      {/* Dialog ze SignaturePad */}
+      <Dialog open={signatureModalOpen} onOpenChange={setSignatureModalOpen}>
+        <DialogContent className="max-w-md p-0 overflow-hidden border-0 bg-transparent shadow-2xl">
+          {activeSignProtocol && (
+            <SignaturePad
+              onSign={handleSaveSignature}
+              onCancel={() => {
+                setSignatureModalOpen(false);
+                setActiveSignProtocol(null);
+              }}
+              existingSignature={
+                signTarget === "client"
+                  ? activeSignProtocol.signatureClient
+                  : activeSignProtocol.signaturePlumber
+              }
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
