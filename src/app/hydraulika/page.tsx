@@ -42,6 +42,12 @@ import {
   type SystemWaterVolumeParams,
   type ExpansionVesselParams,
 } from "@/lib/expansion-vessel-calc";
+import {
+  calculatePipeSizing,
+  STANDARD_PIPES,
+  type PipeMaterial,
+  type PipeSizingInput,
+} from "@/lib/pipe-sizing-calc";
 
 // Typowe pakiety i punkty hydrauliczne z cenami rynkowymi
 const PLUMBING_FAST_POINTS = [
@@ -366,6 +372,62 @@ export default function HydraulikaPage() {
     router.push("/wyceny/nowa?source=hydraulika");
   };
 
+  // ─── Stan Kalkulatora Średnic Rur i Przepływów (PN-EN ISO 12241) ───────
+  const [psInputMode, setPsInputMode] = useState<"power" | "flow">("power");
+  const [psPowerKw, setPsPowerKw] = useState<number>(10);
+  const [psDeltaTempC, setPsDeltaTempC] = useState<number>(5); // 5°C (pompa/podłogówka), 15°C (grzejniki), 20°C (gaz)
+  const [psFlowLitersPerHour, setPsFlowLitersPerHour] = useState<number>(1720);
+  const [psMaterial, setPsMaterial] = useState<PipeMaterial>("pex");
+  const [psSegmentLengthM, setPsSegmentLengthM] = useState<number>(12);
+  const [psZone, setPsZone] = useState<"quiet" | "normal" | "boiler_room">("normal");
+
+  const pipeSizingResult = useMemo(() => {
+    return calculatePipeSizing({
+      inputMode: psInputMode,
+      thermalPowerKw: psPowerKw,
+      deltaTempC: psDeltaTempC,
+      flowRateLitersPerHour: psFlowLitersPerHour,
+      material: psMaterial,
+      segmentLengthMeters: psSegmentLengthM,
+      applicationZone: psZone,
+    });
+  }, [psInputMode, psPowerKw, psDeltaTempC, psFlowLitersPerHour, psMaterial, psSegmentLengthM, psZone]);
+
+  const handleAddPipeToQuote = (pipeOption?: typeof pipeSizingResult.options[0]) => {
+    const pipe = pipeOption?.pipe || pipeSizingResult.recommendedPipe;
+    const estMeterPrice = pipe.material === "copper" ? 55 : pipe.material === "steel" ? 48 : pipe.material === "pp_stabi" ? 18 : 22;
+    const insulationPrice = 12;
+
+    const items = [
+      {
+        name: `Rurociąg zasilający ${pipe.commercialName} z izolacją kauczukową termiczną (${psSegmentLengthM} mb)`,
+        quantity: psSegmentLengthM,
+        unit: "mb" as any,
+        priceNettoPerUnit: estMeterPrice + insulationPrice,
+        vatRate: 8 as const,
+      },
+      {
+        name: `Kształtki, złączki i trójniki systemowe ${pipe.commercialName}`,
+        quantity: 1,
+        unit: "kpl" as const,
+        priceNettoPerUnit: Math.max(120, Math.round(psSegmentLengthM * 18)),
+        vatRate: 8 as const,
+      },
+      {
+        name: `Montaż magistrali hydraulicznej ${pipe.commercialName} (przepływ ${pipeSizingResult.waterFlowLitersPerHour} l/h)`,
+        quantity: psSegmentLengthM,
+        unit: "mb" as any,
+        priceNettoPerUnit: 38,
+        vatRate: 8 as const,
+      },
+    ];
+
+    sounds.playSuccess();
+    localStorage.setItem("gksystem_quick_plumbing_quote", JSON.stringify(items));
+    toast.success(`Przeniesiono dobór rurociągu ${pipe.commercialName} (${psSegmentLengthM} mb) do nowej wyceny!`);
+    router.push("/wyceny/nowa?source=hydraulika");
+  };
+
   // Filtrujemy wyceny hydrauliczne (z wykluczeniem pozycji elektrycznych)
   const hydraulicQuotes = useMemo(() => {
     const keywords = ["woda", "wod-kan", "bateria", "umywalk", "wanna", "prysznic", "wc", "stelaż", "podłogów", "kocioł", "grzejnik", "syfon", "kanalizacj", "hydraul", "pex"];
@@ -458,7 +520,7 @@ export default function HydraulikaPage() {
       </div>
 
       <Tabs defaultValue="calculator" className="space-y-4">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 w-full max-w-5xl h-auto p-1 bg-muted/60">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 w-full max-w-6xl h-auto p-1 bg-muted/60">
           <TabsTrigger value="calculator" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
             <Calculator className="h-4 w-4 shrink-0 text-cyan-500" />
             <span>Kalkulator</span>
@@ -469,7 +531,11 @@ export default function HydraulikaPage() {
           </TabsTrigger>
           <TabsTrigger value="vessel" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
             <Gauge className="h-4 w-4 shrink-0 text-indigo-500" />
-            <span className="font-semibold text-indigo-600 dark:text-indigo-400">Naczynie & Zład</span>
+            <span className="font-semibold text-indigo-600 dark:text-indigo-400">Naczynie C.O.</span>
+          </TabsTrigger>
+          <TabsTrigger value="pipesizing" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
+            <Droplets className="h-4 w-4 shrink-0 text-teal-500" />
+            <span className="font-semibold text-teal-600 dark:text-teal-400">Średnice rur</span>
           </TabsTrigger>
           <TabsTrigger value="underfloor" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
             <Layers className="h-4 w-4 shrink-0 text-cyan-500" />
@@ -483,7 +549,7 @@ export default function HydraulikaPage() {
             <ShieldCheck className="h-4 w-4 shrink-0 text-cyan-500" />
             <span>Protokoły prób</span>
           </TabsTrigger>
-          <TabsTrigger value="standards" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium col-span-2 sm:col-span-1">
+          <TabsTrigger value="standards" className="gap-1.5 py-2 px-2 text-xs sm:text-sm font-medium">
             <FileText className="h-4 w-4 shrink-0 text-cyan-500" />
             <span>Normy PN</span>
           </TabsTrigger>
@@ -1258,6 +1324,286 @@ export default function HydraulikaPage() {
                     onClick={handleAddExpansionVesselToQuote}
                   >
                     Przenieś naczynie {expansionVesselResult.recommendedStandardVesselLiters}L do nowej wyceny
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ─── Zakładka: Dobór Średnic Rur i Przepływów ─── */}
+        <TabsContent value="pipesizing" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Formularz wejściowy */}
+            <div className="lg:col-span-6 space-y-4">
+              <Card className="border-teal-500/30 shadow-sm">
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <Droplets className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                    Kalkulator hydrauliczny średnic rurociągów
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Dobór średnicy rur PEX, Miedź, Stal, PP dla instalacji C.O., pomp ciepła i rozdzielaczy
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 pt-2 space-y-4">
+                  {/* Wybór metody obliczeń */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold">Dane wejściowe instalacji</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant={psInputMode === "power" ? "default" : "outline"}
+                        className={`text-xs h-9 justify-center ${psInputMode === "power" ? "bg-teal-600 hover:bg-teal-700 text-white" : ""}`}
+                        onClick={() => setPsInputMode("power")}
+                      >
+                        Znam moc i ΔT (kW)
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={psInputMode === "flow" ? "default" : "outline"}
+                        className={`text-xs h-9 justify-center ${psInputMode === "flow" ? "bg-teal-600 hover:bg-teal-700 text-white" : ""}`}
+                        onClick={() => setPsInputMode("flow")}
+                      >
+                        Znam przepływ (l/h)
+                      </Button>
+                    </div>
+                  </div>
+
+                  {psInputMode === "power" ? (
+                    <div className="p-3 bg-muted/30 rounded-xl space-y-3 border">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">Moc cieplna odbiornika Q (kW)</Label>
+                          <Input
+                            type="number"
+                            step={0.5}
+                            min={1}
+                            max={300}
+                            value={psPowerKw}
+                            onChange={(e) => setPsPowerKw(Math.max(0.5, Number(e.target.value)))}
+                            className="font-mono text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">Różnica temperatur ΔT (K / °C)</Label>
+                          <Select
+                            value={String(psDeltaTempC)}
+                            onValueChange={(val) => setPsDeltaTempC(Number(val))}
+                          >
+                            <SelectTrigger className="text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="3" className="text-xs">ΔT = 3 K (bardzo duży przepływ)</SelectItem>
+                              <SelectItem value="5" className="text-xs">ΔT = 5 K (Pompa ciepła / Podłogówka standard)</SelectItem>
+                              <SelectItem value="7" className="text-xs">ΔT = 7 K (Pompa ciepła monoblok / Grzejniki LT)</SelectItem>
+                              <SelectItem value="10" className="text-xs">ΔT = 10 K (Nowoczesne grzejniki)</SelectItem>
+                              <SelectItem value="15" className="text-xs">ΔT = 15 K (Kocioł gazowy kondensacyjny)</SelectItem>
+                              <SelectItem value="20" className="text-xs">ΔT = 20 K (Stare kotły węglowe / grzejniki)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground flex justify-between pt-1 border-t border-border/50">
+                        <span>Wyliczony przepływ masowy wody:</span>
+                        <strong className="text-foreground font-mono">
+                          {pipeSizingResult.waterFlowLitersPerHour} l/h ({pipeSizingResult.waterFlowLitersPerMinute} l/min / {pipeSizingResult.waterFlowM3PerHour} m³/h)
+                        </strong>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-muted/30 rounded-xl space-y-1.5 border">
+                      <Label className="text-xs font-semibold">Wymagany przepływ czynnika (litry / godzinę)</Label>
+                      <Input
+                        type="number"
+                        min={10}
+                        max={20000}
+                        value={psFlowLitersPerHour}
+                        onChange={(e) => setPsFlowLitersPerHour(Math.max(10, Number(e.target.value)))}
+                        className="font-mono text-sm"
+                      />
+                      <span className="text-[11px] text-muted-foreground">
+                        Przepływ nominalny pompy obiegowej, katalogowy pompy ciepła lub suma rotametrów rozdzielacza.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Materiał i parametry rurociągu */}
+                  <div className="space-y-3 pt-2 border-t">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold">Materiał rurociągu</Label>
+                        <Select
+                          value={psMaterial}
+                          onValueChange={(val) => {
+                            if (val) setPsMaterial(val as PipeMaterial);
+                          }}
+                        >
+                          <SelectTrigger className="text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pex" className="text-xs">PEX-Al-PEX (wielowarstwowy zaciskany)</SelectItem>
+                            <SelectItem value="copper" className="text-xs">Miedź (lutowana / zaciskana)</SelectItem>
+                            <SelectItem value="steel" className="text-xs">Stal czarna / węglowa zaciskana</SelectItem>
+                            <SelectItem value="pp_stabi" className="text-xs">PP-R ze stabilizacją (zgrzewana)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold">Strefa akustyczna / dopuszczalna prędkość</Label>
+                        <Select
+                          value={psZone}
+                          onValueChange={(val) => {
+                            if (val) setPsZone(val as "quiet" | "normal" | "boiler_room");
+                          }}
+                        >
+                          <SelectTrigger className="text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="quiet" className="text-xs">Pokoje / sypialnie (cicha praca v ≤ 0.5 m/s)</SelectItem>
+                            <SelectItem value="normal" className="text-xs">Piony i rozdzielacze (standard v ≤ 0.8 m/s)</SelectItem>
+                            <SelectItem value="boiler_room" className="text-xs">Kotłownia / Maszynownia (v ≤ 1.2 m/s)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Długość odcinka rurociągu (metry bieżące)</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={200}
+                        value={psSegmentLengthM}
+                        onChange={(e) => setPsSegmentLengthM(Math.max(1, Number(e.target.value)))}
+                        className="font-mono text-sm"
+                      />
+                      <span className="text-[10px] text-muted-foreground">
+                        Do obliczenia sumarycznych strat ciśnienia na oporach liniowych i miejscowych (kolanka, trójniki).
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Informacja inżynieryjna */}
+              <div className="p-3.5 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200/50 dark:border-teal-800/40 text-xs space-y-1">
+                <div className="font-semibold flex items-center gap-1.5 text-teal-900 dark:text-teal-300">
+                  <ShieldCheck className="h-4 w-4 text-teal-600" />
+                  Dlaczego odpowiednia średnica jest kluczowa?
+                </div>
+                <p className="text-muted-foreground leading-relaxed">
+                  Zbyt mała rura powoduje szumy hydrauliczne, nadmierny opór liniowy, błędy przepływu w pompach ciepła (np. błąd 7H/H7) oraz drastyczny wzrost zużycia prądu przez pompę obiegową. Zbyt gruba rura to niepotrzebny koszt i wolniejszy czas reakcji obiegu.
+                </p>
+              </div>
+            </div>
+
+            {/* Wyniki i tabela typoszeregu */}
+            <div className="lg:col-span-6 space-y-4">
+              <Card className="border-teal-500/40 bg-gradient-to-b from-teal-500/5 to-transparent shadow-md">
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">
+                      Rekomendowany rurociąg
+                    </span>
+                    <Badge className="bg-teal-600 text-white font-mono text-xs">
+                      Optymalny dobór
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-xl font-black text-foreground">
+                    {pipeSizingResult.recommendedPipe.commercialName}
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Średnica wewn. {pipeSizingResult.recommendedPipe.innerDiameterMm} mm · Przepływ: {pipeSizingResult.waterFlowLitersPerHour} l/h
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 pt-2 space-y-4">
+                  {/* Tabela porównawcza średnic */}
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold text-foreground block">
+                      Analiza wszystkich średnic w typoszeregu:
+                    </span>
+                    <div className="space-y-2">
+                      {pipeSizingResult.options.map((opt, idx) => {
+                        const isRec = opt.pipe.commercialName === pipeSizingResult.recommendedPipe.commercialName;
+                        return (
+                          <div
+                            key={idx}
+                            className={`p-3 rounded-lg border transition-colors ${
+                              isRec
+                                ? "bg-teal-500/10 border-teal-500/50 shadow-sm"
+                                : opt.isAcceptable
+                                ? "bg-card border-border/70"
+                                : "bg-destructive/5 border-destructive/30 opacity-75"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-foreground">{opt.pipe.commercialName}</span>
+                                {isRec && <Badge className="bg-teal-600 text-[10px] text-white">Rekomendowana</Badge>}
+                              </div>
+                              <span className={`text-xs font-mono font-bold ${
+                                opt.velocityMetersPerSecond <= (psZone === "quiet" ? 0.5 : psZone === "normal" ? 0.8 : 1.2)
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-rose-600 dark:text-rose-400"
+                              }`}>
+                                v = {opt.velocityMetersPerSecond} m/s
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 mt-1 border-t border-border/40 text-[11px]">
+                              <div>
+                                <span className="text-muted-foreground block text-[10px]">Śr. wewn.:</span>
+                                <span className="font-mono font-medium">{opt.pipe.innerDiameterMm} mm</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground block text-[10px]">Liniowy R:</span>
+                                <span className="font-mono font-medium">{opt.linearPressureDropPaPerM} Pa/m</span>
+                              </div>
+                              <div className="col-span-2 sm:col-span-1">
+                                <span className="text-muted-foreground block text-[10px]">Spadek na {psSegmentLengthM}m:</span>
+                                <span className="font-mono font-semibold text-foreground">{opt.totalPipePressureDropKPa} kPa</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1 text-[11px]">
+                              <span className="text-muted-foreground text-[10px] truncate max-w-[70%]">{opt.statusText}</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs px-2 text-teal-700 dark:text-teal-300 hover:bg-teal-500/20"
+                                onClick={() => handleAddPipeToQuote(opt)}
+                              >
+                                Wybierz do wyceny
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Rekomendacje */}
+                  <div className="text-[11px] text-muted-foreground space-y-1 bg-muted/30 p-2.5 rounded-lg border">
+                    {pipeSizingResult.recommendations.map((r, i) => (
+                      <div key={i} className="flex items-start gap-1.5">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                        <span>{r}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Główny przycisk dodania do wyceny */}
+                  <Button
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold gap-2 py-5 shadow-md"
+                    onClick={() => handleAddPipeToQuote()}
+                  >
+                    Przenieś {pipeSizingResult.recommendedPipe.commercialName} ({psSegmentLengthM}m) do nowej wyceny
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </CardContent>
