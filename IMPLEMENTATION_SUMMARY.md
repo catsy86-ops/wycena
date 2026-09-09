@@ -320,10 +320,15 @@ if (validation.isValid) {
    - Zapis podpisu elektryka z uprawnieniami SEP oraz klienta / odbiorcy
    - Renderowanie wektorowych i rastrowych podpisów bezpośrednio w generowanych plikach PDF protokołu pomiarowego
 
-6. **Raporty Zaawansowane**
-   - Porównanie pomiarów w czasie
-   - Trendy i statystyki
-   - Eksport do BI
+6. **Raporty Zaawansowane i Analiza Jakości** ✅ *Zrealizowano (Faza 5)*
+   - Wizualizacja rozkładu wyników (OK vs Ostrzeżenia vs Błędy) w podziale na kategorie SEP przy użyciu Recharts
+   - Śledzenie trendu zdawalności instalacji w czasie (% testów pozytywnych per obiekt)
+   - Statystyki struktury badanych obiektów (Nowe instalacje, Modernizacje, Przeglądy, Pomiary ponaprawcze)
+
+7. **Harmonogram Przeglądów Okresowych 5-Letnich (Art. 62 Prawa Budowlanego)** ✅ *Zrealizowano (Faza 5)*
+   - Automatyczne wyliczanie terminu kolejnego badania (dokładnie 5 lat od daty protokołu)
+   - Inteligentne statusy pilności: termin minął (czerwony), badanie wkrótce (żółty/60 dni), aktualny (zielony)
+   - Błyskawiczne powiadomienia ("Przypomnij") oraz akcja "Nowy przegląd" z automatycznym klonowaniem danych obiektu
 
 ---
 

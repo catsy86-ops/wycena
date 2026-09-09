@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FileText, Plus, Search, Download, Eye, Trash2, Edit2,
   CheckCircle2, AlertTriangle, AlertCircle, Zap, Receipt, FileSpreadsheet,
+  TrendingUp, Calendar, Bell, History, ArrowRight, ShieldCheck, Mail, Phone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/page-transition";
@@ -22,6 +23,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useInvoiceStore } from "@/store/invoice-store";
 import type { QuoteItem } from "@/types";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  LineChart,
+  Line,
+  Legend,
+} from "recharts";
 
 // Mock data - w rzeczywistości byłoby z bazy danych
 const MOCK_PROTOCOLS: MeasurementProtocol[] = [
@@ -210,6 +223,127 @@ export default function ProtokołyPage() {
       return matchesSearch && matchesStatus;
     });
   }, [protocols, searchTerm, statusFilter]);
+
+  const [mainView, setMainView] = useState<"list" | "analytics" | "inspections">("list");
+
+  // Obliczenia do analizy trendów i jakości pomiarów
+  const analyticsData = useMemo(() => {
+    let totalMeasurements = 0;
+    let passedCount = 0;
+    let failedCount = 0;
+    let warningCount = 0;
+
+    const typeStats: Record<string, { total: number; pass: number; fail: number; warning: number }> = {};
+    const installationTypeStats: Record<string, number> = {
+      nowa: 0,
+      modernizacja: 0,
+      naprawa: 0,
+      przegląd: 0,
+    };
+
+    // Pomiary w czasie (chronologicznie)
+    const timeline = [...protocols]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .map((p) => {
+        const pass = p.measurements.filter((m) => m.status === "pass").length;
+        const fail = p.measurements.filter((m) => m.status === "fail").length;
+        const warn = p.measurements.filter((m) => m.status === "warning").length;
+        return {
+          date: formatProtocolDate(p.date),
+          numer: p.number,
+          klient: p.clientName,
+          pass,
+          fail,
+          warn,
+          total: p.measurements.length,
+          rate: p.measurements.length > 0 ? Math.round((pass / p.measurements.length) * 100) : 100,
+        };
+      });
+
+    protocols.forEach((p) => {
+      if (p.installationType && installationTypeStats[p.installationType] !== undefined) {
+        installationTypeStats[p.installationType]++;
+      }
+      p.measurements.forEach((m) => {
+        totalMeasurements++;
+        if (m.status === "pass") passedCount++;
+        else if (m.status === "fail") failedCount++;
+        else if (m.status === "warning") warningCount++;
+
+        const typeKey = m.type || "inne";
+        if (!typeStats[typeKey]) {
+          typeStats[typeKey] = { total: 0, pass: 0, fail: 0, warning: 0 };
+        }
+        typeStats[typeKey].total++;
+        if (m.status === "pass") typeStats[typeKey].pass++;
+        else if (m.status === "fail") typeStats[typeKey].fail++;
+        else if (m.status === "warning") typeStats[typeKey].warning++;
+      });
+    });
+
+    const typeChartData = Object.entries(typeStats).map(([type, s]) => {
+      const labels: Record<string, string> = {
+        voltage: "Napięcie",
+        insulation: "Izolacja",
+        rcd: "RCD",
+        breaker: "Wyłączniki",
+        earthing: "Uziemienie",
+        continuity: "Ciągłość",
+        resistance: "Rezystancja",
+        current: "Prąd",
+      };
+      return {
+        name: labels[type] || type,
+        OK: s.pass,
+        Błędy: s.fail,
+        Ostrzeżenia: s.warning,
+        total: s.total,
+      };
+    });
+
+    const overallPassRate = totalMeasurements > 0 ? Math.round((passedCount / totalMeasurements) * 100) : 100;
+
+    return {
+      totalMeasurements,
+      passedCount,
+      failedCount,
+      warningCount,
+      overallPassRate,
+      typeChartData,
+      timeline,
+      installationTypeStats,
+    };
+  }, [protocols]);
+
+  // Ewidencja przeglądów 5-letnich (art. 62 Prawa Budowlanego)
+  const inspectionReminders = useMemo(() => {
+    const now = new Date();
+    return protocols.map((p) => {
+      const protocolDate = new Date(p.date);
+      // Badanie okresowe instalacji elektrycznej: co 5 lat
+      const nextDue = new Date(protocolDate);
+      nextDue.setFullYear(nextDue.getFullYear() + 5);
+
+      const diffTime = nextDue.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      let urgency: "overdue" | "soon" | "ok" = "ok";
+      if (diffDays < 0) urgency = "overdue";
+      else if (diffDays <= 60) urgency = "soon";
+
+      return {
+        protocol: p,
+        lastDate: protocolDate,
+        dueDate: nextDue,
+        daysRemaining: diffDays,
+        urgency,
+      };
+    }).sort((a, b) => a.daysRemaining - b.daysRemaining);
+  }, [protocols]);
+
+  const handleSendInspectionReminder = (item: typeof inspectionReminders[0]) => {
+    toast.success(`Przygotowano powiadomienie dla klienta: ${item.protocol.clientName} o przeglądzie okresowym 5-letnim!`);
+  };
 
   // Statystyki
   const stats = useMemo(() => {
@@ -450,28 +584,56 @@ export default function ProtokołyPage() {
           </div>
         </StaggerItem>
 
-        {/* Filtry */}
+        {/* Główne zakładki modułu */}
         <StaggerItem>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Szukaj po numerze, kliencie, lokalizacji..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 input-electrical"
-              />
-            </div>
-            <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-              <TabsList>
-                <TabsTrigger value="all">Wszystkie</TabsTrigger>
-                <TabsTrigger value="draft">Szkice</TabsTrigger>
-                <TabsTrigger value="completed">Ukończone</TabsTrigger>
-                <TabsTrigger value="signed">Podpisane</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+          <Tabs value={mainView} onValueChange={(v) => setMainView(v as any)} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 max-w-xl">
+              <TabsTrigger value="list" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                <FileText className="h-4 w-4" />
+                <span>Rejestr ({protocols.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                <TrendingUp className="h-4 w-4 text-amber-500" />
+                <span>Trendy i jakość ({analyticsData.overallPassRate}%)</span>
+              </TabsTrigger>
+              <TabsTrigger value="inspections" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                <Calendar className="h-4 w-4 text-blue-500" />
+                <span>Przeglądy 5-letnie</span>
+                {inspectionReminders.filter((r) => r.urgency !== "ok").length > 0 && (
+                  <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px] h-4">
+                    {inspectionReminders.filter((r) => r.urgency !== "ok").length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </StaggerItem>
+
+        {/* WIDOK: LISTA PROTOKOŁÓW */}
+        {mainView === "list" && (
+          <>
+            {/* Filtry */}
+            <StaggerItem>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Szukaj po numerze, kliencie, lokalizacji..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 input-electrical"
+                  />
+                </div>
+                <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                  <TabsList>
+                    <TabsTrigger value="all">Wszystkie</TabsTrigger>
+                    <TabsTrigger value="draft">Szkice</TabsTrigger>
+                    <TabsTrigger value="completed">Ukończone</TabsTrigger>
+                    <TabsTrigger value="signed">Podpisane</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+            </StaggerItem>
 
         {/* Lista protokołów */}
         <StaggerItem>
@@ -623,6 +785,284 @@ export default function ProtokołyPage() {
             </div>
           )}
         </StaggerItem>
+      </>
+    )}
+
+    {/* WIDOK: ANALITYKA TRENDÓW I JAKOŚCI POMIARÓW */}
+    {mainView === "analytics" && (
+      <div className="space-y-6">
+        {/* Wskaźniki jakości */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card className="card-electrical">
+            <CardContent className="pt-4 p-4">
+              <div className="text-xs text-muted-foreground">Wszystkie pomiary</div>
+              <div className="text-2xl font-black mt-1">{analyticsData.totalMeasurements}</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">W {protocols.length} protokołach</div>
+            </CardContent>
+          </Card>
+          <Card className="card-electrical">
+            <CardContent className="pt-4 p-4">
+              <div className="text-xs text-muted-foreground">Wskaźnik zdawalności</div>
+              <div className="text-2xl font-black mt-1 text-emerald-500">{analyticsData.overallPassRate}%</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">{analyticsData.passedCount} prób bez zastrzeżeń</div>
+            </CardContent>
+          </Card>
+          <Card className="card-electrical">
+            <CardContent className="pt-4 p-4">
+              <div className="text-xs text-muted-foreground">Ostrzeżenia</div>
+              <div className="text-2xl font-black mt-1 text-amber-500">{analyticsData.warningCount}</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">Wymagające obserwacji</div>
+            </CardContent>
+          </Card>
+          <Card className="card-electrical">
+            <CardContent className="pt-4 p-4">
+              <div className="text-xs text-muted-foreground">Usterki krytyczne</div>
+              <div className="text-2xl font-black mt-1 text-red-500">{analyticsData.failedCount}</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">Wymagały natychmiastowej naprawy</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Wykresy */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Wykres prób wg rodzajów badań */}
+          <Card className="card-electrical">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-amber-500" />
+                Wyniki badań wg rodzaju pomiaru
+              </CardTitle>
+              <CardDescription>Rozkład wyników OK vs Błędy w podziale na kategorie SEP</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {analyticsData.typeChartData.length === 0 ? (
+                <div className="py-12 text-center text-muted-foreground text-sm">Brak danych pomiarowych</div>
+              ) : (
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsData.typeChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                      <XAxis dataKey="name" fontSize={11} tickLine={false} />
+                      <YAxis fontSize={11} tickLine={false} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "rgba(20, 20, 25, 0.95)",
+                          borderRadius: "8px",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          fontSize: "12px",
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
+                      <Bar dataKey="OK" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Ostrzeżenia" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Błędy" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Wykres trendu zdawalności w czasie */}
+          <Card className="card-electrical">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="h-4 w-4 text-blue-500" />
+                Trend zdawalności instalacji w czasie
+              </CardTitle>
+              <CardDescription>Skuteczność odbiorcza instalacji (%) w kolejnych obiektach</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {analyticsData.timeline.length === 0 ? (
+                <div className="py-12 text-center text-muted-foreground text-sm">Brak historii badań</div>
+              ) : (
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analyticsData.timeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                      <XAxis dataKey="numer" fontSize={10} tickLine={false} />
+                      <YAxis domain={[0, 100]} fontSize={11} tickLine={false} unit="%" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "rgba(20, 20, 25, 0.95)",
+                          borderRadius: "8px",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          fontSize: "12px",
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="rate"
+                        name="Zdawalność %"
+                        stroke="#f59e0b"
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: "#f59e0b" }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Struktura zleceń wg typu instalacji */}
+        <Card className="card-electrical">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Struktura rodzajowa badanych obiektów</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+              <div className="p-3 border rounded-lg bg-card/50">
+                <div className="text-lg font-bold text-amber-500">{analyticsData.installationTypeStats.nowa || 0}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Nowe instalacje</div>
+              </div>
+              <div className="p-3 border rounded-lg bg-card/50">
+                <div className="text-lg font-bold text-blue-500">{analyticsData.installationTypeStats.modernizacja || 0}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Modernizacje</div>
+              </div>
+              <div className="p-3 border rounded-lg bg-card/50">
+                <div className="text-lg font-bold text-purple-500">{analyticsData.installationTypeStats.przegląd || 0}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Przeglądy okresowe</div>
+              </div>
+              <div className="p-3 border rounded-lg bg-card/50">
+                <div className="text-lg font-bold text-emerald-500">{analyticsData.installationTypeStats.naprawa || 0}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Pomiary ponaprawcze</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )}
+
+    {/* WIDOK: PRZEGLĄDY OKRESOWE 5-LETNIE (PRAWO BUDOWLANE ART. 62) */}
+    {mainView === "inspections" && (
+      <div className="space-y-4">
+        <Card className="card-electrical border-blue-500/20 bg-blue-500/5">
+          <CardContent className="pt-4 p-4 flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500 shrink-0">
+              <Calendar className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm">Harmonogram kontroli okresowych instalacji elektrycznych</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Zgodnie z art. 62 ust. 1 pkt 2 ustawy Prawo Budowlane, instalacja elektryczna i piorunochronna w obiektach budowlanych podlega kontroli okresowej co najmniej raz na 5 lat.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-3">
+          {inspectionReminders.length === 0 ? (
+            <Card className="text-center py-12">
+              <p className="text-muted-foreground text-sm">Brak zarejestrowanych protokołów do harmonogramu przeglądów</p>
+            </Card>
+          ) : (
+            inspectionReminders.map((item, idx) => (
+              <Card
+                key={item.protocol.id || idx}
+                className={`card-electrical transition-shadow hover:shadow-md ${
+                  item.urgency === "overdue"
+                    ? "border-red-500/40"
+                    : item.urgency === "soon"
+                      ? "border-amber-500/40"
+                      : ""
+                }`}
+              >
+                <CardContent className="pt-4 p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm sm:text-base">{item.protocol.clientName}</span>
+                        <Badge
+                          variant={
+                            item.urgency === "overdue"
+                              ? "destructive"
+                              : item.urgency === "soon"
+                                ? "secondary"
+                                : "outline"
+                          }
+                          className="text-[11px]"
+                        >
+                          {item.urgency === "overdue"
+                            ? "Termin minął!"
+                            : item.urgency === "soon"
+                              ? "Przegląd wkrótce"
+                              : "Aktualny"}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <span>Lokalizacja: {item.protocol.location}</span> • <span>Protokół bazowy: {item.protocol.number}</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs pt-1">
+                        <div>
+                          <span className="text-muted-foreground">Ostatnie badanie: </span>
+                          <span className="font-medium">{formatProtocolDate(item.lastDate)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Termin kolejnego: </span>
+                          <span className="font-medium">{formatProtocolDate(item.dueDate)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Pozostało: </span>
+                          <span
+                            className={`font-semibold ${
+                              item.daysRemaining < 0
+                                ? "text-red-500"
+                                : item.daysRemaining <= 60
+                                  ? "text-amber-500"
+                                  : "text-emerald-500"
+                            }`}
+                          >
+                            {item.daysRemaining < 0
+                              ? `${Math.abs(item.daysRemaining)} dni po terminie`
+                              : `${item.daysRemaining} dni (${Math.round(item.daysRemaining / 30)} mies.)`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-8"
+                        onClick={() => handleSendInspectionReminder(item)}
+                      >
+                        <Bell className="h-3.5 w-3.5 mr-1 text-amber-500" />
+                        Przypomnij
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="text-xs h-8 btn-switch"
+                        onClick={() => {
+                          setSelectedProtocol({
+                            ...item.protocol,
+                            id: `proto-${Date.now()}`,
+                            number: `PROTO/${new Date().getFullYear()}/${String(new Date().getMonth() + 1).padStart(2, "0")}/000${protocols.length + 1}`,
+                            installationType: "przegląd",
+                            date: new Date(),
+                            status: "draft",
+                            signatureClient: undefined,
+                            signatureElectrician: undefined,
+                            notes: `Przegląd okresowy 5-letni na podstawie protokołu nr ${item.protocol.number}`,
+                          });
+                          setShowForm(true);
+                        }}
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        Nowy przegląd
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      </div>
+    )}
       </StaggerContainer>
     </PageTransition>
   );
